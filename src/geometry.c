@@ -1,0 +1,36 @@
+#include "geometry.h"
+#include "base.h"
+
+static inline AABBi calc_triangle_aabbi(V2i v1, V2i v2, V2i v3)
+{
+    AABBi ret = {0};
+    ret.min.x = min(v1.x, min(v2.x, v3.x));
+    ret.min.y = min(v1.y, min(v2.y, v3.y));
+
+    ret.max.x = max(v1.x, max(v2.x, v3.x));
+    ret.max.y = max(v1.y, max(v2.y, v3.y));
+
+    return ret;
+}
+
+static float signed_area(int ax, int ay,
+    int bx, int by,
+    int cx, int cy)
+{
+    return 0.5 * ((by-ay)*(bx+ax)+(cy-by)*(cx+bx)+(ay-cy)*(ax+cx));
+}
+
+static bool barycentric(V2i v1, V2i v2, V2i v3, V2i p, V3f *b)
+{
+    double sia = signed_area(v1.x, v1.y, v2.x, v2.y, v3.x, v3.y);
+    if (sia == 0) sia = -EPSILON;
+
+    b->x = signed_area(p.x, p.y, v2.x, v2.y, v3.x, v3.y)/sia;
+    b->y = signed_area(v1.x, v1.y, p.x, p.y, v3.x, v3.y)/sia;
+    b->z = signed_area(v1.x, v1.y, v2.x, v2.y, p.x, p.y)/sia;
+    if ((b->x>=0 && b->x<=1) && (b->y>=0 && b->y<=1) && (b->z>=0 && b->z<=1)) return true;
+
+    return false;
+}
+
+
