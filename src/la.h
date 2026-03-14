@@ -31,6 +31,12 @@ union V3i
     int c[3];
 };
 
+typedef union Mat2 Mat2;
+union Mat2
+{
+    float c[4];
+};
+
 typedef union Mat4 Mat4;
 union Mat4
 {
@@ -65,6 +71,7 @@ V2i   v2i_scale(V2i v, float scalar);
 int   v2i_len(V2i v);
 float v2i_dot(V2i v, V2i u);
 float v2i_det(V2i v);
+V2i   v2i_rotate(V2i v, float angle);
 
 V3f   v3f(float x, float y, float z);
 V3f   v3f_add(V3f v, V3f u);

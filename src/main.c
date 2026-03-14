@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <unistd.h>
 
 #include <string.h>
 #include <sys/types.h>
@@ -31,21 +32,28 @@ main(int argc, char **argv)
 
 
     bool quit = false;
+    V2i pos1 = v2i(1, 0);
+    V2i pos2; 
+    V2i pos3;
+    float angle = 0;
+    V3f posf1 = v3f(0,   0, 1);
+    V3f posf2 = v3f(0.1, 0, 0.1);
+    V3f posf3 = v3f(0, 0.1, 2);
+
+
     while (!quit) {
         platform_handle_events(&quit);
 
         clear_background();
 
-        for (uint32_t x = 0; x < WIDTH; x++) {
-            for (uint32_t y = 0; y < HEIGHT; y++) {
-                if (barycentric(v2i(100, 100),v2i(100, 150), v2i(150, 100),  v2i(x, y), &b)) {
-                    set_pixel( x, y, (Color){.r = 255, .a = 255}); 
-                    //printf("Trying to hit bary centrics: %.2f %.2f %.2f\n", b.x, b.y, b.z);
-                }
-                    set_pixel(100, 100, (Color){.r = 255, .b = 255, .a = 255}); 
-            }
-        }
 
+        pos1 = to_screen(project(posf1));
+        pos2 = to_screen(project(posf2));
+        pos3 = to_screen(project(posf3));
+
+        set_triangle(pos1, pos2, pos3, COLOR_PURPLE);
+
+        set_line(v2i(1, 1), v2i(100, 100), COLOR_PURPLE);
         present();
     }
 

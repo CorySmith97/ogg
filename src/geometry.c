@@ -1,5 +1,22 @@
 #include "geometry.h"
 #include "base.h"
+#include <assert.h>
+
+
+static V2f project(V3f v) 
+{
+    assert(v.z != 0);
+    return v2f((v.x/v.z), (v.y/v.z));
+}
+
+static V2i to_screen(V2f v)
+{
+    float y = (1-(v.y+1)/2)*HEIGHT;
+    V2f ret = v2f((v.x + 1)/2 * WIDTH, y);
+    V2i val = v2i((int)ret.x, (int)ret.y);
+
+    return val;
+}
 
 static inline AABBi calc_triangle_aabbi(V2i v1, V2i v2, V2i v3)
 {
@@ -28,7 +45,7 @@ static bool barycentric(V2i v1, V2i v2, V2i v3, V2i p, V3f *b)
     b->x = signed_area(p.x, p.y, v2.x, v2.y, v3.x, v3.y)/sia;
     b->y = signed_area(v1.x, v1.y, p.x, p.y, v3.x, v3.y)/sia;
     b->z = signed_area(v1.x, v1.y, v2.x, v2.y, p.x, p.y)/sia;
-    if ((b->x>=0 && b->x<=1) && (b->y>=0 && b->y<=1) && (b->z>=0 && b->z<=1)) return true;
+    if ((b->x>=0 && b->x<1) && (b->y>=0 && b->y<1) && (b->z>=0 && b->z<1)) return true;
 
     return false;
 }

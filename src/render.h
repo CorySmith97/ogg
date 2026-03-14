@@ -37,6 +37,7 @@ static struct {
     SDL_Renderer *renderer;
     Vertex *vertices;
     uint32_t pixels[HEIGHT][WIDTH];
+    float zbuffer[HEIGHT][WIDTH];
     bool quit;
     int width, height;
 } renderer = {
@@ -44,6 +45,7 @@ static struct {
     .width = 640,
     .height = 400,
     .pixels = {0},
+    .zbuffer = {0},
 };
 
 void render_init(void);
@@ -52,6 +54,13 @@ void clear_background(void);
 void present(void);
 void set_pixel(uint32_t x, uint32_t y, Color color);
 void set_verline(uint32_t x, uint32_t start, uint32_t end, Color color);
+void set_line(V2i v, V2i u, Color color);
+
+// Post projection to the screen plane.
+void set_triangle(V2i v1, V2i v2, V2i v3, Color color);
+
+// Includes the projections as part of the functions.
+void set_triangle_3d(V3f v1, V3f v2, V3f v3, Color color);
 uint32_t pack_color(Color color);
 
 #endif /* RENDER_H */
