@@ -40,6 +40,16 @@ color_scale(Color c, double value)
     };
 }
 
+Color
+color_add(Color c1, Color c2)
+{
+    return (Color){
+        c1.r + c2.r,
+        c1.g + c2.g,
+        c1.b + c2.b,
+        c1.a + c2.a,
+    };
+}
 
 void
 set_pixel(uint32_t x, uint32_t y, Color color) 
@@ -90,6 +100,13 @@ set_line(V2i v, V2i u, Color color)
 void 
 set_triangle(V2i v1, V2i v2, V2i v3, Color color)
 {
+    if (v1.x < 0 || v1.x > WIDTH 
+        || v2.x < 0 || v2.x > WIDTH 
+        || v3.x < 0 || v3.x > WIDTH 
+        || v1.y < 0 || v1.y > HEIGHT 
+        || v2.y < 0 || v2.y > HEIGHT 
+        || v3.y < 0 || v3.y > HEIGHT) return;
+
     AABBi rec = {
         v2i(min(v1.x, min(v2.x, v3.x)), min(v1.y, min(v2.y, v3.y))),
         v2i(max(v1.x, max(v2.x, v3.x)), max(v1.y, max(v2.y, v3.y))),
@@ -105,6 +122,31 @@ set_triangle(V2i v1, V2i v2, V2i v3, Color color)
     }
 }
 
+void 
+set_triangle_multicolor(V2i v1, V2i v2, V2i v3, Color c1, Color c2, Color c3)
+{
+    if (v1.x < 0 || v1.x > WIDTH 
+        || v2.x < 0 || v2.x > WIDTH 
+        || v3.x < 0 || v3.x > WIDTH 
+        || v1.y < 0 || v1.y > HEIGHT 
+        || v2.y < 0 || v2.y > HEIGHT 
+        || v3.y < 0 || v3.y > HEIGHT) return;
+    AABBi rec = {
+        v2i(min(v1.x, min(v2.x, v3.x)), min(v1.y, min(v2.y, v3.y))),
+        v2i(max(v1.x, max(v2.x, v3.x)), max(v1.y, max(v2.y, v3.y))),
+    };
+    V3f bary;
+
+    for (int x = rec.min.x; x < rec.max.x; x++) {
+        for (int y = rec.min.y; y < rec.max.y; y++) {
+            if (barycentric(v1, v2, v3, v2i(x, y), &bary)) {
+                Color color = color_add(color_add(color_scale(c1, bary.x), color_scale(c2, bary.y)), color_scale(c3, bary.z));
+                set_pixel((uint32_t)x, (uint32_t)y, color);
+            }
+        }
+    }
+}
+
 void set_triangle_3d(V3f v1, V3f v2, V3f v3, Color color)
 {
     V2i pos1 = to_screen(project(v1));
@@ -114,6 +156,64 @@ void set_triangle_3d(V3f v1, V3f v2, V3f v3, Color color)
     set_triangle(pos1, pos2, pos3, color);
 }
 
+void 
+set_triangle_3d_multicolor(V3f v1, V3f v2, V3f v3, Color c1, Color c2, Color c3)
+{
+}
+
+// Top right, bottom right, top left, bottom left
+void 
+set_quad(V2i v1, V2i v2, V2i v3, V2i v4, Color c)
+{
+    set_triangle(v1, v2, v3, c);
+    set_triangle(v1, v3, v4, c);
+}
+
+Color
+get_color_from_image(Image *i, V2f uv)
+{
+    Color c = {0};
+    size_t x = uv.x * i->width;
+    size_t y = uv.y * i->height;
+    c.r = i->pixels[x + y];
+    c.g = i->pixels[x + y + 1];
+    c.b = i->pixels[x + y + 2];
+    c.a = i->pixels[x + y + 3];
+
+    return c;
+}
+
+void
+draw_textured_triangle(Image *t, TextVertex v1, TextVertex v2, TextVertex v3)
+{
+    AABBi rec = {
+        v2i(min(v1.pos.x, min(v2.pos.x, v3.pos.x)), min(v1.pos.y, min(v2.pos.y, v3.pos.y))),
+        v2i(max(v1.pos.x, max(v2.pos.x, v3.pos.x)), max(v1.pos.y, max(v2.pos.y, v3.pos.y))),
+    };
+    V3f bary;
+
+    for (int x = rec.min.x; x < rec.max.x; x++) {
+        for (int y = rec.min.y; y < rec.max.y; y++) {
+            if (barycentric(v1.pos, v2.pos, v3.pos, v2i(x, y), &bary)) {
+                V2f uv1 = v2f_scale(v1.uv, bary.x);
+                V2f uv2 = v2f_scale(v2.uv, bary.x);
+                V2f uv3 = v2f_scale(v3.uv, bary.x);
+                // @todo:cs get color from texture.
+                //Color color = color_add(color_add(, color_scale(c2, bary.y)), color_scale(c3, bary.z));
+                
+                //set_pixel((uint32_t)x, (uint32_t)y, color);
+            }
+        }
+    }
+
+}
+
+/* void 
+draw_textured_quad(TextVertex v1, TextVertex v2, TextVertex v3, TextVertex v4, Image *i)
+{
+    set_triangle(v1, v2, v3, c);
+    set_triangle(v1, v3, v4, c);
+} */
 
 void
 present(void) 

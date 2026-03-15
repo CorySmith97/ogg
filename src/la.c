@@ -107,3 +107,74 @@ V3f v3f(float x, float y, float z)
     };
 }
 
+V3f   
+v3f_add(V3f v, V3f u)
+{
+    return (V3f){
+        v.x + u.x,
+        v.y + u.y,
+        v.z + u.z,
+    };
+}
+
+V3f   
+v3f_sub(V3f v, V3f u)
+{
+    return (V3f){
+        v.x - u.x,
+        v.y - u.y,
+        v.z - u.z,
+    };
+}
+
+V3f   
+v3f_scale(V3f v, float scalar)
+{
+    return v3f(v.x * scalar, v.y * scalar, v.z * scalar);
+}
+
+float 
+v3f_len(V3f v)
+{
+    return v3f_dot(v, v);
+}
+
+float 
+v3f_dot(V3f v, V3f u)
+{
+    return (v.x * u.x) + (v.y * u.y) + (v.z * u.z);
+}
+
+V3f   
+v3f_mul_mat3(V3f v, Mat3 m)
+{
+    return (V3f){
+        v.x * m.c[0] + v.y * m.c[1] + v.z * m.c[2],
+        v.x * m.c[3] + v.y * m.c[4] + v.z * m.c[5],
+        v.x * m.c[6] + v.y * m.c[7] + v.z * m.c[8],
+    };
+}
+
+V3f   
+v3f_rotate_y(V3f v, float angle)
+{
+    Mat3 rotation = {
+        cosf(angle), 0, sinf(angle),
+        0,           1,           0,
+        -sinf(angle),0, cosf(angle),
+    };
+
+    return v3f_add(v, v3f_mul_mat3(v, rotation));
+}
+
+V3f   
+v3f_rotate_z(V3f v, float angle)
+{
+    Mat3 rotation = {
+        cosf(angle), sinf(angle), 0,
+        -sinf(angle),cosf(angle),0,
+        0,           0,           1,
+    };
+
+    return v3f_add(v, v3f_mul_mat3(v, rotation));
+}

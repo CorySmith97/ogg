@@ -2,6 +2,7 @@
 #define RENDER_H
 
 #include "la.h"
+#include "assets.h"
 
 #define WIDTH 640
 #define HEIGHT 400
@@ -10,7 +11,6 @@ typedef struct Color
 {
     uint8_t r, g, b, a;
 } Color;
-
 
 #define COLOR_RED    (Color){.r = 255, .a = 255}
 #define COLOR_BLUE   (Color){.b = 255, .a = 255}
@@ -24,6 +24,12 @@ typedef struct Vertex
     V3f normal;
     V2f uv;
 } Vertex;
+
+typedef struct TextVertex
+{
+    V2i pos;
+    V2f uv;
+} TextVertex;
 
 // apply camera transform
 // need 3d to 2d
@@ -58,9 +64,12 @@ void set_line(V2i v, V2i u, Color color);
 
 // Post projection to the screen plane.
 void set_triangle(V2i v1, V2i v2, V2i v3, Color color);
-
+void set_triangle_multicolor(V2i v1, V2i v2, V2i v3, Color c1, Color c2, Color c3);
 // Includes the projections as part of the functions.
 void set_triangle_3d(V3f v1, V3f v2, V3f v3, Color color);
+void set_triangle_3d_multicolor(V3f v1, V3f v2, V3f v3, Color c1, Color c2, Color c3);
 uint32_t pack_color(Color color);
+void set_quad(V2i v1, V2i v2, V2i v3, V2i v4, Color c);
+void draw_textured_triangle(Image *t, TextVertex v1, TextVertex v2, TextVertex v3);
 
 #endif /* RENDER_H */
