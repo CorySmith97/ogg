@@ -3,20 +3,25 @@
 
 #include <stdint.h>
 
-typedef int8_t   s8;
-typedef int16_t  s16;
-typedef int32_t  s32;
-typedef int64_t  s64;
-typedef uint8_t  u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-typedef float    f32;
-typedef double   f64;
-
 #define UNUSED(VAL) (void)(VAL)
 
 #define min(val1, val2) ((val1 < val2) ? val1 : val2)
 #define max(val1, val2) ((val1 > val2) ? val1 : val2)
+
+typedef uint32_t Log_Level;
+enum
+{
+    LOG_INFO,
+    LOG_ERROR,
+    LOG_WARN,
+    LOG_DEBUG,
+};
+
+// @todo:cs add a log handler for logging.
+
+//typedef (*log_handler)(Log_Level level, const char *msg, ...) log_handler;
+
+void log_handler(Log_Level level, const char *msg, va_list args);
+void logger(Log_Level level, const char *msg, ...);
 
 #endif // BASE_H

@@ -3,21 +3,6 @@
 void 
 render_init(void)
 {
-    if (SDL_Init(SDL_INIT_VIDEO) != SDL_FALSE) {
-        printf("Failed to initial Video\n");
-        exit(EXIT_FAILURE);
-    }
-
-    renderer.window = SDL_CreateWindow("Hello", 
-            SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 
-            WIDTH, HEIGHT, 
-            SDL_WINDOW_SHOWN);
-
-
-    renderer.renderer = SDL_CreateRenderer(renderer.window, 0, SDL_RENDERER_SOFTWARE);
-    renderer.texture = SDL_CreateTexture(renderer.renderer, 
-            SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING, 
-            WIDTH, HEIGHT);
 }
 
 uint32_t 
@@ -159,6 +144,12 @@ void set_triangle_3d(V3f v1, V3f v2, V3f v3, Color color)
 void 
 set_triangle_3d_multicolor(V3f v1, V3f v2, V3f v3, Color c1, Color c2, Color c3)
 {
+    UNUSED(v1);
+    UNUSED(v2);
+    UNUSED(v3);
+    UNUSED(c1);
+    UNUSED(c2);
+    UNUSED(c3);
 }
 
 // Top right, bottom right, top left, bottom left
@@ -186,6 +177,8 @@ get_color_from_image(Image *i, V2f uv)
 void
 draw_textured_triangle(Image *t, TextVertex v1, TextVertex v2, TextVertex v3)
 {
+    UNUSED(t);
+
     AABBi rec = {
         v2i(min(v1.pos.x, min(v2.pos.x, v3.pos.x)), min(v1.pos.y, min(v2.pos.y, v3.pos.y))),
         v2i(max(v1.pos.x, max(v2.pos.x, v3.pos.x)), max(v1.pos.y, max(v2.pos.y, v3.pos.y))),
@@ -198,6 +191,9 @@ draw_textured_triangle(Image *t, TextVertex v1, TextVertex v2, TextVertex v3)
                 V2f uv1 = v2f_scale(v1.uv, bary.x);
                 V2f uv2 = v2f_scale(v2.uv, bary.x);
                 V2f uv3 = v2f_scale(v3.uv, bary.x);
+                UNUSED(uv1);
+                UNUSED(uv2);
+                UNUSED(uv3);
                 // @todo:cs get color from texture.
                 //Color color = color_add(color_add(, color_scale(c2, bary.y)), color_scale(c3, bary.z));
                 
@@ -215,7 +211,7 @@ draw_textured_quad(TextVertex v1, TextVertex v2, TextVertex v3, TextVertex v4, I
     set_triangle(v1, v3, v4, c);
 } */
 
-void
+/* void
 present(void) 
 {
     void *pixels;
@@ -228,7 +224,7 @@ present(void)
     SDL_RenderClear(renderer.renderer);
     SDL_RenderCopy(renderer.renderer, renderer.texture, NULL, NULL);
     SDL_RenderPresent(renderer.renderer);
-}
+} */
 
 void
 clear_background(void)

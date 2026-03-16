@@ -38,9 +38,6 @@ typedef struct TextVertex
 //
 // @todo:cs this needs to be moved to a platform layer
 static struct {
-    SDL_Window *window;
-    SDL_Texture *texture;
-    SDL_Renderer *renderer;
     Vertex *vertices;
     uint32_t pixels[HEIGHT][WIDTH];
     float zbuffer[HEIGHT][WIDTH];
