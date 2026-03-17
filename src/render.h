@@ -18,25 +18,12 @@ typedef struct Color
 #define COLOR_PURPLE (Color){.r = 255, .b = 255, .a = 255}
 #define COLOR_YELLOW (Color){.r = 255, .g = 255, .a = 255}
 
-typedef struct Vertex
-{
-    V3f position;
-    V3f normal;
-    V2f uv;
-} Vertex;
-
 typedef struct TextVertex
 {
     V2i pos;
     V2f uv;
 } TextVertex;
 
-// apply camera transform
-// need 3d to 2d
-// 2d to screen
-//
-//
-// @todo:cs this needs to be moved to a platform layer
 static struct {
     Vertex *vertices;
     uint32_t pixels[HEIGHT][WIDTH];
@@ -51,22 +38,17 @@ static struct {
     .zbuffer = {0},
 };
 
-void render_init(void);
-void clear_background(void);
-// @todo:cs this needs to be moved to a platform layer
-void present(void);
-void set_pixel(uint32_t x, uint32_t y, Color color);
-void set_verline(uint32_t x, uint32_t start, uint32_t end, Color color);
-void set_line(V2i v, V2i u, Color color);
-
-// Post projection to the screen plane.
-void set_triangle(V2i v1, V2i v2, V2i v3, Color color);
-void set_triangle_multicolor(V2i v1, V2i v2, V2i v3, Color c1, Color c2, Color c3);
-// Includes the projections as part of the functions.
-void set_triangle_3d(V3f v1, V3f v2, V3f v3, Color color);
-void set_triangle_3d_multicolor(V3f v1, V3f v2, V3f v3, Color c1, Color c2, Color c3);
+void     render_init(void);
+void     clear_background(void);
+void     set_pixel(uint32_t x, uint32_t y, Color color);
+void     set_verline(uint32_t x, uint32_t start, uint32_t end, Color color);
+void     set_line(V2i v, V2i u, Color color);
+void     set_triangle(V2i v1, V2i v2, V2i v3, Color color);
+void     set_triangle_multicolor(V2i v1, V2i v2, V2i v3, Color c1, Color c2, Color c3);
+void     set_triangle_3d(V3f v1, V3f v2, V3f v3, Color color);
+void     set_triangle_3d_multicolor(V3f v1, V3f v2, V3f v3, Color c1, Color c2, Color c3);
+void     set_quad(V2i v1, V2i v2, V2i v3, V2i v4, Color c);
+void     draw_textured_triangle(Image *t, TextVertex v1, TextVertex v2, TextVertex v3);
 uint32_t pack_color(Color color);
-void set_quad(V2i v1, V2i v2, V2i v3, V2i v4, Color c);
-void draw_textured_triangle(Image *t, TextVertex v1, TextVertex v2, TextVertex v3);
 
 #endif /* RENDER_H */

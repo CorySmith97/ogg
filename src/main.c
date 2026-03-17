@@ -32,7 +32,7 @@ main(int argc, char **argv)
     UNUSED(argc);
     UNUSED(argv);
 
-    load_model_from_file("data/diablo3_pose.obj");
+    Asset_Model *model = load_model_from_file("data/diablo3_pose.obj");
 
     platform_init("hello", WIDTH, HEIGHT);
     render_init();
@@ -54,18 +54,27 @@ main(int argc, char **argv)
         clear_background();
 
 
-        pos1 = to_screen(project(posf1));
-        pos2 = to_screen(project(posf2));
-        pos3 = to_screen(project(posf3));
-        pos4 = to_screen(project(posf4));
+        //pos4 = to_screen(project(posf4));
 
         //set_triangle_multicolor(pos1, pos2, pos3, COLOR_RED, COLOR_BLUE, COLOR_GREEN);
-        set_quad(pos1, pos2, pos3, pos4, COLOR_PURPLE);
+        //set_quad(pos1, pos2, pos3, pos4, COLOR_PURPLE);
+        for (size_t i = 0; i < arrlen(model->vertices); i += 3) {
+            Vertex v1 = model->vertices[i];
+            Vertex v2 = model->vertices[i+1];
+            Vertex v3 = model->vertices[i+2];
+            v1.position.z += 2;
+            v2.position.z += 2;
+            v3.position.z += 2;
+            if (v1.position.z <= NEAR || v2.position.z <= NEAR || v3.position.z <= NEAR) continue;
+            pos1 = to_screen(project(v1.position));
+            pos2 = to_screen(project(v2.position));
+            pos3 = to_screen(project(v3.position));
+            set_triangle(pos1, pos2, pos3, COLOR_RED);
+        }
 
         /* posf1 = v3f_rotate_z(posf1, angle);
         posf2 = v3f_rotate_y(posf2, angle); */
         //posf3 = v3f_rotate_y(posf3, angle);
-        set_line(v2i(1, 1), v2i(100, 100), COLOR_PURPLE);
         platform_present();
     }
 

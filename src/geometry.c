@@ -2,11 +2,18 @@
 #include "base.h"
 #include <assert.h>
 
+#define FOV  90.0f
+#define NEAR 0.1f
 
 static V2f project(V3f v) 
 {
     assert(v.z != 0);
-    return v2f((v.x/v.z), (v.y/v.z));
+    float fov_rad = 1.0f / tanf((FOV * 0.5f) * (M_PI / 180.0f));
+    float aspect = (float)WIDTH / (float)HEIGHT;
+
+    float x = (v.x * fov_rad) / (aspect * v.z);
+    float y = (v.y * fov_rad) /  v.z;
+    return v2f(x, y);
 }
 
 static V2i to_screen(V2f v)

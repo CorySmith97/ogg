@@ -1,6 +1,13 @@
 #ifndef ASSET_H
 #define ASSET_H
 
+typedef struct Vertex
+{
+    V3f position;
+    V3f normal;
+    V3f uv;
+} Vertex;
+
 typedef struct {
     int vertex_idx;
     int normal_idx;
@@ -16,6 +23,7 @@ typedef struct {
     V3f *position;
     V3f *normals;
     V3f *tex;
+    Vertex *vertices;
     Face *faces;
 } Asset_Model;
 
@@ -26,5 +34,6 @@ typedef struct {
 } Image;
 
 Asset_Model *load_model_from_file(const char *file);
+void         deload_model(Asset_Model *model);
 
 #endif // ASSET_H

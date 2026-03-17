@@ -8,7 +8,8 @@ load_model_from_file(const char *file)
     char *line = NULL;
     size_t len;
     ssize_t read;
-    Asset_Model *model = malloc(sizeof(Asset_Model));
+    Asset_Model *model = calloc(1, sizeof(Asset_Model));
+    FaceVertex *faces = NULL;
 
     FILE *f = fopen(file, "r"); 
     if (f == NULL)
@@ -35,8 +36,26 @@ load_model_from_file(const char *file)
             }
         }
         if (line[0] == 'f') {
-            FaceVertex fv = {0};
-            int result = sscanf(line, "f %d/%d/%d", &fv.vertex_idx, &fv.normal_idx, &fv.tex_idx);
+            FaceVertex fv[3] = {0};
+            int result = sscanf(line, "f %d/%d/%d %d/%d/%d %d/%d/%d", 
+                    &fv[0].vertex_idx, &fv[0].tex_idx, &fv[0].normal_idx,
+                    &fv[1].vertex_idx, &fv[1].tex_idx, &fv[1].normal_idx,
+                    &fv[2].vertex_idx, &fv[2].tex_idx, &fv[2].normal_idx);
+            Vertex v = {0};
+            v.position = model->position[fv[0].vertex_idx - 1];
+            v.normal   = model->normals[fv[0].normal_idx - 1];
+            v.uv       = model->tex[fv[0].tex_idx - 1];
+            arrput(model->vertices, v);
+
+            v.position = model->position[fv[1].vertex_idx];
+            v.normal = model->normals[fv[1].normal_idx];
+            v.uv = model->tex[fv[1].tex_idx];
+            arrput(model->vertices, v);
+
+            v.position = model->position[fv[2].vertex_idx];
+            v.normal = model->normals[fv[2].normal_idx];
+            v.uv = model->tex[fv[2].tex_idx];
+            arrput(model->vertices, v);
             UNUSED(fv);
             UNUSED(result);
         }
@@ -44,6 +63,7 @@ load_model_from_file(const char *file)
     printf("Position Lenght = %td\n", arrlen(model->position));
     printf("Normals Lenght = %td\n", arrlen(model->normals));
     printf("Tex Lenght = %td\n", arrlen(model->tex));
+    printf("Vertex Lenght = %td\n", arrlen(model->vertices));
     goto ret;
 
 
