@@ -168,6 +168,18 @@ v3f_rotate_y(V3f v, float angle)
 }
 
 V3f   
+v3f_rotate_y_around_point(V3f v, V3f p, float angle)
+{
+    Mat3 rotation = {
+        cosf(angle), 0, sinf(angle),
+        0,           1,           0,
+        -sinf(angle),0, cosf(angle),
+    };
+
+    return v3f_add(p, v3f_mul_mat3(v3f_sub(v,p), rotation));
+}
+
+V3f   
 v3f_rotate_z(V3f v, float angle)
 {
     Mat3 rotation = {

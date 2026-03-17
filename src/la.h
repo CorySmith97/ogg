@@ -88,6 +88,7 @@ float v3f_dot(V3f v, V3f u);
 V3f   v3f_mul_mat3(V3f v, Mat3 m);
 V3f   v3f_rotate_y(V3f v, float angle);
 V3f   v3f_rotate_z(V3f v, float angle);
+V3f   v3f_rotate_y_around_point(V3f v, V3f p, float angle);
 
 V3i   v3i(int x, int y, int z);
 V3i   v3i_add(V3i v, V3i u);

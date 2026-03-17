@@ -40,6 +40,7 @@ main(int argc, char **argv)
     bool quit = false;
     float position = 0;
     float angle = 0;
+    V3f rot = v3f(0, 0, 2);
 
     srand(time(NULL));
 
@@ -61,9 +62,9 @@ main(int argc, char **argv)
             v2.position.z += 2;
             v3.position.z += 2;
 
-            v1.position = v3f_rotate_z(v1.position, angle);
-            v2.position = v3f_rotate_z(v2.position, angle);
-            v3.position = v3f_rotate_z(v3.position, angle);
+            v1.position = v3f_rotate_y_around_point(v1.position, rot, angle);
+            v2.position = v3f_rotate_y_around_point(v2.position, rot, angle);
+            v3.position = v3f_rotate_y_around_point(v3.position, rot, angle);
             if (v1.position.z <= NEAR || v2.position.z <= NEAR || v3.position.z <= NEAR) continue;
             Color color;
             color.r = rand() % 255;
