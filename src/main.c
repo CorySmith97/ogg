@@ -38,15 +38,10 @@ main(int argc, char **argv)
     render_init();
 
     bool quit = false;
-    V2i pos1 = v2i(1, 0);
-    V2i pos2; 
-    V2i pos3;
-    V2i pos4;
-    V3f posf1 = v3f(-0.1, 0.1, 1.5);
-    V3f posf2 = v3f(-0.1, -0.1, 1.5);
-    V3f posf4 = v3f(0.1, 0.1, 1.5);
-    V3f posf3 = v3f(0.1, -0.1, 1.5);
+    float position = 0;
+    float angle = 0;
 
+    srand(time(NULL));
 
     while (!quit) {
         platform_handle_events(&quit);
@@ -65,17 +60,25 @@ main(int argc, char **argv)
             v1.position.z += 2;
             v2.position.z += 2;
             v3.position.z += 2;
+
+            v1.position = v3f_rotate_z(v1.position, angle);
+            v2.position = v3f_rotate_z(v2.position, angle);
+            v3.position = v3f_rotate_z(v3.position, angle);
             if (v1.position.z <= NEAR || v2.position.z <= NEAR || v3.position.z <= NEAR) continue;
-            pos1 = to_screen(project(v1.position));
-            pos2 = to_screen(project(v2.position));
-            pos3 = to_screen(project(v3.position));
-            set_triangle(pos1, pos2, pos3, COLOR_RED);
+            Color color;
+            color.r = rand() % 255;
+            color.g = rand() % 255;
+            color.b = rand() % 255;
+            color.a = 255;
+            set_triangle_3d(v1.position, v2.position, v3.position, color);
         }
 
         /* posf1 = v3f_rotate_z(posf1, angle);
         posf2 = v3f_rotate_y(posf2, angle); */
         //posf3 = v3f_rotate_y(posf3, angle);
         platform_present();
+        position += 0.001;
+        angle += 0.01;
     }
 
     platform_deinit();

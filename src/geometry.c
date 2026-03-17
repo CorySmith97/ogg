@@ -3,6 +3,7 @@
 #include <assert.h>
 
 #define FOV  90.0f
+#define FAR  5.0f
 #define NEAR 0.1f
 
 static V2f project(V3f v) 

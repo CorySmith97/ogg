@@ -164,7 +164,7 @@ v3f_rotate_y(V3f v, float angle)
         -sinf(angle),0, cosf(angle),
     };
 
-    return v3f_add(v, v3f_mul_mat3(v, rotation));
+    return v3f_mul_mat3(v, rotation);
 }
 
 V3f   
@@ -176,5 +176,5 @@ v3f_rotate_z(V3f v, float angle)
         0,           0,           1,
     };
 
-    return v3f_add(v, v3f_mul_mat3(v, rotation));
+    return v3f_mul_mat3(v, rotation);
 }

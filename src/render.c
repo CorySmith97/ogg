@@ -138,7 +138,39 @@ void set_triangle_3d(V3f v1, V3f v2, V3f v3, Color color)
     V2i pos2 = to_screen(project(v2));
     V2i pos3 = to_screen(project(v3));
 
-    set_triangle(pos1, pos2, pos3, color);
+    if (pos1.x < 0 || pos1.x > WIDTH 
+        || pos2.x < 0 || pos2.x > WIDTH 
+        || pos3.x < 0 || pos3.x > WIDTH 
+        || pos1.y < 0 || pos1.y > HEIGHT 
+        || pos2.y < 0 || pos2.y > HEIGHT 
+        || pos3.y < 0 || pos3.y > HEIGHT) return;
+    AABBi rec = {
+        v2i(min(pos1.x, min(pos2.x, pos3.x)), min(pos1.y, min(pos2.y, pos3.y))),
+        v2i(max(pos1.x, max(pos2.x, pos3.x)), max(pos1.y, max(pos2.y, pos3.y))),
+    };
+    V3f bary;
+
+    double total_area = signed_area(pos1.x, pos1.y, pos2.x, pos2.y, pos3.x, pos3.y);
+    if (total_area < -1e6) return; 
+
+
+    for (int x = rec.min.x; x < rec.max.x; x++) {
+        for (int y = rec.min.y; y < rec.max.y; y++) {
+            if (barycentric(pos1, pos2, pos3, v2i(x, y), &bary)) {
+                double z = (bary.x * v1.z + bary.y * v2.z + bary.z * v3.z);
+                //logger(LOG_DEBUG, "z: %c, zbuf: %f", z, renderer.zbuffer[y][x]);
+                if (z <= renderer.zbuffer[y][x]) continue;
+                renderer.zbuffer[y][x] = z;
+                // normalize z to 0.0 - 1.0
+                float t = (z - NEAR) / (FAR - NEAR);
+                t = fmaxf(0.0f, fminf(1.0f, t)); // clamp
+
+                unsigned char c = (unsigned char)(t * 255.0f);
+                
+                set_pixel((uint32_t)x, (uint32_t)y, color); // (Color){c, c, c, 255});
+            }
+        }
+    }
 }
 
 void 
@@ -230,5 +262,11 @@ void
 clear_background(void)
 {
     memset(renderer.pixels, 0, WIDTH * HEIGHT * sizeof(uint32_t));
+
+    for (int y = 0; y < HEIGHT; y++) {
+        for (int x = 0; x < WIDTH; x++) {
+            renderer.zbuffer[y][x] = -1e10;
+        }
+    }
 }
 

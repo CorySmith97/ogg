@@ -47,16 +47,15 @@ load_model_from_file(const char *file)
             v.uv       = model->tex[fv[0].tex_idx - 1];
             arrput(model->vertices, v);
 
-            v.position = model->position[fv[1].vertex_idx];
-            v.normal = model->normals[fv[1].normal_idx];
-            v.uv = model->tex[fv[1].tex_idx];
+            v.position = model->position[fv[1].vertex_idx - 1];
+            v.normal = model->normals[fv[1].normal_idx - 1];
+            v.uv = model->tex[fv[1].tex_idx - 1];
             arrput(model->vertices, v);
 
-            v.position = model->position[fv[2].vertex_idx];
-            v.normal = model->normals[fv[2].normal_idx];
-            v.uv = model->tex[fv[2].tex_idx];
+            v.position = model->position[fv[2].vertex_idx - 1];
+            v.normal = model->normals[fv[2].normal_idx - 1];
+            v.uv = model->tex[fv[2].tex_idx - 1];
             arrput(model->vertices, v);
-            UNUSED(fv);
             UNUSED(result);
         }
     }

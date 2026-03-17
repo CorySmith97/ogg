@@ -4,8 +4,8 @@
 #include "la.h"
 #include "assets.h"
 
-#define WIDTH 640
-#define HEIGHT 400
+#define WIDTH 960
+#define HEIGHT 720
 
 typedef struct Color 
 {
@@ -32,8 +32,8 @@ static struct {
     int width, height;
 } renderer = {
     .quit = false,
-    .width = 640,
-    .height = 400,
+    .width = WIDTH,
+    .height = HEIGHT,
     .pixels = {0},
     .zbuffer = {0},
 };
