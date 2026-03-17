@@ -71,7 +71,7 @@ main(int argc, char **argv)
             color.g = rand() % 255;
             color.b = rand() % 255;
             color.a = 255;
-            set_triangle_3d(v1.position, v2.position, v3.position, color);
+            set_triangle_3d(v1.position, v2.position, v3.position, COLOR_PURPLE);
         }
 
         /* posf1 = v3f_rotate_z(posf1, angle);
