@@ -18,6 +18,13 @@ typedef struct Color
 #define COLOR_PURPLE (Color){.r = 255, .b = 255, .a = 255}
 #define COLOR_YELLOW (Color){.r = 255, .g = 255, .a = 255}
 
+
+typedef struct {
+    V2i vertices[3];
+    AABBi rec;
+    Color color;
+} ScreenTriangle;
+
 typedef struct TextVertex
 {
     V2i pos;
@@ -26,8 +33,8 @@ typedef struct TextVertex
 
 static struct {
     Vertex *vertices;
-    uint32_t pixels[HEIGHT][WIDTH];
-    float zbuffer[HEIGHT][WIDTH];
+    uint32_t pixels[HEIGHT * WIDTH];
+    float zbuffer[HEIGHT * WIDTH];
     bool quit;
     int width, height;
 } renderer = {
@@ -50,5 +57,6 @@ void     set_triangle_3d_multicolor(V3f v1, V3f v2, V3f v3, Color c1, Color c2, 
 void     set_quad(V2i v1, V2i v2, V2i v3, V2i v4, Color c);
 void     draw_textured_triangle(Image *t, TextVertex v1, TextVertex v2, TextVertex v3);
 uint32_t pack_color(Color color);
+void renderer_draw_triangle(ScreenTriangle tri);
 
 #endif /* RENDER_H */

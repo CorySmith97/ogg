@@ -38,6 +38,14 @@ static inline AABBi calc_triangle_aabbi(V2i v1, V2i v2, V2i v3)
     return ret;
 }
 
+static bool aabbi_collision(AABBi a, AABBi b)
+{
+    return ((a.min.x <= b.max.x) 
+            || (a.min.y <= b.max.y)
+            || (a.max.x >= b.min.x)
+            || (a.max.y >= b.min.y));
+}
+
 static float signed_area(int ax, int ay,
     int bx, int by,
     int cx, int cy)

@@ -1,8 +1,35 @@
 #include "render.h"
+#include <pthread.h>
+
+#define NUM_THREADS 12
+#define TILE_W (WIDTH / 32)
+#define TILE_H (HEIGHT / 30)
+
+typedef struct {
+    ScreenTriangle *tris;
+} TileBin;
+
+pthread_t threads[NUM_THREADS];
+// bins are 32x30 pixels in order to put triangles in a bin that will
+// handle the rendering for that section on a free thread.
+AABBi bins[(WIDTH / 32) * (HEIGHT / 30)];
+TileBin triangle_bins[TILE_W * TILE_H];
+
+typedef struct {
+} ThreadArgs;
+
+void 
+thread_render_tile(void *args) 
+{
+
+}
 
 void 
 render_init(void)
 {
+    /* for (int i = 0; i < NUM_THREADS; i++) {
+        int result = pthread_create(&threads[i], NULL, );
+    } */
 }
 
 uint32_t 
@@ -44,7 +71,7 @@ set_pixel(uint32_t x, uint32_t y, Color color)
             || y >= (uint32_t)renderer.height 
             || y < 0) return;
 
-    renderer.pixels[y][x] = pack_color(color);
+    renderer.pixels[x + y * WIDTH] = pack_color(color);
 }
 
 void
@@ -132,6 +159,90 @@ set_triangle_multicolor(V2i v1, V2i v2, V2i v3, Color c1, Color c2, Color c3)
     }
 }
 
+void renderer_draw_triangles(void)
+{
+    ScreenTriangle tri;
+    TileBin bin;
+    for (size_t i = 0; i < sizeof(triangle_bins)/sizeof(triangle_bins[0]); i++) {
+         bin = triangle_bins[i];
+         for (size_t idx = 0; idx < arrlen(bin.tris); idx++) {
+            tri = arrpop(bin.tris);
+            renderer_draw_triangle(tri);
+         }
+    }
+}
+
+void renderer_push_triangle(V3f v1, V3f v2, V3f v3, Color color)
+{
+    V2i pos1 = to_screen(project(v1));
+    V2i pos2 = to_screen(project(v2));
+    V2i pos3 = to_screen(project(v3));
+
+    if (pos1.x < 0 || pos1.x > WIDTH 
+        || pos2.x < 0 || pos2.x > WIDTH 
+        || pos3.x < 0 || pos3.x > WIDTH 
+        || pos1.y < 0 || pos1.y > HEIGHT 
+        || pos2.y < 0 || pos2.y > HEIGHT 
+        || pos3.y < 0 || pos3.y > HEIGHT) return;
+
+    AABBi rec = {
+        v2i(min(pos1.x, min(pos2.x, pos3.x)), min(pos1.y, min(pos2.y, pos3.y))),
+        v2i(max(pos1.x, max(pos2.x, pos3.x)), max(pos1.y, max(pos2.y, pos3.y))),
+    };
+    logger(LOG_INFO, "Rec: %d %d %d %d", rec.min.x, rec.min.y, rec.max.x, rec.max.y);
+
+    size_t bucket;
+
+    size_t t_minx = floor(rec.min.x / TILE_W);
+    size_t t_maxx = floor(rec.max.x / TILE_W);
+    size_t t_miny = floor(rec.min.y / TILE_H);
+    size_t t_maxy = floor(rec.max.y / TILE_W);
+
+    for (size_t j = t_miny; j < t_maxy; j++) {
+        for (size_t i = t_minx; i < t_maxx; i++) {
+            ScreenTriangle triangle = (ScreenTriangle){
+                .vertices = {pos1, pos2, pos3},
+                .rec = rec,
+                .color = color,
+            };
+            arrput(triangle_bins[i + j * TILE_W].tris, triangle);
+            return;
+        }
+    }
+}
+
+void renderer_draw_triangle(ScreenTriangle tri) 
+{
+    V2i pos1 = tri.vertices[0];
+    V2i pos2 = tri.vertices[1];
+    V2i pos3 = tri.vertices[2];
+    AABBi rec = tri.rec;
+    Color color = tri.color;
+
+    V3f bary;
+
+    double total_area = signed_area(pos1.x, pos1.y, pos2.x, pos2.y, pos3.x, pos3.y);
+    if (total_area < -1e6) return; 
+
+
+    for (int y = rec.min.y; y < rec.max.y; y++) {
+        for (int x = rec.min.x; x < rec.max.x; x++) {
+            if (barycentric(pos1, pos2, pos3, v2i(x, y), &bary)) {
+                //double z = (bary.x * v1.z + bary.y * v2.z + bary.z * v3.z);
+                //if (z <= renderer.zbuffer[x + y * WIDTH]) continue;
+                //renderer.zbuffer[x + y * WIDTH] = z;
+                //// normalize z to 0.0 - 1.0
+                //float t = (z - NEAR) / (FAR - NEAR);
+                //t = fmaxf(0.0f, fminf(1.0f, t)); // clamp
+
+                //unsigned char c = (unsigned char)(t * 255.0f);
+                
+                set_pixel((uint32_t)x, (uint32_t)y, color); // (Color){c, c, c, 255});
+            }
+        }
+    }
+}
+
 void set_triangle_3d(V3f v1, V3f v2, V3f v3, Color color)
 {
     V2i pos1 = to_screen(project(v1));
@@ -154,13 +265,13 @@ void set_triangle_3d(V3f v1, V3f v2, V3f v3, Color color)
     if (total_area < -1e6) return; 
 
 
-    for (int x = rec.min.x; x < rec.max.x; x++) {
-        for (int y = rec.min.y; y < rec.max.y; y++) {
+    for (int y = rec.min.y; y < rec.max.y; y++) {
+        for (int x = rec.min.x; x < rec.max.x; x++) {
             if (barycentric(pos1, pos2, pos3, v2i(x, y), &bary)) {
                 double z = (bary.x * v1.z + bary.y * v2.z + bary.z * v3.z);
                 //logger(LOG_DEBUG, "z: %c, zbuf: %f", z, renderer.zbuffer[y][x]);
-                if (z <= renderer.zbuffer[y][x]) continue;
-                renderer.zbuffer[y][x] = z;
+                if (z <= renderer.zbuffer[x + y * WIDTH]) continue;
+                renderer.zbuffer[x + y * WIDTH] = z;
                 // normalize z to 0.0 - 1.0
                 float t = (z - NEAR) / (FAR - NEAR);
                 t = fmaxf(0.0f, fminf(1.0f, t)); // clamp
@@ -261,11 +372,16 @@ present(void)
 void
 clear_background(void)
 {
+    TileBin bin;
+    for (size_t i = 0; i < sizeof(triangle_bins)/sizeof(triangle_bins[0]); i++) {
+        bin = triangle_bins[i];
+    }
+
     memset(renderer.pixels, 0, WIDTH * HEIGHT * sizeof(uint32_t));
 
     for (int y = 0; y < HEIGHT; y++) {
         for (int x = 0; x < WIDTH; x++) {
-            renderer.zbuffer[y][x] = -1e10;
+            renderer.zbuffer[x + y * WIDTH] = -1e10;
         }
     }
 }
