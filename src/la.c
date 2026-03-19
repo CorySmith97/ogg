@@ -149,9 +149,9 @@ V3f
 v3f_mul_mat3(V3f v, Mat3 m)
 {
     return (V3f){
-        v.x * m.c[0] + v.y * m.c[1] + v.z * m.c[2],
-        v.x * m.c[3] + v.y * m.c[4] + v.z * m.c[5],
-        v.x * m.c[6] + v.y * m.c[7] + v.z * m.c[8],
+        v.x * m.c[0] + v.y * m.c[3] + v.z * m.c[6],
+        v.x * m.c[1] + v.y * m.c[4] + v.z * m.c[7],
+        v.x * m.c[2] + v.y * m.c[5] + v.z * m.c[8],
     };
 }
 
@@ -174,6 +174,18 @@ v3f_rotate_y_around_point(V3f v, V3f p, float angle)
         cosf(angle), 0, sinf(angle),
         0,           1,           0,
         -sinf(angle),0, cosf(angle),
+    };
+
+    return v3f_add(p, v3f_mul_mat3(v3f_sub(v,p), rotation));
+}
+
+V3f   
+v3f_rotate_z_around_point(V3f v, V3f p, float angle)
+{
+    Mat3 rotation = {
+        cosf(angle),  sinf(angle),0, 
+        -sinf(angle), cosf(angle),0, 
+        0,            0,          1, 
     };
 
     return v3f_add(p, v3f_mul_mat3(v3f_sub(v,p), rotation));

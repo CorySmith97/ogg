@@ -15,7 +15,7 @@ typedef struct Profiler {
     Section *sections;
 } Profiler;
 
-Profiler profiler;
+static Profiler profiler;
 
 #ifdef DEBUG
 #   define SectionStart(_S) _internal_section_start((_S))
@@ -56,8 +56,19 @@ static void _internal_section_end(const char *str) {
     }
 }
 
-void ResetProf() {
+void profiler_reset(void) 
+{
     arrfree(profiler.sections);
+}
+
+void profiler_report(void)
+{
+
+    for (int i = 0; i < arrlen(profiler.sections); i++)
+    {
+        Section s = profiler.sections[i];
+        logger(LOG_INFO, "%s: (%.3fms)", s.name, s.delta_ns / 1000000.0);
+    }
 }
 
 

@@ -1,8 +1,7 @@
 #ifndef ASSET_H
 #define ASSET_H
 
-typedef struct Vertex
-{
+typedef struct Vertex {
     V3f position;
     V3f normal;
     V3f uv;
