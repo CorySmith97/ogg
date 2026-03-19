@@ -211,3 +211,39 @@ Mat3 rotation_y(float angle)
         -sinf(angle),0, cosf(angle),
     };
 }
+
+Mat3 rotation_z(float angle)
+{
+    return  (Mat3){
+        cosf(angle), -sinf(angle),0, 
+        sinf(angle), cosf(angle),0, 
+        0,            0,          1, 
+    };
+}
+
+Mat3 rotation_x(float angle)
+{
+    return  (Mat3){
+        1, 0,            0,           
+        0, cosf(angle),  -sinf(angle), 
+        0, sinf(angle), cosf(angle), 
+    };
+}
+
+Mat3 mat3_mul(Mat3 m1, Mat3 m2)
+{
+    return (Mat3){
+        m1.c[0] * m2.c[0], m1.c[1] * m2.c[3], m1.c[2] * m2.c[6],
+        m1.c[3] * m2.c[1], m1.c[4] * m2.c[4], m1.c[5] * m2.c[7],
+        m1.c[6] * m2.c[2], m1.c[7] * m2.c[5], m1.c[8] * m2.c[8],
+    };
+}
+
+Mat3 mat3_add(Mat3 m1, Mat3 m2)
+{
+    return (Mat3){
+        m1.c[0] + m2.c[0], m1.c[1] + m2.c[1], m1.c[2] + m2.c[2],
+        m1.c[3] + m2.c[3], m1.c[4] + m2.c[4], m1.c[5] + m2.c[5],
+        m1.c[6] + m2.c[6], m1.c[7] + m2.c[7], m1.c[8] + m2.c[8],
+    };
+}

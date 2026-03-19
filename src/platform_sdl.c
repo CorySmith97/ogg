@@ -64,3 +64,11 @@ void platform_present()
     SDL_RenderCopy(platform_ctx.renderer, platform_ctx.texture, NULL, NULL);
     SDL_RenderPresent(platform_ctx.renderer);
 }
+
+bool is_key_down(int key)
+{
+}
+
+bool is_key_released(int key)
+{
+}

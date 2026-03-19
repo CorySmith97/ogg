@@ -36,27 +36,31 @@ load_model_from_file(const char *file)
             }
         }
         if (line[0] == 'f') {
-            FaceVertex fv[3] = {0};
-            int result = sscanf(line, "f %d/%d/%d %d/%d/%d %d/%d/%d", 
+            FaceVertex fv[4] = {0};
+
+            // try quad first
+            int result = sscanf(line, "f %d/%d/%d %d/%d/%d %d/%d/%d %d/%d/%d", 
                     &fv[0].vertex_idx, &fv[0].tex_idx, &fv[0].normal_idx,
                     &fv[1].vertex_idx, &fv[1].tex_idx, &fv[1].normal_idx,
-                    &fv[2].vertex_idx, &fv[2].tex_idx, &fv[2].normal_idx);
-            Vertex v = {0};
-            v.position = model->position[fv[0].vertex_idx - 1];
-            v.normal   = model->normals[fv[0].normal_idx - 1];
-            v.uv       = model->tex[fv[0].tex_idx - 1];
-            arrput(model->vertices, v);
+                    &fv[2].vertex_idx, &fv[2].tex_idx, &fv[2].normal_idx,
+                    &fv[3].vertex_idx, &fv[3].tex_idx, &fv[3].normal_idx);
 
-            v.position = model->position[fv[1].vertex_idx - 1];
-            v.normal = model->normals[fv[1].normal_idx - 1];
-            v.uv = model->tex[fv[1].tex_idx - 1];
-            arrput(model->vertices, v);
+            int face_count = (result == 12) ? 4 : 3;  // quad or tri
 
-            v.position = model->position[fv[2].vertex_idx - 1];
-            v.normal = model->normals[fv[2].normal_idx - 1];
-            v.uv = model->tex[fv[2].tex_idx - 1];
-            arrput(model->vertices, v);
-            UNUSED(result);
+            // always push first triangle (0, 1, 2)
+            int indices[6] = {0, 1, 2, 0, 2, 3};
+            int tri_count = (face_count == 4) ? 2 : 1;
+
+            for (int t = 0; t < tri_count; t++) {
+                for (int v = 0; v < 3; v++) {
+                    int fi = indices[t * 3 + v];
+                    Vertex vert = {0};
+                    vert.position = model->position[fv[fi].vertex_idx - 1];
+                    vert.normal   = model->normals[fv[fi].normal_idx - 1];
+                    vert.uv       = model->tex[fv[fi].tex_idx - 1];
+                    arrput(model->vertices, vert);
+                }
+            }
         }
     }
     printf("Position Lenght = %td\n", arrlen(model->position));
@@ -75,25 +79,22 @@ ret:
 void draw_model(Asset_Model *model, V3f position, Mat3 rotation) 
 {
 
-    static float angle = 0;
-    angle += 0.01;
-    int pushed_count = 0;
-     for (size_t i = 0; i < arrlen(model->vertices); i += 3) {
-         Vertex v1 = model->vertices[i];
-         Vertex v2 = model->vertices[i+1];
-         Vertex v3 = model->vertices[i+2];
+    for (size_t i = 0; i < arrlen(model->vertices); i += 3) {
+        Vertex v1 = model->vertices[i];
+        Vertex v2 = model->vertices[i+1];
+        Vertex v3 = model->vertices[i+2];
 
-         V3f p1 = v3f_mul_mat3(v1.position, rotation);
-         V3f p2 = v3f_mul_mat3(v2.position, rotation);
-         V3f p3 = v3f_mul_mat3(v3.position, rotation);
+        V3f p1 = v3f_mul_mat3(v1.position, rotation);
+        V3f p2 = v3f_mul_mat3(v2.position, rotation);
+        V3f p3 = v3f_mul_mat3(v3.position, rotation);
 
 
-         p1.z = -p1.z;
-         p2.z = -p2.z;
-         p3.z = -p3.z;
-         p1 = v3f_add(p1, position);
-         p2 = v3f_add(p2, position);
-         p3 = v3f_add(p3, position);
+        p1.z = -p1.z;
+        p2.z = -p2.z;
+        p3.z = -p3.z;
+        p1 = v3f_add(p1, position);
+        p2 = v3f_add(p2, position);
+        p3 = v3f_add(p3, position);
 
         if (p1.z <= NEAR || p2.z <= NEAR || p3.z <= NEAR) continue;
 
@@ -107,8 +108,7 @@ void draw_model(Asset_Model *model, V3f position, Mat3 rotation)
                 p1,
                 p2,
                 p3,
-             color);
-        pushed_count += 1;
+                color);
     }
 
 }

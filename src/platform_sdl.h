@@ -1,12 +1,16 @@
 #ifndef PLATFORM_SDL_H
 #define PLATFORM_SDL_H
 
+#define MAX_KEYBOARD 512
+
 static struct {
     SDL_Window *window;
     SDL_Renderer *renderer;
     SDL_Texture *texture;
     uint32_t width;
     uint32_t height;
+    uint8_t keystate[MAX_KEYBOARD];
+    uint8_t prev_keystate[MAX_KEYBOARD];
 } platform_ctx = {
 };
 
