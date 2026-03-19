@@ -116,23 +116,6 @@ void renderer_draw_triangles(void)
     arrsetlen(triangles, 0);
 }
 
-typedef struct {
-    int tile_x, tile_y;
-    TileBin *bin;
-} ThreadArgs;
-
-void thread_tile_work(void *args)
-{
-    ThreadArgs *targs = (ThreadArgs*)args;
-    TileBin *bin = targs->bin;
-    size_t len = arrlen(bin->tri_idx);
-}
-
-void thread_render_tile(void *args) 
-{
-
-}
-
 uint32_t pack_color(Color color)
 {
     return ((uint32_t)color.a << 24) |

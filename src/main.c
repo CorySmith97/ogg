@@ -38,7 +38,7 @@ int main(int argc, char **argv)
     Asset_Model *model = load_model_from_file("data/diablo3_pose.obj");
 
     SectionEnd("ModelLoad");
-    platform_init("hello", WIDTH, HEIGHT);
+    platform_init("hello", 1200, 900);
     render_init();
 
     bool quit = false;

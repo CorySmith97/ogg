@@ -1,0 +1,14 @@
+#ifndef GAME_H
+#define GAME_H
+
+#define GAME_WIDTH    960
+#define GAME_HEIGHT   704
+#define SCREEN_WIDTH  1980
+#define SCREEN_HEIGHT 1080
+#define GAME_NAME     "OGG"
+
+void game_init(void);
+void game_frame(void);
+void game_deinit(void);
+
+#endif // GAME_H

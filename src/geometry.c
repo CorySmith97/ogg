@@ -14,8 +14,8 @@ static V2f project(V3f v)
 
     float x = (v.x * fov_rad) / (aspect * v.z);
     float y = (v.y * fov_rad) / v.z;
-    // return v2f(x, y);
-    return v2f(v.x / v.z, v.y / v.z);
+    return v2f(x, y);
+    //return v2f(v.x / v.z, v.y / v.z);
 }
 
 static V2i to_screen(V2f v)

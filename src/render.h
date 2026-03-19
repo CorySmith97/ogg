@@ -14,8 +14,11 @@
 #include "la.h"
 #include "assets.h"
 
-#define WIDTH 960
-#define HEIGHT 704
+// TODO refactor all this
+#define WIDTH 128
+//960
+#define HEIGHT 128
+//704
 
 typedef union Color {
     struct {uint8_t r, g, b, a};

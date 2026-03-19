@@ -48,6 +48,11 @@ void platform_deinit(void)
 
 void platform_present()
 {
+    SDL_Rect dst;
+    dst.x = 0;
+    dst.y = 0;
+    dst.w = platform_ctx.width;
+    dst.h = platform_ctx.height;
     void *texpixels;
     int pitch;
     SDL_LockTexture(platform_ctx.texture, NULL, &texpixels, &pitch);
