@@ -77,7 +77,7 @@ void draw_model(Asset_Model *model)
 
     V3f rot = v3f(0, 0, 0);
     static float angle = 0;
-    angle += 0.001;
+    angle += 0.01;
     int pushed_count = 0;
      for (size_t i = 0; i < arrlen(model->vertices); i += 3) {
          Vertex v1 = model->vertices[i];
@@ -93,6 +93,9 @@ void draw_model(Asset_Model *model)
          p1.z += 2;
          p2.z += 2;
          p3.z += 2;
+         p1.y -= 1;
+         p2.y -= 1;
+         p3.y -= 1;
 
         if (p1.z <= NEAR || p2.z <= NEAR || p3.z <= NEAR) continue;
 

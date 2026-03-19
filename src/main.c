@@ -35,7 +35,7 @@ int main(int argc, char **argv)
     UNUSED(argv);
 
     SectionStart("ModelLoad");
-    Asset_Model *model = load_model_from_file("data/diablo3_pose.obj");
+    Asset_Model *model = load_model_from_file("data/shopkeeper.obj");
 
     SectionEnd("ModelLoad");
     platform_init("hello", 1200, 900);

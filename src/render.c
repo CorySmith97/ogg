@@ -1,6 +1,7 @@
 #include "render.h"
 #include <pthread.h>
 #include <semaphore.h>
+#include <float.h>
 
 #define NUM_THREADS 12
 #define TILE_W 64
@@ -300,14 +301,18 @@ void renderer_draw_triangle(uint32_t tile_x, uint32_t tile_y, Triangle tri)
     for (int y = y0; y < y1; y++) {
         for (int x = x0; x < x1; x++) {
             if (barycentric(pos1, pos2, pos3, v2i(x, y), &bary)) {
-                //double z = (bary.x * tri.vertices[0].z + bary.y * tri.vertices[1].z + bary.z * tri.vertices[2].z);
-                //if (z <= renderer.zbuffer[x + y * WIDTH]) continue;
-                //renderer.zbuffer[x + y * WIDTH] = z;
-                //// normalize z to 0.0 - 1.0
-                //float t = (z - NEAR) / (FAR - NEAR);
-                //t = fmaxf(0.0f, fminf(1.0f, t)); // clamp
+                double inv_z = (bary.x / tri.vertices[0].z + 
+                        bary.y / tri.vertices[1].z + 
+                        bary.z / tri.vertices[2].z);
+                double z = 1.0 / inv_z;
+                
+                if (z >= renderer.zbuffer[x + y * WIDTH]) continue;
+                renderer.zbuffer[x + y * WIDTH] = z;
+                // normalize z to 0.0 - 1.0
+                float t = (z - NEAR) / (FAR - NEAR);
+                t = fmaxf(0.0f, fminf(1.0f, t)); // clamp
 
-                //unsigned char c = (unsigned char)(t * 255.0f);
+                unsigned char c = (unsigned char)(t * 255.0f);
                 
                 if (x >= tile_x
                         && x < tile_x + TILE_W
@@ -353,7 +358,7 @@ void set_triangle_3d(V3f v1, V3f v2, V3f v3, Color color)
             if (barycentric(pos1, pos2, pos3, v2i(x, y), &bary)) {
                 double z = (bary.x * v1.z + bary.y * v2.z + bary.z * v3.z);
                 //logger(LOG_DEBUG, "z: %c, zbuf: %f", z, renderer.zbuffer[y][x]);
-                if (z <= renderer.zbuffer[x + y * WIDTH]) continue;
+                if (z < renderer.zbuffer[x + y * WIDTH]) continue;
                 renderer.zbuffer[x + y * WIDTH] = z;
                 // normalize z to 0.0 - 1.0
                 float t = (z - NEAR) / (FAR - NEAR);
@@ -427,7 +432,12 @@ void clear_background(void)
 
     for (int y = 0; y < HEIGHT; y++) {
         for (int x = 0; x < WIDTH; x++) {
-            renderer.zbuffer[x + y * WIDTH] = -1e10;
+            renderer.zbuffer[x + y * WIDTH] = FLT_MAX;
+        }
+    }
+    for (int y = 0; y < HEIGHT; y++) {
+        for (int x = 0; x < WIDTH; x++) {
+            renderer.zbuffer[x + y * WIDTH] = FLT_MAX;
         }
     }
 }
