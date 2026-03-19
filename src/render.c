@@ -285,23 +285,29 @@ void renderer_draw_triangle(uint32_t tile_x, uint32_t tile_y, Triangle tri)
         v2i(max(pos1.x, max(pos2.x, pos3.x)), max(pos1.y, max(pos2.y, pos3.y))),
     };
 
+    int x0 = max(rec.min.x, (int)tile_x);
+    int x1 = min(rec.max.x, (int)(tile_x + TILE_W));
+    int y0 = max(rec.min.y, (int)tile_y);
+    int y1 = min(rec.max.y, (int)(tile_y + TILE_H));
+
+
     V3f bary;
 
     double total_area = signed_area(pos1.x, pos1.y, pos2.x, pos2.y, pos3.x, pos3.y);
     if (total_area < -1e6) return; 
 
 
-    for (int y = rec.min.y; y < rec.max.y; y++) {
-        for (int x = rec.min.x; x < rec.max.x; x++) {
+    for (int y = y0; y < y1; y++) {
+        for (int x = x0; x < x1; x++) {
             if (barycentric(pos1, pos2, pos3, v2i(x, y), &bary)) {
-                /* double z = (bary.x * tri.vertices[0].z + bary.y * tri.vertices[1].z + bary.z * tri.vertices[2].z);
-                if (z <= renderer.zbuffer[x + y * WIDTH]) continue;
-                renderer.zbuffer[x + y * WIDTH] = z;
-                // normalize z to 0.0 - 1.0
-                float t = (z - NEAR) / (FAR - NEAR);
-                t = fmaxf(0.0f, fminf(1.0f, t)); // clamp
+                //double z = (bary.x * tri.vertices[0].z + bary.y * tri.vertices[1].z + bary.z * tri.vertices[2].z);
+                //if (z <= renderer.zbuffer[x + y * WIDTH]) continue;
+                //renderer.zbuffer[x + y * WIDTH] = z;
+                //// normalize z to 0.0 - 1.0
+                //float t = (z - NEAR) / (FAR - NEAR);
+                //t = fmaxf(0.0f, fminf(1.0f, t)); // clamp
 
-                unsigned char c = (unsigned char)(t * 255.0f); */
+                //unsigned char c = (unsigned char)(t * 255.0f);
                 
                 if (x >= tile_x
                         && x < tile_x + TILE_W

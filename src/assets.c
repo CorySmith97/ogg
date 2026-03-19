@@ -75,36 +75,39 @@ ret:
 void draw_model(Asset_Model *model) 
 {
 
-    V3f rot = v3f(0, 0, 2);
+    V3f rot = v3f(0, 0, 0);
     static float angle = 0;
-    angle += 0.01;
+    angle += 0.001;
     int pushed_count = 0;
      for (size_t i = 0; i < arrlen(model->vertices); i += 3) {
          Vertex v1 = model->vertices[i];
          Vertex v2 = model->vertices[i+1];
          Vertex v3 = model->vertices[i+2];
-         v1.position.z = -v1.position.z;
-         v2.position.z = -v2.position.z;
-         v3.position.z = -v3.position.z;
-         v1.position.z += 2;
-         v2.position.z += 2;
-         v3.position.z += 2;
 
-        if (v1.position.z <= NEAR || v2.position.z <= NEAR || v3.position.z <= NEAR) continue;
+         V3f p1 = v3f_rotate_y_around_point(v1.position, rot, angle);
+         V3f p2 = v3f_rotate_y_around_point(v2.position, rot, angle);
+         V3f p3 = v3f_rotate_y_around_point(v3.position, rot, angle);
+         p1.z = -p1.z;
+         p2.z = -p2.z;
+         p3.z = -p3.z;
+         p1.z += 2;
+         p2.z += 2;
+         p3.z += 2;
+
+        if (p1.z <= NEAR || p2.z <= NEAR || p3.z <= NEAR) continue;
+
         Color color;
-        color.r = rand() % 255;
-        color.g = rand() % 255;
-        color.b = rand() % 255;
+        color.r = (uint8_t)((v1.normal.x * 0.5f + 0.5f) * 255);
+        color.g = (uint8_t)((v1.normal.y * 0.5f + 0.5f) * 255);
+        color.b = (uint8_t)((v1.normal.z * 0.5f + 0.5f) * 255);
         color.a = 255;
-        // @todo:cs move to a push triangle for the renderer to 
-        // dispatch rendering to threads.
+
         renderer_push_triangle(
-        v3f_rotate_y_around_point(v1.position, rot, angle),
-        v3f_rotate_y_around_point(v2.position, rot, angle),
-        v3f_rotate_y_around_point(v3.position, rot, angle),
-             COLOR_PURPLE);
+                p1,
+                p2,
+                p3,
+             color);
         pushed_count += 1;
     }
 
-     logger(LOG_INFO, "Pushed count: %d", pushed_count);
 }

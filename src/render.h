@@ -15,10 +15,10 @@
 #include "assets.h"
 
 // TODO refactor all this
-#define WIDTH 128
-//960
-#define HEIGHT 128
-//704
+//#define WIDTH 128
+//#define HEIGHT 128
+#define WIDTH 960
+#define HEIGHT 704
 
 typedef union Color {
     struct {uint8_t r, g, b, a};
@@ -30,7 +30,6 @@ typedef union Color {
 #define COLOR_GREEN  (Color){.g = 255, .a = 255}
 #define COLOR_PURPLE (Color){.r = 255, .b = 255, .a = 255}
 #define COLOR_YELLOW (Color){.r = 255, .g = 255, .a = 255}
-
 
 typedef struct {
     V3f vertices[3];

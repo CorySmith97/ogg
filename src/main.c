@@ -91,7 +91,7 @@ int main(int argc, char **argv)
 
         SectionEnd("Render");
 
-        profiler_report();
+        //profiler_report();
         profiler_reset();
     }
 
