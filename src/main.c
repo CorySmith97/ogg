@@ -35,7 +35,8 @@ int main(int argc, char **argv)
     UNUSED(argv);
 
     SectionStart("ModelLoad");
-    Asset_Model *model = load_model_from_file("data/shopkeeper.obj");
+    Asset_Model *model = load_model_from_file("data/diablo3_pose.obj");
+    Asset_Model *model2 = load_model_from_file("data/shopkeeper.obj");
 
     SectionEnd("ModelLoad");
     platform_init("hello", 1200, 900);
@@ -65,7 +66,7 @@ int main(int argc, char **argv)
         deltaTime = (double)((NOW - LAST) * 1000 / (double)SDL_GetPerformanceFrequency());
 
         SectionStart("Render");
-        clear_background();
+        clear_background(COLOR_GREEN);
 
         /* renderer_push_triangle(
             v3f_rotate_y_around_point(p1, rot, angle),
@@ -74,7 +75,9 @@ int main(int argc, char **argv)
             COLOR_RED); */
         
         SectionStart("Renderd");
-        draw_model(model);
+        Mat3 rotation = rotation_y(angle);
+        draw_model(model, v3f(1, 0, 2), rotation);
+        draw_model(model2, v3f(-1, -1, 2), rotation);
         renderer_draw_triangles();
 
         //set_quad(
@@ -91,7 +94,7 @@ int main(int argc, char **argv)
 
         SectionEnd("Render");
 
-        //profiler_report();
+        profiler_report();
         profiler_reset();
     }
 

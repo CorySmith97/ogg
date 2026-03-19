@@ -71,11 +71,10 @@ ret:
     return model;
 }
 
-
-void draw_model(Asset_Model *model) 
+// TODO add model translation and rotation matrices as paramters
+void draw_model(Asset_Model *model, V3f position, Mat3 rotation) 
 {
 
-    V3f rot = v3f(0, 0, 0);
     static float angle = 0;
     angle += 0.01;
     int pushed_count = 0;
@@ -84,18 +83,17 @@ void draw_model(Asset_Model *model)
          Vertex v2 = model->vertices[i+1];
          Vertex v3 = model->vertices[i+2];
 
-         V3f p1 = v3f_rotate_y_around_point(v1.position, rot, angle);
-         V3f p2 = v3f_rotate_y_around_point(v2.position, rot, angle);
-         V3f p3 = v3f_rotate_y_around_point(v3.position, rot, angle);
+         V3f p1 = v3f_mul_mat3(v1.position, rotation);
+         V3f p2 = v3f_mul_mat3(v2.position, rotation);
+         V3f p3 = v3f_mul_mat3(v3.position, rotation);
+
+
          p1.z = -p1.z;
          p2.z = -p2.z;
          p3.z = -p3.z;
-         p1.z += 2;
-         p2.z += 2;
-         p3.z += 2;
-         p1.y -= 1;
-         p2.y -= 1;
-         p3.y -= 1;
+         p1 = v3f_add(p1, position);
+         p2 = v3f_add(p2, position);
+         p3 = v3f_add(p3, position);
 
         if (p1.z <= NEAR || p2.z <= NEAR || p3.z <= NEAR) continue;
 

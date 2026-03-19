@@ -34,5 +34,6 @@ typedef struct {
 
 Asset_Model *load_model_from_file(const char *file);
 void         deload_model(Asset_Model *model);
+void         draw_model(Asset_Model *model, V3f position, Mat3 rotation);
 
 #endif // ASSET_H

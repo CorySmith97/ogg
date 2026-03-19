@@ -188,6 +188,18 @@ void set_line(V2i v, V2i u, Color color)
     }
 }
 
+bool check_bounds(V2i v1, V2i v2, V2i v3)
+{
+    if (v1.x < 0 || v1.x > WIDTH 
+        || v2.x < 0 || v2.x > WIDTH 
+        || v3.x < 0 || v3.x > WIDTH 
+        || v1.y < 0 || v1.y > HEIGHT 
+        || v2.y < 0 || v2.y > HEIGHT 
+        || v3.y < 0 || v3.y > HEIGHT) return false;
+
+    return true;
+} 
+
 void set_triangle(V2i v1, V2i v2, V2i v3, Color color)
 {
     AABBi rec = {
@@ -246,6 +258,7 @@ void renderer_push_triangle(V3f v1, V3f v2, V3f v3, Color color)
     V2i pos1 = to_screen(project(v1));
     V2i pos2 = to_screen(project(v2));
     V2i pos3 = to_screen(project(v3));
+    if (!check_bounds(pos1, pos2, pos3)) return;
 
     AABBi rec = {
         v2i(min(pos1.x, min(pos2.x, pos3.x)), min(pos1.y, min(pos2.y, pos3.y))),
@@ -255,10 +268,12 @@ void renderer_push_triangle(V3f v1, V3f v2, V3f v3, Color color)
 
     size_t bucket;
 
-    size_t t_minx = floor(rec.min.x / TILE_W);
-    size_t t_maxx = floor(rec.max.x / TILE_W);
-    size_t t_miny = floor(rec.min.y / TILE_H);
-    size_t t_maxy = floor(rec.max.y / TILE_H);
+    size_t t_minx = max(0, floor(rec.min.x / TILE_W));
+    size_t t_maxx = min((WIDTH / TILE_W) -1, floor(rec.max.x / TILE_W));
+    size_t t_miny = max(0, floor(rec.min.y / TILE_H));
+    size_t t_maxy = min((HEIGHT / TILE_H) -1, floor(rec.max.y / TILE_H));
+
+    if (t_minx > t_maxx || t_miny > t_maxy) return;
 
     Triangle triangle = {
         .vertices = {v1, v2, v3},
@@ -314,11 +329,7 @@ void renderer_draw_triangle(uint32_t tile_x, uint32_t tile_y, Triangle tri)
 
                 unsigned char c = (unsigned char)(t * 255.0f);
                 
-                if (x >= tile_x
-                        && x < tile_x + TILE_W
-                        && y >= tile_y
-                        && y < tile_y + TILE_H)
-                    set_pixel((uint32_t)x, (uint32_t)y, tri.colors[0]); //  (Color){c, c, c, 255});
+                set_pixel((uint32_t)x, (uint32_t)y, tri.colors[0]); //  (Color){c, c, c, 255});
             }
         }
     }
@@ -337,12 +348,6 @@ void set_triangle_3d(V3f v1, V3f v2, V3f v3, Color color)
     V2i pos2 = to_screen(project(v2));
     V2i pos3 = to_screen(project(v3));
 
-    if (pos1.x < 0 || pos1.x > WIDTH 
-        || pos2.x < 0 || pos2.x > WIDTH 
-        || pos3.x < 0 || pos3.x > WIDTH 
-        || pos1.y < 0 || pos1.y > HEIGHT 
-        || pos2.y < 0 || pos2.y > HEIGHT 
-        || pos3.y < 0 || pos3.y > HEIGHT) return;
     AABBi rec = {
         v2i(min(pos1.x, min(pos2.x, pos3.x)), min(pos1.y, min(pos2.y, pos3.y))),
         v2i(max(pos1.x, max(pos2.x, pos3.x)), max(pos1.y, max(pos2.y, pos3.y))),
@@ -421,22 +426,17 @@ Color get_color_from_image(Image *i, V2f uv)
 
 } */
 
-void clear_background(void)
+void clear_background(Color color)
 {
     TileBin bin;
     for (size_t i = 0; i < sizeof(triangle_bins)/sizeof(triangle_bins[0]); i++) {
         bin = triangle_bins[i];
     }
 
-    memset(renderer.pixels, 0, WIDTH * HEIGHT * sizeof(uint32_t));
 
     for (int y = 0; y < HEIGHT; y++) {
         for (int x = 0; x < WIDTH; x++) {
-            renderer.zbuffer[x + y * WIDTH] = FLT_MAX;
-        }
-    }
-    for (int y = 0; y < HEIGHT; y++) {
-        for (int x = 0; x < WIDTH; x++) {
+            renderer.pixels[x + y * WIDTH] = color.rgba;
             renderer.zbuffer[x + y * WIDTH] = FLT_MAX;
         }
     }

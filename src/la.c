@@ -202,3 +202,12 @@ v3f_rotate_z(V3f v, float angle)
 
     return v3f_mul_mat3(v, rotation);
 }
+
+Mat3 rotation_y(float angle)
+{
+    return  (Mat3){
+        cosf(angle), 0, sinf(angle),
+        0,           1,           0,
+        -sinf(angle),0, cosf(angle),
+    };
+}

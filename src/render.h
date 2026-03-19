@@ -25,11 +25,11 @@ typedef union Color {
     uint32_t rgba;
 } Color;
 
-#define COLOR_RED    (Color){.r = 255, .a = 255}
-#define COLOR_BLUE   (Color){.b = 255, .a = 255}
-#define COLOR_GREEN  (Color){.g = 255, .a = 255}
-#define COLOR_PURPLE (Color){.r = 255, .b = 255, .a = 255}
-#define COLOR_YELLOW (Color){.r = 255, .g = 255, .a = 255}
+#define COLOR_RED    (Color){.r = 0x50, .a = 255}
+#define COLOR_BLUE   (Color){.b = 0x50, .a = 255}
+#define COLOR_GREEN  (Color){.g = 0x50, .a = 255}
+#define COLOR_PURPLE (Color){.r = 0x50, .b = 0x50, .a = 255}
+#define COLOR_YELLOW (Color){.r = 0x50, .g = 0x50, .a = 255}
 
 typedef struct {
     V3f vertices[3];
@@ -57,7 +57,7 @@ static struct {
 };
 
 void     render_init(void);
-void     clear_background(void);
+void     clear_background(Color color);
 void     set_pixel(uint32_t x, uint32_t y, Color color);
 void     set_verline(uint32_t x, uint32_t start, uint32_t end, Color color);
 void     set_line(V2i v, V2i u, Color color);
