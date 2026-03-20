@@ -18,6 +18,35 @@ typedef struct {
     int vertex_count;
 } Face;
 
+typedef enum
+{
+    IM_ColorOnAmbientOff,
+    IM_ColorOnAmbientOn,
+    IM_HighlightOn,
+    IM_ReflectionOnRayTraceOn,
+    IM_Transparency,
+    IM_ReflectionFresOnRayTraceOn,
+    IM_TransparencyRefractFresOffRayTraceOn,
+    IM_TransparencyRefractFresOnRayTraceOn,
+    IM_ReflectionRayTraceOff,
+    IM_TransparencyGlass,
+    IM_CastShadows,
+    IM_Count,
+} IlluminationModals;
+
+typedef struct {
+    V3f ambient;                // Ka
+    V3f diffuse;                // Kd
+    V3f specular;               // Ks
+    float specular_exponent;    // Ns
+    float dissolved;            // d
+    float invert_dissolved;     // Tr
+    V3f trans_filter_color;     // Tf
+    float optical_density;      // Ni
+    IlluminationModals illum;   // illum
+    const char *texture_name;   // Not doing this quite yet.
+} SimpleMtl;
+
 typedef struct {
     V3f *position;
     V3f *normals;

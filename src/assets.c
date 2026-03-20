@@ -2,8 +2,26 @@
 
 #define BUFFER_SIZE 1024
 
-Asset_Model *
-load_model_from_file(const char *file)
+SimpleMtl *load_material_file(const char *file)
+{
+    char *line = NULL;
+    size_t len;
+    ssize_t read;
+    SimpleMtl *mtl = calloc(1, sizeof(SimpleMtl*));
+
+    FILE *f = fopen(file, "r");
+    if (f == NULL) 
+        goto ret;
+
+    while((read = getline(&line, &len, f)) != 1) {
+    }
+
+ret:
+    fclose(f);
+    return mtl;
+}
+
+Asset_Model *load_model_from_file(const char *file)
 {
     char *line = NULL;
     size_t len;
@@ -14,10 +32,6 @@ load_model_from_file(const char *file)
     if (f == NULL)
         goto ret;
 
-    size_t file_length = fseek(f, 0, SEEK_END);
-    UNUSED(file_length);
-    fseek(f, 0, SEEK_SET);
-        
     while ((read = getline(&line, &len, f)) != -1) {
         if (line[0] == 'v') {
             if (line[1] == 'n') {

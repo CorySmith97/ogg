@@ -1,15 +1,3 @@
-#include <math.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <unistd.h>
-
-#include <string.h>
-#include <sys/types.h>
-
-#define DEBUG
-
 #include "game.h"
 #include "third_party.h"
 #include "base.h"
@@ -27,8 +15,6 @@
 #include "render.c"
 #include "assets.c"
 #include "game.c"
-
-#define PI 3.14159
 
 int main(int argc, char **argv)
 {

@@ -1,7 +1,15 @@
 #ifndef BASE_H
 #define BASE_H
 
+#include <math.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <unistd.h>
+
+#include <string.h>
+#include <sys/types.h>
 
 #define UNUSED(VAL) (void)(VAL)
 

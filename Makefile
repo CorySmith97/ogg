@@ -3,6 +3,7 @@ C_FILES=src/main.c
 C_FLAGS=-std=c23 -Wall -g -Wno-missing-braces
 C_FLAGS+= -Wextra -Wno-unused-function
 C_FLAGS+= -DPLATFORM_SDL
+C_FLAGS+= -DDEBUG
 BUILD_DIR=bin
 
 INCLUDE=
