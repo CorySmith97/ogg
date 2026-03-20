@@ -10,7 +10,7 @@ static V2f project(V3f v)
 {
     assert(v.z != 0);
     float fov_rad = 1.0f / tanf((FOV * 0.5f) * (M_PI / 180.0f));
-    float aspect = (float)WIDTH / (float)HEIGHT;
+    float aspect = (float)GAME_WIDTH / (float)GAME_HEIGHT;
 
     float x = (v.x * fov_rad) / (aspect * v.z);
     float y = (v.y * fov_rad) / v.z;
@@ -20,8 +20,8 @@ static V2f project(V3f v)
 
 static V2i to_screen(V2f v)
 {
-    float y = (1 - (v.y + 1) / 2) * HEIGHT;
-    V2f ret = v2f((v.x + 1) / 2 * WIDTH, y);
+    float y = (1 - (v.y + 1) / 2) * GAME_HEIGHT;
+    V2f ret = v2f((v.x + 1) / 2 * GAME_WIDTH, y);
     V2i val = v2i((int)ret.x, (int)ret.y);
 
     return val;

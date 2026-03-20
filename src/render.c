@@ -6,15 +6,15 @@
 #define NUM_THREADS 12
 #define TILE_W 64
 #define TILE_H 64
-#define COL_WIDTH (WIDTH / TILE_W)
-#define TILE_COUNT ((WIDTH / TILE_W) * (HEIGHT / TILE_H))
+#define COL_GAME_WIDTH (GAME_WIDTH / TILE_W)
+#define TILE_COUNT ((GAME_WIDTH / TILE_W) * (GAME_HEIGHT / TILE_H))
 
 typedef struct {
     int tile_x, tile_y;
     size_t *tri_idx;
 } TileBin;
 
-TileBin triangle_bins[(WIDTH / TILE_W) * (HEIGHT / TILE_H)];
+TileBin triangle_bins[(GAME_WIDTH / TILE_W) * (GAME_HEIGHT / TILE_H)];
 
 Triangle *triangles = NULL;
 
@@ -38,6 +38,7 @@ int pool_running = 1;
 
 void *worker_thread(void *arg)
 {
+    UNUSED(arg);
     while (1) {
         pthread_mutex_lock(&queue_mutex);
 
@@ -74,8 +75,8 @@ void *worker_thread(void *arg)
 void render_init(void)
 {
     for (size_t i = 0; i < TILE_COUNT; i++) {
-        int x = i % (WIDTH / TILE_W);
-        int y = i / (WIDTH / TILE_W);
+        int x = i % (GAME_WIDTH / TILE_W);
+        int y = i / (GAME_WIDTH / TILE_W);
         triangle_bins[i].tile_x = x;
         triangle_bins[i].tile_y = y;
     }
@@ -152,7 +153,7 @@ void set_pixel(uint32_t x, uint32_t y, Color color)
             || y >= (uint32_t)renderer.height 
             || y < 0) return;
 
-    renderer.pixels[x + y * WIDTH] = color.rgba;
+    renderer.pixels[x + y * GAME_WIDTH] = color.rgba;
 }
 
 void set_verline(uint32_t x,  uint32_t start, uint32_t end, Color color)
@@ -190,12 +191,12 @@ void set_line(V2i v, V2i u, Color color)
 
 bool check_bounds(V2i v1, V2i v2, V2i v3)
 {
-    if (v1.x < 0 || v1.x > WIDTH 
-        || v2.x < 0 || v2.x > WIDTH 
-        || v3.x < 0 || v3.x > WIDTH 
-        || v1.y < 0 || v1.y > HEIGHT 
-        || v2.y < 0 || v2.y > HEIGHT 
-        || v3.y < 0 || v3.y > HEIGHT) return false;
+    if (v1.x < 0 || v1.x > GAME_WIDTH 
+        || v2.x < 0 || v2.x > GAME_WIDTH 
+        || v3.x < 0 || v3.x > GAME_WIDTH 
+        || v1.y < 0 || v1.y > GAME_HEIGHT 
+        || v2.y < 0 || v2.y > GAME_HEIGHT 
+        || v3.y < 0 || v3.y > GAME_HEIGHT) return false;
 
     return true;
 } 
@@ -208,10 +209,10 @@ void set_triangle(V2i v1, V2i v2, V2i v3, Color color)
     };
     V3f bary;
 
-    for (uint32_t x = rec.min.x; x < rec.max.x; x++) {
-        for (uint32_t y = rec.min.y; y < rec.max.y; y++) {
+    for (int x = rec.min.x; x < rec.max.x; x++) {
+        for (int y = rec.min.y; y < rec.max.y; y++) {
             if (barycentric(v1, v2, v3, v2i(x, y), &bary)) {
-                set_pixel(x, y, color);
+                set_pixel((uint32_t)x, (uint32_t)y, color);
             }
         }
     }
@@ -264,14 +265,11 @@ void renderer_push_triangle(V3f v1, V3f v2, V3f v3, Color color)
         v2i(min(pos1.x, min(pos2.x, pos3.x)), min(pos1.y, min(pos2.y, pos3.y))),
         v2i(max(pos1.x, max(pos2.x, pos3.x)), max(pos1.y, max(pos2.y, pos3.y))),
     };
-    //logger(LOG_INFO, "Rec: %d %d %d %d", rec.min.x, rec.min.y, rec.max.x, rec.max.y);
-
-    size_t bucket;
 
     size_t t_minx = max(0, floor(rec.min.x / TILE_W));
-    size_t t_maxx = min((WIDTH / TILE_W) -1, floor(rec.max.x / TILE_W));
+    size_t t_maxx = min((GAME_WIDTH / TILE_W) -1, floor(rec.max.x / TILE_W));
     size_t t_miny = max(0, floor(rec.min.y / TILE_H));
-    size_t t_maxy = min((HEIGHT / TILE_H) -1, floor(rec.max.y / TILE_H));
+    size_t t_maxy = min((GAME_HEIGHT / TILE_H) -1, floor(rec.max.y / TILE_H));
 
     if (t_minx > t_maxx || t_miny > t_maxy) return;
 
@@ -285,7 +283,7 @@ void renderer_push_triangle(V3f v1, V3f v2, V3f v3, Color color)
 
     for (size_t j = t_miny; j <= t_maxy; j++) {
         for (size_t i = t_minx; i <= t_maxx; i++) {
-            arrput(triangle_bins[i + j * COL_WIDTH].tri_idx, idx);
+            arrput(triangle_bins[i + j * COL_GAME_WIDTH].tri_idx, idx);
         }
     }
 }
@@ -295,7 +293,7 @@ void renderer_draw_triangle(uint32_t tile_x, uint32_t tile_y, Triangle tri)
     V2i pos1 = to_screen(project(tri.vertices[0]));
     V2i pos2 = to_screen(project(tri.vertices[1]));
     V2i pos3 = to_screen(project(tri.vertices[2]));
-    Color color = tri.colors[0];
+
     AABBi rec = {
         v2i(min(pos1.x, min(pos2.x, pos3.x)), min(pos1.y, min(pos2.y, pos3.y))),
         v2i(max(pos1.x, max(pos2.x, pos3.x)), max(pos1.y, max(pos2.y, pos3.y))),
@@ -321,13 +319,8 @@ void renderer_draw_triangle(uint32_t tile_x, uint32_t tile_y, Triangle tri)
                         bary.z / tri.vertices[2].z);
                 double z = 1.0 / inv_z;
                 
-                if (z >= renderer.zbuffer[x + y * WIDTH]) continue;
-                renderer.zbuffer[x + y * WIDTH] = z;
-                // normalize z to 0.0 - 1.0
-                float t = (z - NEAR) / (FAR - NEAR);
-                t = fmaxf(0.0f, fminf(1.0f, t)); // clamp
-
-                unsigned char c = (unsigned char)(t * 255.0f);
+                if (z >= renderer.zbuffer[x + y * GAME_WIDTH]) continue;
+                renderer.zbuffer[x + y * GAME_WIDTH] = z;
                 
                 set_pixel((uint32_t)x, (uint32_t)y, tri.colors[0]); //  (Color){c, c, c, 255});
             }
@@ -363,13 +356,8 @@ void set_triangle_3d(V3f v1, V3f v2, V3f v3, Color color)
             if (barycentric(pos1, pos2, pos3, v2i(x, y), &bary)) {
                 double z = (bary.x * v1.z + bary.y * v2.z + bary.z * v3.z);
                 //logger(LOG_DEBUG, "z: %c, zbuf: %f", z, renderer.zbuffer[y][x]);
-                if (z < renderer.zbuffer[x + y * WIDTH]) continue;
-                renderer.zbuffer[x + y * WIDTH] = z;
-                // normalize z to 0.0 - 1.0
-                float t = (z - NEAR) / (FAR - NEAR);
-                t = fmaxf(0.0f, fminf(1.0f, t)); // clamp
-
-                unsigned char c = (unsigned char)(t * 255.0f);
+                if (z < renderer.zbuffer[x + y * GAME_WIDTH]) continue;
+                renderer.zbuffer[x + y * GAME_WIDTH] = z;
                 
                 set_pixel((uint32_t)x, (uint32_t)y, color); // (Color){c, c, c, 255});
             }
@@ -389,6 +377,7 @@ Color get_color_from_image(Image *i, V2f uv)
     Color c = {0};
     size_t x = uv.x * i->width;
     size_t y = uv.y * i->height;
+
     c.r = i->pixels[x + y];
     c.g = i->pixels[x + y + 1];
     c.b = i->pixels[x + y + 2];
@@ -428,17 +417,47 @@ Color get_color_from_image(Image *i, V2f uv)
 
 void clear_background(Color color)
 {
-    TileBin bin;
-    for (size_t i = 0; i < sizeof(triangle_bins)/sizeof(triangle_bins[0]); i++) {
-        bin = triangle_bins[i];
-    }
-
-
-    for (int y = 0; y < HEIGHT; y++) {
-        for (int x = 0; x < WIDTH; x++) {
-            renderer.pixels[x + y * WIDTH] = color.rgba;
-            renderer.zbuffer[x + y * WIDTH] = FLT_MAX;
+    for (int y = 0; y < GAME_HEIGHT; y++) {
+        for (int x = 0; x < GAME_WIDTH; x++) {
+            renderer.pixels[x + y * GAME_WIDTH] = color.rgba;
+            renderer.zbuffer[x + y * GAME_WIDTH] = FLT_MAX;
         }
     }
 }
 
+void draw_model(Asset_Model *model, V3f position, Mat3 rotation) 
+{
+
+    for (int i = 0; i < arrlen(model->vertices); i += 3) {
+        Vertex v1 = model->vertices[i];
+        Vertex v2 = model->vertices[i+1];
+        Vertex v3 = model->vertices[i+2];
+
+        V3f p1 = v3f_mul_mat3(v1.position, rotation);
+        V3f p2 = v3f_mul_mat3(v2.position, rotation);
+        V3f p3 = v3f_mul_mat3(v3.position, rotation);
+
+
+        p1.z = -p1.z;
+        p2.z = -p2.z;
+        p3.z = -p3.z;
+        p1 = v3f_add(p1, position);
+        p2 = v3f_add(p2, position);
+        p3 = v3f_add(p3, position);
+
+        if (p1.z <= NEAR || p2.z <= NEAR || p3.z <= NEAR) continue;
+
+        Color color;
+        color.r = (uint8_t)((v1.normal.x * 0.5f + 0.5f) * 255);
+        color.g = (uint8_t)((v1.normal.y * 0.5f + 0.5f) * 255);
+        color.b = (uint8_t)((v1.normal.z * 0.5f + 0.5f) * 255);
+        color.a = 255;
+
+        renderer_push_triangle(
+                p1,
+                p2,
+                p3,
+                color);
+    }
+
+}

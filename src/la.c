@@ -233,12 +233,22 @@ Mat3 rotation_x(float angle)
 Mat3 mat3_mul(Mat3 m1, Mat3 m2)
 {
     return (Mat3){
-        m1.c[0] * m2.c[0], m1.c[1] * m2.c[3], m1.c[2] * m2.c[6],
-        m1.c[3] * m2.c[1], m1.c[4] * m2.c[4], m1.c[5] * m2.c[7],
-        m1.c[6] * m2.c[2], m1.c[7] * m2.c[5], m1.c[8] * m2.c[8],
+        // Row 0 of m1 · Columns of m2
+        m1.c[0]*m2.c[0] + m1.c[1]*m2.c[3] + m1.c[2]*m2.c[6],
+        m1.c[0]*m2.c[1] + m1.c[1]*m2.c[4] + m1.c[2]*m2.c[7],
+        m1.c[0]*m2.c[2] + m1.c[1]*m2.c[5] + m1.c[2]*m2.c[8],
+
+        // Row 1 of m1 · Columns of m2
+        m1.c[3]*m2.c[0] + m1.c[4]*m2.c[3] + m1.c[5]*m2.c[6],
+        m1.c[3]*m2.c[1] + m1.c[4]*m2.c[4] + m1.c[5]*m2.c[7],
+        m1.c[3]*m2.c[2] + m1.c[4]*m2.c[5] + m1.c[5]*m2.c[8],
+
+        // Row 2 of m1 · Columns of m2
+        m1.c[6]*m2.c[0] + m1.c[7]*m2.c[3] + m1.c[8]*m2.c[6],
+        m1.c[6]*m2.c[1] + m1.c[7]*m2.c[4] + m1.c[8]*m2.c[7],
+        m1.c[6]*m2.c[2] + m1.c[7]*m2.c[5] + m1.c[8]*m2.c[8],
     };
 }
-
 Mat3 mat3_add(Mat3 m1, Mat3 m2)
 {
     return (Mat3){

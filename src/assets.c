@@ -9,7 +9,6 @@ load_model_from_file(const char *file)
     size_t len;
     ssize_t read;
     Asset_Model *model = calloc(1, sizeof(Asset_Model));
-    FaceVertex *faces = NULL;
 
     FILE *f = fopen(file, "r"); 
     if (f == NULL)
@@ -73,42 +72,4 @@ load_model_from_file(const char *file)
 ret:
     fclose(f);
     return model;
-}
-
-// TODO add model translation and rotation matrices as paramters
-void draw_model(Asset_Model *model, V3f position, Mat3 rotation) 
-{
-
-    for (size_t i = 0; i < arrlen(model->vertices); i += 3) {
-        Vertex v1 = model->vertices[i];
-        Vertex v2 = model->vertices[i+1];
-        Vertex v3 = model->vertices[i+2];
-
-        V3f p1 = v3f_mul_mat3(v1.position, rotation);
-        V3f p2 = v3f_mul_mat3(v2.position, rotation);
-        V3f p3 = v3f_mul_mat3(v3.position, rotation);
-
-
-        p1.z = -p1.z;
-        p2.z = -p2.z;
-        p3.z = -p3.z;
-        p1 = v3f_add(p1, position);
-        p2 = v3f_add(p2, position);
-        p3 = v3f_add(p3, position);
-
-        if (p1.z <= NEAR || p2.z <= NEAR || p3.z <= NEAR) continue;
-
-        Color color;
-        color.r = (uint8_t)((v1.normal.x * 0.5f + 0.5f) * 255);
-        color.g = (uint8_t)((v1.normal.y * 0.5f + 0.5f) * 255);
-        color.b = (uint8_t)((v1.normal.z * 0.5f + 0.5f) * 255);
-        color.a = 255;
-
-        renderer_push_triangle(
-                p1,
-                p2,
-                p3,
-                color);
-    }
-
 }

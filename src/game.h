@@ -7,6 +7,7 @@
 #define SCREEN_HEIGHT 1080
 #define GAME_NAME     "OGG"
 
+void game_run(void);
 void game_init(void);
 void game_frame(void);
 void game_deinit(void);

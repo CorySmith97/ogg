@@ -14,14 +14,8 @@
 #include "la.h"
 #include "assets.h"
 
-// TODO refactor all this
-//#define WIDTH 128
-//#define HEIGHT 128
-#define WIDTH 960
-#define HEIGHT 704
-
 typedef union Color {
-    struct {uint8_t r, g, b, a};
+    struct {uint8_t r, g, b, a;};
     uint32_t rgba;
 } Color;
 
@@ -44,14 +38,14 @@ typedef struct TextVertex {
 
 static struct {
     Vertex *vertices;
-    uint32_t pixels[HEIGHT * WIDTH];
-    float zbuffer[HEIGHT * WIDTH];
+    uint32_t pixels[GAME_HEIGHT * GAME_WIDTH];
+    float zbuffer[GAME_HEIGHT * GAME_WIDTH];
     bool quit;
     int width, height;
 } renderer = {
     .quit = false,
-    .width = WIDTH,
-    .height = HEIGHT,
+    .width = GAME_WIDTH,
+    .height = GAME_HEIGHT,
     .pixels = {0},
     .zbuffer = {0},
 };
@@ -69,5 +63,6 @@ void     set_quad(V2i v1, V2i v2, V2i v3, V2i v4, Color c);
 void     draw_textured_triangle(Image *t, TextVertex v1, TextVertex v2, TextVertex v3);
 uint32_t pack_color(Color color);
 void     renderer_draw_triangle(uint32_t tile_x, uint32_t tile_y, Triangle tri);
+void     draw_model(Asset_Model *model, V3f position, Mat3 rotation);
 
 #endif /* RENDER_H */

@@ -17,7 +17,7 @@ platform_init(const char *name, uint32_t width, uint32_t height)
     platform_ctx.renderer = SDL_CreateRenderer(platform_ctx.window, 0, SDL_RENDERER_SOFTWARE);
     platform_ctx.texture = SDL_CreateTexture(platform_ctx.renderer, 
             SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING, 
-            WIDTH, HEIGHT);
+            GAME_WIDTH, GAME_HEIGHT);
 }
 
 void 
@@ -67,8 +67,12 @@ void platform_present()
 
 bool is_key_down(int key)
 {
+    UNUSED(key);
+    return false;
 }
 
 bool is_key_released(int key)
 {
+    UNUSED(key);
+    return false;
 }
