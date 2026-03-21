@@ -8,7 +8,7 @@ SimpleMtl *load_material_file(const char *file)
     char *line = NULL;
     size_t len;
     ssize_t read;
-    SimpleMtl *mtl = calloc(1, sizeof(SimpleMtl*));
+    SimpleMtl *mtl = calloc(1, sizeof(SimpleMtl));
 
     FILE *f = fopen(file, "r");
     if (f == NULL) 
