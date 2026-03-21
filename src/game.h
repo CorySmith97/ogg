@@ -3,8 +3,8 @@
 
 #define GAME_WIDTH    960
 #define GAME_HEIGHT   704
-#define SCREEN_WIDTH  1980
-#define SCREEN_HEIGHT 1080
+#define SCREEN_WIDTH  960
+#define SCREEN_HEIGHT 704
 #define GAME_NAME     "OGG"
 
 void game_run(void);

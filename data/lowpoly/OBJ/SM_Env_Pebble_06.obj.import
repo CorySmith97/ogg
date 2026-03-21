@@ -1,0 +1,21 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://b6xy2ho1s5bet"
+path="res://.godot/imported/SM_Env_Pebble_06.obj-53365edb7c2718a349c32c64b5d69ea6.mesh"
+
+[deps]
+
+files=["res://.godot/imported/SM_Env_Pebble_06.obj-53365edb7c2718a349c32c64b5d69ea6.mesh"]
+
+source_file="res://assets/POLYGON_Adventure_Pack_SourceFiles/OBJ/SM_Env_Pebble_06.obj"
+dest_files=["res://.godot/imported/SM_Env_Pebble_06.obj-53365edb7c2718a349c32c64b5d69ea6.mesh", "res://.godot/imported/SM_Env_Pebble_06.obj-53365edb7c2718a349c32c64b5d69ea6.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true

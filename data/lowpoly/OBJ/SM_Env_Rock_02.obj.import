@@ -1,0 +1,21 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://wbppwxj6hi00"
+path="res://.godot/imported/SM_Env_Rock_02.obj-54bdae37db8b9cc37d538e50682e5923.mesh"
+
+[deps]
+
+files=["res://.godot/imported/SM_Env_Rock_02.obj-54bdae37db8b9cc37d538e50682e5923.mesh"]
+
+source_file="res://assets/POLYGON_Adventure_Pack_SourceFiles/OBJ/SM_Env_Rock_02.obj"
+dest_files=["res://.godot/imported/SM_Env_Rock_02.obj-54bdae37db8b9cc37d538e50682e5923.mesh", "res://.godot/imported/SM_Env_Rock_02.obj-54bdae37db8b9cc37d538e50682e5923.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true

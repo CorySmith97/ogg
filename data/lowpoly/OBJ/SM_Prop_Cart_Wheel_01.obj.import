@@ -1,0 +1,21 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://c1k0px7um5s2x"
+path="res://.godot/imported/SM_Prop_Cart_Wheel_01.obj-60993f8963f8e1b7f58e7f0be3e4550d.mesh"
+
+[deps]
+
+files=["res://.godot/imported/SM_Prop_Cart_Wheel_01.obj-60993f8963f8e1b7f58e7f0be3e4550d.mesh"]
+
+source_file="res://assets/POLYGON_Adventure_Pack_SourceFiles/OBJ/SM_Prop_Cart_Wheel_01.obj"
+dest_files=["res://.godot/imported/SM_Prop_Cart_Wheel_01.obj-60993f8963f8e1b7f58e7f0be3e4550d.mesh", "res://.godot/imported/SM_Prop_Cart_Wheel_01.obj-60993f8963f8e1b7f58e7f0be3e4550d.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true

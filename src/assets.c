@@ -1,5 +1,6 @@
 #include "assets.h"
 
+#define ASSET_DIR "data/"
 #define BUFFER_SIZE 1024
 
 SimpleMtl *load_material_file(const char *file)
@@ -13,7 +14,15 @@ SimpleMtl *load_material_file(const char *file)
     if (f == NULL) 
         goto ret;
 
-    while((read = getline(&line, &len, f)) != 1) {
+    while((read = getline(&line, &len, f)) != -1) {
+        if (line[0] == 'K') {
+            if (line[1] == 'a') {
+                sscanf(line, "Ka %f %f %f", &mtl->ambient.x, &mtl->ambient.y, &mtl->ambient.z);
+            }
+            if (line[1] == 'd') {
+                sscanf(line, "Kd %f %f %f", &mtl->diffuse.x, &mtl->diffuse.y, &mtl->diffuse.z);
+            }
+        }
     }
 
 ret:
@@ -74,6 +83,18 @@ Asset_Model *load_model_from_file(const char *file)
                     arrput(model->vertices, vert);
                 }
             }
+
+        }
+        if (line[0] == 'm') {
+            if (strncmp(line, "mtllib", 6) == 0) {
+                line[strcspn(line, "\n")] = '\0';
+                char file_name[256];
+                snprintf(file_name, sizeof(file_name), "data/%s",  &line[7]);
+                model->mtl = load_material_file(file_name);
+            }
+        }
+        if (line[0] == 'u') {
+            if (strncmp(line, "usemtl", 6) == 1){}
         }
     }
     printf("Position Lenght = %td\n", arrlen(model->position));

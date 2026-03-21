@@ -1,0 +1,21 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://d0wr82l6au4nn"
+path="res://.godot/imported/SM_Env_SnowPile_03.obj-11ccd634e9bf986b5c9e51c63b5150fd.mesh"
+
+[deps]
+
+files=["res://.godot/imported/SM_Env_SnowPile_03.obj-11ccd634e9bf986b5c9e51c63b5150fd.mesh"]
+
+source_file="res://assets/POLYGON_Adventure_Pack_SourceFiles/OBJ/SM_Env_SnowPile_03.obj"
+dest_files=["res://.godot/imported/SM_Env_SnowPile_03.obj-11ccd634e9bf986b5c9e51c63b5150fd.mesh", "res://.godot/imported/SM_Env_SnowPile_03.obj-11ccd634e9bf986b5c9e51c63b5150fd.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true

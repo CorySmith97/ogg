@@ -1,0 +1,21 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://bkpo0ctragywq"
+path="res://.godot/imported/SM_Env_Flower_05.obj-6bbf35f668eb5037eb15fe897d04a39f.mesh"
+
+[deps]
+
+files=["res://.godot/imported/SM_Env_Flower_05.obj-6bbf35f668eb5037eb15fe897d04a39f.mesh"]
+
+source_file="res://assets/POLYGON_Adventure_Pack_SourceFiles/OBJ/SM_Env_Flower_05.obj"
+dest_files=["res://.godot/imported/SM_Env_Flower_05.obj-6bbf35f668eb5037eb15fe897d04a39f.mesh", "res://.godot/imported/SM_Env_Flower_05.obj-6bbf35f668eb5037eb15fe897d04a39f.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true

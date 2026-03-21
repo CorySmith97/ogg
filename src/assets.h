@@ -53,6 +53,7 @@ typedef struct {
     V3f *tex;
     Vertex *vertices;
     Face *faces;
+    SimpleMtl *mtl;
 } Asset_Model;
 
 typedef struct {

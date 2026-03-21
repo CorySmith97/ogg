@@ -1,0 +1,21 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://bapc22e3ul68k"
+path="res://.godot/imported/SM_Prop_Crate_02.obj-81fd2d2ee4ea206cce611832e87bde9f.mesh"
+
+[deps]
+
+files=["res://.godot/imported/SM_Prop_Crate_02.obj-81fd2d2ee4ea206cce611832e87bde9f.mesh"]
+
+source_file="res://assets/POLYGON_Adventure_Pack_SourceFiles/OBJ/SM_Prop_Crate_02.obj"
+dest_files=["res://.godot/imported/SM_Prop_Crate_02.obj-81fd2d2ee4ea206cce611832e87bde9f.mesh", "res://.godot/imported/SM_Prop_Crate_02.obj-81fd2d2ee4ea206cce611832e87bde9f.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true

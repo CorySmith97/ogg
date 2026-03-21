@@ -1,5 +1,6 @@
-CC=clang
+CC=cc
 C_FILES=src/main.c
+M_FILES=src/main.m
 C_FLAGS=-std=c23 -Wall -g -Wno-missing-braces
 C_FLAGS+= -Wextra -Wno-unused-function
 C_FLAGS+= -DPLATFORM_SDL

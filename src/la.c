@@ -145,6 +145,11 @@ v3f_dot(V3f v, V3f u)
     return (v.x * u.x) + (v.y * u.y) + (v.z * u.z);
 }
 
+V3f v3f_mul(V3f v, V3f u)
+{
+    return v3f(v.x * u.x, v.y * u.y, v.z * u.z);
+}
+
 V3f   
 v3f_mul_mat3(V3f v, Mat3 m)
 {
@@ -203,6 +208,13 @@ v3f_rotate_z(V3f v, float angle)
     return v3f_mul_mat3(v, rotation);
 }
 
+
+V3f v3f_normalize(V3f v)
+{
+    float len = v3f_dot(v, v);
+    return v3f_scale(v, 1/len);
+}
+
 Mat3 rotation_y(float angle)
 {
     return  (Mat3){
@@ -255,5 +267,15 @@ Mat3 mat3_add(Mat3 m1, Mat3 m2)
         m1.c[0] + m2.c[0], m1.c[1] + m2.c[1], m1.c[2] + m2.c[2],
         m1.c[3] + m2.c[3], m1.c[4] + m2.c[4], m1.c[5] + m2.c[5],
         m1.c[6] + m2.c[6], m1.c[7] + m2.c[7], m1.c[8] + m2.c[8],
+    };
+}
+
+
+Mat3 mat3_identity(void)
+{
+    return (Mat3) {
+        1, 0, 0,
+        0, 1, 0,
+        0, 0, 1,
     };
 }

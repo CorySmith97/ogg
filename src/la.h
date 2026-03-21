@@ -93,6 +93,7 @@ V3f   v3f_rotate_y(V3f v, float angle);
 V3f   v3f_rotate_z(V3f v, float angle);
 V3f   v3f_rotate_y_around_point(V3f v, V3f p, float angle);
 V3f   v3f_rotate_z_around_point(V3f v, V3f p, float angle);
+V3f   v3f_normalize(V3f v);
 
 V3i   v3i(int x, int y, int z);
 V3i   v3i_add(V3i v, V3i u);
@@ -100,5 +101,7 @@ V3i   v3i_sub(V3i v, V3i u);
 V3i   v3i_scale(V3i v, float scalar);
 float v3i_len(V3i v);
 float v3i_dot(V3i v, V3i u);
+
+Mat3 mat3_identity(void);
 
 #endif // LA_H
