@@ -8,7 +8,7 @@ SimpleMtl *load_material_file(const char *file)
     char *line = NULL;
     size_t len;
     ssize_t read;
-    SimpleMtl *mtl = calloc(1, sizeof(SimpleMtl));
+    SimpleMtl *mtl = malloc(sizeof(SimpleMtl));
 
     FILE *f = fopen(file, "r");
     if (f == NULL) 
@@ -28,6 +28,10 @@ SimpleMtl *load_material_file(const char *file)
 ret:
     fclose(f);
     return mtl;
+}
+
+Texture *load_texture(const char *file)
+{
 }
 
 Asset_Model *load_model_from_file(const char *file)

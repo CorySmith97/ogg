@@ -48,6 +48,12 @@ typedef struct {
 } SimpleMtl;
 
 typedef struct {
+    int width;
+    int height;
+    char *pixels;
+} Texture;
+
+typedef struct {
     V3f *position;
     V3f *normals;
     V3f *tex;

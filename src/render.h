@@ -32,6 +32,7 @@ typedef union Color
 typedef struct
 {
     V3f vertices[3];
+    V3f normals[3];
     Color colors[3];
     Image *image;
 } Triangle;

@@ -32,35 +32,35 @@ void game_init(void)
     render_init();
 
     SectionStart("ModelLoad");
-    model = load_model_from_file("data/diablo3_pose.obj");
+    model = load_model_from_file("data/shopkeeper.obj");
     model2 = load_model_from_file("data/cube.obj");
 
     SectionEnd("ModelLoad");
 }
 
+Light sun = {
+    .position = {4, 0, 0},
+    .color = {1, 1, 0},
+};
 void game_frame(void)
 {
-    Light sun = {
-        .position = {4, 0, 0},
-        .color = {1, 1, 1},
-    };
 
     SectionStart("Render");
     clear_background(COLOR_PURPLE);
 
     SectionStart("Renderd");
     Mat3 rotation = mat3_mul(rotation_y(angle),mat3_mul(rotation_z(angle), rotation_x(angle)));
-    draw_model(model, v3f(0, 0, 2), rotation);
+    //draw_model(model, v3f(0, 0, 2), rotation);
     //draw_model(model2, v3f(-2, -1, 8), rotation);
     //draw_model(model2, v3f(0, -1, 5), rotation);
-    //draw_model_with_light(model, v3f(-3, -0.5, 3), mat3_identity(), sun);
+    draw_model_with_light(model, v3f(0, -1, 1), mat3_identity(), sun);
     renderer_draw_triangles();
 
-    sun.position.z += 0.01;
+    sun.position = v3f_rotate_y_around_point(sun.position, v3f(0,0,2), angle);
 
     SectionEnd("Renderd");
 
-    angle += 0.01f;
+    angle += 0.001f;
 
     SectionEnd("Render");
 }

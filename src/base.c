@@ -7,7 +7,7 @@ void log_handler(Log_Level level, const char *msg, va_list args)
 {
     switch(level) {
         case LOG_INFO: {
-            printf("[INFO]\t");
+            printf("[info]\t");
         } break;
         case LOG_ERROR: {
             printf("[ERROR]\t");

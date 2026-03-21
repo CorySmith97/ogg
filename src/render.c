@@ -3,7 +3,7 @@
 #include <semaphore.h>
 #include <float.h>
 
-#define NUM_THREADS 1
+#define NUM_THREADS 12
 #define TILE_W 64
 #define TILE_H 64
 #define COL_GAME_WIDTH (GAME_WIDTH / TILE_W)
@@ -41,13 +41,15 @@ int pool_running = 1;
 void *worker_thread(void *arg)
 {
     UNUSED(arg);
-    while (1) {
+    while (1)
+    {
         pthread_mutex_lock(&queue_mutex);
 
         while (queue_head == queue_tail && pool_running)
             pthread_cond_wait(&queue_cond, &queue_mutex);
 
-        if (!pool_running && queue_head == queue_tail) {
+        if (!pool_running && queue_head == queue_tail)
+        {
             pthread_mutex_unlock(&queue_mutex);
             return NULL;
         }
@@ -59,18 +61,21 @@ void *worker_thread(void *arg)
         // Snapshot the triangle indices we need to process
         // so we can release the lock before doing pixel work
         size_t len = arrlen(bin->tri_idx);
-        size_t local_idx[len];  // VLA, or heap alloc if len could be huge
+
+        // TODO this needs to be a fixed buffer of some kind.
+        size_t local_idx[len]; // VLA, or heap alloc if len could be huge
         memcpy(local_idx, bin->tri_idx, len * sizeof(size_t));
-        arrsetlen(bin->tri_idx, 0);  // clear while locked, before workers
-                                     // can re-queue this bin next frame
+        arrsetlen(bin->tri_idx, 0); // clear while locked, before workers
+                                    // can re-queue this bin next frame
 
         pthread_mutex_unlock(&queue_mutex);
 
-        for (size_t i = 0; i < len; i++) {
+        for (size_t i = 0; i < len; i++)
+        {
             renderer_draw_triangle(
                 bin->tile_x * TILE_W,
                 bin->tile_y * TILE_H,
-                triangles[local_idx[i]]  // triangles[] is read-only during dispatch
+                triangles[local_idx[i]] // triangles[] is read-only during dispatch
             );
         }
 
@@ -323,6 +328,46 @@ void renderer_push_triangle(V3f v1, V3f v2, V3f v3, Color color[3])
     }
 }
 
+
+void renderer_push_triangle_w_normals(V3f positions[3], V3f normals[3], Color color[3])
+{
+    V2i pos1 = to_screen(project(positions[0]));
+    V2i pos2 = to_screen(project(positions[1]));
+    V2i pos3 = to_screen(project(positions[2]));
+    if (!check_bounds(pos1, pos2, pos3))
+        return;
+
+    AABBi rec = {
+        v2i(min(pos1.x, min(pos2.x, pos3.x)), min(pos1.y, min(pos2.y, pos3.y))),
+        v2i(max(pos1.x, max(pos2.x, pos3.x)), max(pos1.y, max(pos2.y, pos3.y))),
+    };
+
+    size_t t_minx = max(0, floor(rec.min.x / TILE_W));
+    size_t t_maxx = min((GAME_WIDTH / TILE_W) - 1, floor(rec.max.x / TILE_W));
+    size_t t_miny = max(0, floor(rec.min.y / TILE_H));
+    size_t t_maxy = min((GAME_HEIGHT / TILE_H) - 1, floor(rec.max.y / TILE_H));
+
+    if (t_minx > t_maxx || t_miny > t_maxy)
+        return;
+
+    Triangle triangle = {
+        .vertices = {positions[0], positions[1], positions[2]},
+        .normals = {normals[0], normals[1], normals[2]},
+        .colors = {color[0], color[1], color[2]},
+        .image = NULL,
+    };
+    arrput(triangles, triangle);
+    size_t idx = arrlen(triangles) - 1;
+
+    for (size_t j = t_miny; j <= t_maxy; j++)
+    {
+        for (size_t i = t_minx; i <= t_maxx; i++)
+        {
+            arrput(triangle_bins[i + j * COL_GAME_WIDTH].tri_idx, idx);
+        }
+    }
+}
+
 void renderer_draw_triangle(uint32_t tile_x, uint32_t tile_y, Triangle tri)
 {
     V2i pos1 = to_screen(project(tri.vertices[0]));
@@ -478,6 +523,7 @@ void clear_background(Color color)
         }
     }
 }
+
 void draw_model(Asset_Model *model, V3f position, Mat3 rotation)
 {
     V3f light_pos = (V3f){1, 0, 2};
@@ -529,6 +575,10 @@ void draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Ligh
         V3f p2 = v3f_mul_mat3(v2.position, rotation);
         V3f p3 = v3f_mul_mat3(v3.position, rotation);
 
+        V3f n1 = v3f_mul_mat3(v1.normal, rotation);
+        V3f n2 = v3f_mul_mat3(v2.normal, rotation);
+        V3f n3 = v3f_mul_mat3(v3.normal, rotation);
+
         p1.z = -p1.z;
         p2.z = -p2.z;
         p3.z = -p3.z;
@@ -539,9 +589,9 @@ void draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Ligh
         if (p1.z <= NEAR || p2.z <= NEAR || p3.z <= NEAR)
             continue;
 
-        Color c1 = simple_reflection(model->mtl, light.position, p1, v1.normal, light.color, COLOR_RED);
-        Color c2 = simple_reflection(model->mtl, light.position, p2, v2.normal, light.color, COLOR_RED);
-        Color c3 = simple_reflection(model->mtl, light.position, p3, v3.normal, light.color, COLOR_RED);
+        Color c1 = simple_reflection(model->mtl, light.position, p1, n1, light.color, COLOR_GREEN);
+        Color c2 = simple_reflection(model->mtl, light.position, p2, n2, light.color, COLOR_GREEN);
+        Color c3 = simple_reflection(model->mtl, light.position, p3, n3, light.color, COLOR_GREEN);
 
         Color colors[3] = {c1, c2, c3};
         renderer_push_triangle(
@@ -554,12 +604,20 @@ void draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Ligh
 
 Color simple_reflection(SimpleMtl *mtl, V3f light_pos, V3f v, V3f n, V3f light_color, Color object_color)
 {
+    if (mtl == NULL)
+        return object_color;
     V3f norm = v3f_normalize(n);
     V3f light_dir = v3f_normalize(v3f_sub(light_pos, v));
 
     float diff = fmaxf(v3f_dot(norm, light_dir), 0.0f);
-    V3f diffuse = v3f_scale(v3f_mul(light_color, mtl->diffuse), diff);
-    V3f result = v3f_add(diffuse, mtl->ambient);
+
+    V3f obj = {
+        object_color.r / 255.0,
+        object_color.g / 255.0,
+        object_color.b / 255.0,
+    };
+    V3f diffuse = v3f_scale(light_color, diff);
+    V3f result = v3f_mul(v3f_add(diffuse, mtl->ambient), obj);
 
     // clamp to [0, 1] before converting to avoid overflow
     Color res = (Color){
