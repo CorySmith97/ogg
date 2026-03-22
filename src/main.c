@@ -16,6 +16,11 @@
 #include "assets.c"
 #include "game.c"
 
+// TODO https://www.dgtlgrove.com/p/multi-core-by-default
+// By nature of this project, it is primed for a multithread by default
+// rewrite. Idk when I will get to this, but its in the plans.
+// Mar 21st 2026 -CSmith
+
 int main(int argc, char **argv)
 {
     UNUSED(argc);

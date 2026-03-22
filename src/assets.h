@@ -1,6 +1,12 @@
 #ifndef ASSET_H
 #define ASSET_H
 
+typedef enum
+{
+    OR_Regular,
+    OR_Flipped,
+} Orientation;
+
 typedef struct Vertex {
     V3f position;
     V3f normal;
@@ -62,11 +68,27 @@ typedef struct {
     SimpleMtl *mtl;
 } Asset_Model;
 
+/* Fonts are monospaces texture maps. Each character is the same size "sprite"
+ */
+typedef struct {
+    int width;
+    int height;
+    int character_width;
+    int character_height;
+    Orientation orientation;
+    char *bitmap;
+} Font;
+
 typedef struct {
     char *pixels;
     int width;
     int height;
 } Image;
+
+typedef struct {
+    char *key;
+    Asset_Model *value;
+} Asset_Model_KV;
 
 Asset_Model *load_model_from_file(const char *file);
 void         deload_model(Asset_Model *model);

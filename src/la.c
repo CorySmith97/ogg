@@ -215,6 +215,32 @@ V3f v3f_normalize(V3f v)
     return v3f_scale(v, 1/len);
 }
 
+V3f v3f_cross(V3f v, V3f u)
+{
+    return (V3f){
+        v.y*u.z - v.z*u.y,
+        v.z*u.x - v.x*u.z,
+        v.x*u.y - v.y*u.x,
+    };
+}
+
+inline V4f v4f(float x, float y, float z, float w)
+{
+    return (V4f){
+        x, y, z, w,
+    };
+}
+
+V4f v4f_mul_mat4(V4f v, Mat4 m)
+{
+    return (V4f){
+        v.x * m.c[0] + v.y * m.c[1] + v.z * m.c[2] + v.w * m.c[3],
+        v.x * m.c[4] + v.y * m.c[5] + v.z * m.c[6] + v.w * m.c[7],
+        v.x * m.c[8] + v.y * m.c[9] + v.z * m.c[10] + v.z * m.c[11],
+        v.x * m.c[12] + v.y * m.c[13] + v.z * m.c[14] + v.z * m.c[15],
+    };
+}
+
 Mat3 rotation_y(float angle)
 {
     return  (Mat3){
@@ -261,6 +287,7 @@ Mat3 mat3_mul(Mat3 m1, Mat3 m2)
         m1.c[6]*m2.c[2] + m1.c[7]*m2.c[5] + m1.c[8]*m2.c[8],
     };
 }
+
 Mat3 mat3_add(Mat3 m1, Mat3 m2)
 {
     return (Mat3){
@@ -278,4 +305,78 @@ Mat3 mat3_identity(void)
         0, 1, 0,
         0, 0, 1,
     };
+}
+
+Mat4 mat4_identity(void)
+{
+    return (Mat4) {
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1,
+    };
+}
+
+
+void camera_update(Camera *cam)
+{
+}
+
+Mat4 camera_matrix(Camera cam)
+{
+    V3f dir = v3f_normalize(v3f_sub(cam.target, cam.position));
+    V3f right = v3f_cross(cam.up, dir);
+
+    Mat4 camera_rud = (Mat4){
+        right.x,  right.y,  right.z,  0,
+        cam.up.x, cam.up.y, cam.up.z, 0,
+        dir.x,    dir.y,    dir.z,    0,
+        0,        0,        0,        1,
+    };
+
+    Mat4 cam_trans = (Mat4) {
+        1, 0, 0, -cam.position.x,
+        0, 1, 0, -cam.position.y,
+        0, 0, 1, -cam.position.z,
+        0, 0, 0, 1,
+    };
+    return mat4_mul(camera_rud, cam_trans);
+}
+
+Mat4 mat4_mul(Mat4 m1, Mat4 m2)
+{
+    return (Mat4){
+        // Row 0 of m1 · Columns of m2
+        m1.c[0]*m2.c[0] + m1.c[1]*m2.c[4] + m1.c[2]*m2.c[8] + m1.c[3]*m2.c[12], 
+        m1.c[0]*m2.c[1] + m1.c[1]*m2.c[5] + m1.c[2]*m2.c[9] + m1.c[3]*m2.c[13],
+        m1.c[0]*m2.c[2] + m1.c[1]*m2.c[6] + m1.c[2]*m2.c[10] + m1.c[3]*m2.c[14],
+        m1.c[0]*m2.c[3] + m1.c[1]*m2.c[7] + m1.c[2]*m2.c[11] + m1.c[3]*m2.c[15],
+
+        // Row 1 of m1 · Columns of m2
+        m1.c[4]*m2.c[0] + m1.c[5]*m2.c[4] + m1.c[6]*m2.c[8]  + m1.c[7]*m2.c[12], 
+        m1.c[4]*m2.c[1] + m1.c[5]*m2.c[5] + m1.c[6]*m2.c[9]  + m1.c[7]*m2.c[13],
+        m1.c[4]*m2.c[2] + m1.c[5]*m2.c[6] + m1.c[6]*m2.c[10] + m1.c[7]*m2.c[14],
+        m1.c[4]*m2.c[3] + m1.c[5]*m2.c[7] + m1.c[6]*m2.c[11] + m1.c[7]*m2.c[15],
+
+        // Row 2 of m1 · Columns of m2
+        m1.c[8]*m2.c[0] + m1.c[9]*m2.c[4] + m1.c[10]*m2.c[8]  + m1.c[11]*m2.c[12], 
+        m1.c[8]*m2.c[1] + m1.c[9]*m2.c[5] + m1.c[10]*m2.c[9]  + m1.c[11]*m2.c[13],
+        m1.c[8]*m2.c[2] + m1.c[9]*m2.c[6] + m1.c[10]*m2.c[10] + m1.c[11]*m2.c[14],
+        m1.c[8]*m2.c[3] + m1.c[9]*m2.c[7] + m1.c[10]*m2.c[11] + m1.c[11]*m2.c[15],
+
+        m1.c[12]*m2.c[0] + m1.c[13]*m2.c[4] + m1.c[14]*m2.c[8]  + m1.c[15]*m2.c[12], 
+        m1.c[12]*m2.c[1] + m1.c[13]*m2.c[5] + m1.c[14]*m2.c[9]  + m1.c[15]*m2.c[13],
+        m1.c[12]*m2.c[2] + m1.c[13]*m2.c[6] + m1.c[14]*m2.c[10] + m1.c[15]*m2.c[14],
+        m1.c[12]*m2.c[3] + m1.c[13]*m2.c[7] + m1.c[14]*m2.c[11] + m1.c[15]*m2.c[15],
+    };
+}
+
+
+V3f v3f_translate_by_mat4(V3f v, Mat4 m)
+{
+    V4f v1 = v4f(v.x, v.y, v.z, 1);
+
+    V4f translated = v4f_mul_mat4(v1, m);
+
+    return v3f(translated.x, translated.y, translated.z);
 }

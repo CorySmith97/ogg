@@ -32,6 +32,17 @@ ret:
 
 Texture *load_texture(const char *file)
 {
+    char *line = NULL;
+    size_t len;
+    ssize_t read;
+    Texture *tex = malloc(sizeof(Texture));
+
+    FILE *f = fopen(file, "r");
+    if (f == NULL)
+        goto ret;
+ret:
+    fclose(f);
+    return tex;
 }
 
 Asset_Model *load_model_from_file(const char *file)

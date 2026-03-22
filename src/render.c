@@ -565,6 +565,7 @@ void draw_model(Asset_Model *model, V3f position, Mat3 rotation)
 
 void draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Light light)
 {
+    Mat4 view = camera_matrix(renderer.camera);
     for (int i = 0; i < arrlen(model->vertices); i += 3)
     {
         Vertex v1 = model->vertices[i];
@@ -586,12 +587,16 @@ void draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Ligh
         p2 = v3f_add(p2, position);
         p3 = v3f_add(p3, position);
 
+        p1 = v3f_translate_by_mat4(p1, view);
+        p2 = v3f_translate_by_mat4(p2, view);
+        p3 = v3f_translate_by_mat4(p3, view);
+
         if (p1.z <= NEAR || p2.z <= NEAR || p3.z <= NEAR)
             continue;
 
-        Color c1 = simple_reflection(model->mtl, light.position, p1, n1, light.color, COLOR_GREEN);
-        Color c2 = simple_reflection(model->mtl, light.position, p2, n2, light.color, COLOR_GREEN);
-        Color c3 = simple_reflection(model->mtl, light.position, p3, n3, light.color, COLOR_GREEN);
+        Color c1 = simple_reflection(model->mtl, light.position, p1, n1, light.color, COLOR_WHITE);
+        Color c2 = simple_reflection(model->mtl, light.position, p2, n2, light.color, COLOR_WHITE);
+        Color c3 = simple_reflection(model->mtl, light.position, p3, n3, light.color, COLOR_WHITE);
 
         Color colors[3] = {c1, c2, c3};
         renderer_push_triangle(

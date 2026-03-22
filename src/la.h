@@ -39,6 +39,14 @@ union V3i {
     int c[3];
 };
 
+typedef union V4f V4f;
+union V4f {
+    struct {
+        float x, y, z, w;
+    };
+    float c[4];
+};
+
 typedef union Mat2 Mat2;
 union Mat2 {
     float c[4];
@@ -65,6 +73,8 @@ typedef struct Camera {
 
 void camera_update(Camera *cam);
 Mat4 camera_matrix(Camera cam);
+
+// TODO i think the contructors should be macros?
 
 V2f   v2f(float x, float y);
 V2f   v2f_add(V2f v, V2f u);
@@ -94,6 +104,7 @@ V3f   v3f_rotate_z(V3f v, float angle);
 V3f   v3f_rotate_y_around_point(V3f v, V3f p, float angle);
 V3f   v3f_rotate_z_around_point(V3f v, V3f p, float angle);
 V3f   v3f_normalize(V3f v);
+V3f   v3f_translate_by_mat4(V3f v, Mat4 m);
 
 V3i   v3i(int x, int y, int z);
 V3i   v3i_add(V3i v, V3i u);
@@ -102,6 +113,17 @@ V3i   v3i_scale(V3i v, float scalar);
 float v3i_len(V3i v);
 float v3i_dot(V3i v, V3i u);
 
+V4f v4f(float x, float y, float z, float w); 
+V4f v4f_mul_mat4(V4f v, Mat4 m);
+
 Mat3 mat3_identity(void);
+Mat3 mat3_mul(Mat3 m1, Mat3 m2);
+Mat3 rotation_x(float angle);
+Mat3 rotation_y(float angle);
+Mat3 rotation_z(float angle);
+Mat3 mat3_add(Mat3 m1, Mat3 m2);
+
+Mat4 mat4_identity(void);
+Mat4 mat4_mul(Mat4 m1, Mat4 m2);
 
 #endif // LA_H
