@@ -69,7 +69,7 @@ static struct
     .camera = {
         .position = {0,0,0},
         .up = {0, 1, 0},
-        .target = {0, 0, 1},
+        .front = {0, 0, 1},
     },
 };
 

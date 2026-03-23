@@ -14,6 +14,21 @@ static struct {
 } platform_ctx = {
 };
 
+typedef struct MouseState {
+    f32 mouse_pos_x;
+    f32 mouse_pos_y;
+    f32 mouse_pos_dx;
+    f32 mouse_pos_dy;
+    bool mouse_button_state;
+} MouseState;
+
+typedef enum {
+    MOUSEBUTTON_LEFT = 0x0,
+    MOUSEBUTTON_RIGHT = 0x1,
+    MOUSEBUTTON_MIDDLE = 0x2,
+    MOUSEBUTTON_INVALID = 0x100,
+} MouseCode;
+
 void present(void);
 void platform_init(const char *name, uint32_t width, uint32_t height);
 void platform_handle_events(bool *quit);

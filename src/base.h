@@ -32,4 +32,9 @@ enum
 void log_handler(Log_Level level, const char *msg, va_list args);
 void logger(Log_Level level, const char *msg, ...);
 
+#define log_info(msg, ...) logger(LOG_INFO, (msg), ##__VA_ARGS__)
+#define log_error(msg, ...) logger(LOG_ERROR, (msg), ##__VA_ARGS__)
+#define log_debug(msg, ...) logger(LOG_DEBUG, (msg), ##__VA_ARGS__)
+#define log_warn(msg, ...) logger(LOG_WARN, (msg), ##__VA_ARGS__)
+
 #endif // BASE_H

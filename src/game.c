@@ -13,8 +13,8 @@ void game_run(void)
     bool quit = false;
     while (!quit) {
         platform_handle_events(&quit);
-        game_frame();
 
+        game_frame();
 
         platform_present();
         //profiler_report();
@@ -52,18 +52,28 @@ void game_frame(void)
     //draw_model(model, v3f(0, 0, 2), rotation);
     //draw_model(model2, v3f(-2, -1, 8), rotation);
     //draw_model(model2, v3f(0, -1, 5), rotation);
-    draw_model(model2, sun.position, mat3_identity());
     draw_model_with_light(model, v3f(0, -1, 2), mat3_identity(), sun);
     renderer_draw_triangles();
+    sun.position = renderer.camera.position;
+    //sun.position = v3f_rotate_y_around_point(sun.position, v3f(0,0,4), sinf(angle));
 
-    if (is_key_pressed(KEY_A)) {
-        logger(LOG_DEBUG, "Pressing key");
+    if (is_key_down(KEY_W)) {
+        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(renderer.camera.front, 0.01));
     }
-    sun.position = v3f_rotate_y_around_point(sun.position, v3f(0,0,4), sinf(angle));
+    if (is_key_down(KEY_S)) {
+        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(renderer.camera.front, -0.01));
+    }
+
+    if (is_key_down(KEY_A)) {
+        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(v3f_cross(renderer.camera.front, renderer.camera.up), 0.01));
+    }
+    if (is_key_down(KEY_D)) {
+        renderer.camera.position = v3f_sub(renderer.camera.position, v3f_scale(v3f_cross(renderer.camera.front, renderer.camera.up), 0.01));
+    }
 
     SectionEnd("Renderd");
 
-    angle += 0.0001f;
+    angle = 0.0001f;
 
     SectionEnd("Render");
     ///renderer.camera.position.x += 0.001;

@@ -1,5 +1,20 @@
 #include "platform_sdl.h"
 
+bool is_key_down(int key);
+bool is_key_released(int key);
+void on_key_down(int key);
+void on_key_up(int key);
+
+#define MAX_KEYS 512
+
+typedef struct KeyboardState {
+    bool key_curr_state[MAX_KEYS];
+    bool key_previous_state[MAX_KEYS];
+    bool key_pressed[MAX_KEYS];
+} KeyboardState;
+
+static KeyboardState keyboard_state;
+
 void platform_init(const char *name, uint32_t width, uint32_t height)
 {
     SDL_SetMainReady();
@@ -20,70 +35,24 @@ void platform_init(const char *name, uint32_t width, uint32_t height)
                                              GAME_WIDTH, GAME_HEIGHT);
 }
 
-
-#define MAX_KEYBOARD_KEYS 512
-
-typedef struct {
-    bool keys_pressed[MAX_KEYBOARD_KEYS];
-    bool keys_released[MAX_KEYBOARD_KEYS];
-    bool prev_keys_pressed[MAX_KEYBOARD_KEYS];
-    bool prev_keys_released[MAX_KEYBOARD_KEYS];
-} KeyboardState;
-
-static KeyboardState keyboard_state = {false};
-
 void platform_handle_events(bool *quit)
 {
     SDL_Event event;
     while (SDL_PollEvent(&event))
     {
-        switch (event.type)
-        {
-        case SDL_QUIT:
-        {
-            *quit = true;
-        }
-        break;
-        case SDL_KEYDOWN:
-        {
-                if (keyboard_state.keys_pressed[event.key.keysym.scancode]) {
-                    break; // Key is already pressed, skip updating state
-                } else {
-                    keyboard_state.prev_keys_released[event.key.keysym.scancode] = true;
-                    keyboard_state.prev_keys_pressed[event.key.keysym.scancode] = false;
-                }
-                keyboard_state.keys_pressed[event.key.keysym.scancode] = true;
-                logger(LOG_DEBUG, "trying to log key down");
+        switch (event.type) {
+            case SDL_QUIT:
+                *quit = true;
                 break;
-        }
-        break;
-        case SDL_KEYUP:
-        {
-                if (keyboard_state.keys_released[event.key.keysym.scancode]) {
-                    break; // Key is already released, skip updating state
-                } else {
-                    keyboard_state.prev_keys_released[event.key.keysym.scancode] = false;
-                    keyboard_state.prev_keys_pressed[event.key.keysym.scancode] = true;
-                }
-                keyboard_state.keys_released[event.key.keysym.scancode] = true;
+            case SDL_KEYDOWN:
+                on_key_down(event.key.keysym.scancode);
                 break;
-        }
-        break;
+            case SDL_KEYUP:
+                on_key_up(event.key.keysym.scancode);
+                break;
         default:
         }
 
-        // Update key states
-        for (int i = 0; i < MAX_KEYBOARD_KEYS; i++) {
-            if (keyboard_state.prev_keys_pressed[i] != keyboard_state.keys_pressed[i]) {
-                // Key was pressed, update prev keys and set released to false
-                keyboard_state.prev_keys_pressed[i] = true;
-                keyboard_state.prev_keys_released[i] = false;
-            } else if (keyboard_state.prev_keys_released[i] != keyboard_state.keys_released[i]) {
-                // Key was released, update prev keys and set pressed to false
-                keyboard_state.prev_keys_released[i] = true;
-                keyboard_state.prev_keys_pressed[i] = false;
-            }
-        }
     }
 }
 
@@ -113,56 +82,63 @@ void platform_present()
 }
 
 typedef enum {
-    KEY_A = SDLK_a,
-    KEY_B = SDLK_b,
-    KEY_C = SDLK_c,
-    KEY_D = SDLK_d,
-    KEY_E = SDLK_e,
-    KEY_F = SDLK_f,
-    KEY_G = SDLK_g,
-    KEY_H = SDLK_h,
-    KEY_I = SDLK_i,
-    KEY_J = SDLK_j,
-    KEY_K = SDLK_k,
-    KEY_L = SDLK_l,
-    KEY_M = SDLK_m,
-    KEY_N = SDLK_n,
-    KEY_O = SDLK_o,
-    KEY_P = SDLK_p,
-    KEY_Q = SDLK_q,
-    KEY_R = SDLK_r,
-    KEY_S = SDLK_s,
-    KEY_T = SDLK_t,
-    KEY_U = SDLK_u,
-    KEY_V = SDLK_v,
-    KEY_W = SDLK_w,
-    KEY_X = SDLK_x,
-    KEY_Y = SDLK_y,
-    KEY_Z = SDLK_z,
+    KEY_A = SDL_SCANCODE_A,
+    KEY_B = SDL_SCANCODE_B,
+    KEY_C = SDL_SCANCODE_C,
+    KEY_D = SDL_SCANCODE_D,
+    KEY_E = SDL_SCANCODE_E,
+    KEY_F = SDL_SCANCODE_F,
+    KEY_G = SDL_SCANCODE_G,
+    KEY_H = SDL_SCANCODE_H,
+    KEY_I = SDL_SCANCODE_I,
+    KEY_J = SDL_SCANCODE_J,
+    KEY_K = SDL_SCANCODE_K,
+    KEY_L = SDL_SCANCODE_L,
+    KEY_M = SDL_SCANCODE_M,
+    KEY_N = SDL_SCANCODE_N,
+    KEY_O = SDL_SCANCODE_O,
+    KEY_P = SDL_SCANCODE_P,
+    KEY_Q = SDL_SCANCODE_Q,
+    KEY_R = SDL_SCANCODE_R,
+    KEY_S = SDL_SCANCODE_S,
+    KEY_T = SDL_SCANCODE_T,
+    KEY_U = SDL_SCANCODE_U,
+    KEY_V = SDL_SCANCODE_V,
+    KEY_W = SDL_SCANCODE_W,
+    KEY_X = SDL_SCANCODE_X,
+    KEY_Y = SDL_SCANCODE_Y,
+    KEY_Z = SDL_SCANCODE_Z,
 
     KEY_ENTER = SDLK_RETURN,
     KEY_ESCAPE = SDLK_ESCAPE,
     KEY_SPACE = SDLK_SPACE
 } Keys;
 
-bool is_key_pressed(int key) {
-    if ((key > 0) && (key < MAX_KEYBOARD_KEYS)) {
-        return !keyboard_state.prev_keys_pressed[key] && keyboard_state.keys_pressed[key];
-    }
-    return false;
-}
-
 bool is_key_down(int key) {
-    if ((key > 0) && (key < MAX_KEYBOARD_KEYS)) {
-        return keyboard_state.prev_keys_pressed[key] && keyboard_state.keys_pressed[key];
+    bool pressed = false;
+    if ((key > 0) && (key < MAX_KEYS)) {
+        if ((keyboard_state.key_previous_state[key] == true) && 
+             (keyboard_state.key_curr_state[key] == true))
+        pressed = true;
     }
-    return false;
+    return pressed;
 }
 
 bool is_key_released(int key) {
-    if ((key > 0) && (key < MAX_KEYBOARD_KEYS)) {
-        return !keyboard_state.prev_keys_released[key] && keyboard_state.keys_released[key];
+    bool pressed = false;
+    if ((key > 0) && (key < MAX_KEYS)) {
+        if ((keyboard_state.key_previous_state[key] == true) && (keyboard_state.key_curr_state[key] == false))
+        pressed = true;
     }
-    return false;
+    return pressed;
 }
 
+void on_key_down(int key) { 
+    if (keyboard_state.key_curr_state[key] == true) {
+        keyboard_state.key_previous_state[key] = true;
+    }
+    keyboard_state.key_curr_state[key] = true;
+}
+void on_key_up(int key) { 
+    keyboard_state.key_curr_state[key] = false;
+}

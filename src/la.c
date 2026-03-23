@@ -324,7 +324,7 @@ void camera_update(Camera *cam)
 
 Mat4 camera_matrix(Camera cam)
 {
-    V3f dir = v3f_normalize(v3f_sub(cam.target, cam.position));
+    V3f dir = v3f_normalize(cam.front);
     V3f right = v3f_cross(cam.up, dir);
 
     Mat4 camera_rud = (Mat4){
