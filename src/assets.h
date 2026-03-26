@@ -41,6 +41,13 @@ typedef enum
 } IlluminationModals;
 
 typedef struct {
+    int width;
+    int height;
+    int stride;
+    char *data;
+} Texture;
+
+typedef struct {
     V3f ambient;                // Ka
     V3f diffuse;                // Kd
     V3f specular;               // Ks
@@ -51,13 +58,8 @@ typedef struct {
     float optical_density;      // Ni
     IlluminationModals illum;   // illum
     const char *texture_name;   // Not doing this quite yet.
+    Texture *diffuse_texture;   // map_Kd
 } SimpleMtl;
-
-typedef struct {
-    int width;
-    int height;
-    char *pixels;
-} Texture;
 
 typedef struct {
     V3f *position;

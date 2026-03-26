@@ -5,6 +5,7 @@
 #define FOV 90.0f
 #define FAR 5.0f
 #define NEAR 0.1f
+#define ASPECT_RATIO 16/9
 
 static V2f project(V3f v)
 {
@@ -64,4 +65,9 @@ static bool barycentric(V2i v1, V2i v2, V2i v3, V2i p, V3f *b)
         return true;
 
     return false;
+}
+
+static inline float deg_to_rad(float deg)
+{
+    return deg * (M_PI/180.0f);
 }

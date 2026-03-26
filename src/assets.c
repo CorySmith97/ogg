@@ -3,6 +3,10 @@
 #define ASSET_DIR "data/"
 #define BUFFER_SIZE 1024
 
+Texture *load_texture_file(const char *file);
+SimpleMtl *load_material_file(const char *file);
+Asset_Model *load_model_from_file(const char *file);
+
 SimpleMtl *load_material_file(const char *file)
 {
     char *line = NULL;
@@ -23,6 +27,13 @@ SimpleMtl *load_material_file(const char *file)
                 sscanf(line, "Kd %f %f %f", &mtl->diffuse.x, &mtl->diffuse.y, &mtl->diffuse.z);
             }
         }
+
+        if (strncmp(line, "map_Kd", 6) == 0) {
+            line[strcspn(line, "\n")] = '\0';
+            char file_name[256];
+            snprintf(file_name, sizeof(file_name), "data/%s",  &line[7]);
+            mtl->diffuse_texture = load_texture_file(file_name);
+        }
     }
 
 ret:
@@ -30,18 +41,17 @@ ret:
     return mtl;
 }
 
-Texture *load_texture(const char *file)
+Texture *load_texture_file(const char *file)
 {
-    char *line = NULL;
-    size_t len;
-    ssize_t read;
     Texture *tex = malloc(sizeof(Texture));
 
-    FILE *f = fopen(file, "r");
-    if (f == NULL)
-        goto ret;
-ret:
-    fclose(f);
+    stbi_set_flip_vertically_on_load(true);
+    unsigned char *data = stbi_load(file, &tex->width, &tex->height, &tex->stride, 0);
+    int size = tex->width * tex->height * tex->stride;
+    tex->data = malloc(size);
+    memcpy(tex->data, data, size);
+
+    stbi_image_free(data);
     return tex;
 }
 

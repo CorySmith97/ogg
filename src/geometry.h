@@ -22,5 +22,6 @@ static bool         aabbi_collision(AABBi a, AABBi b);
 static float        signed_area(int ax, int ay, int bx, int by, int cx, int cy);
 static bool         barycentric(V2i v1, V2i v2, V2i v3, V2i p, V3f *b);
 static V2i          world_coord_to_2d(Camera c, V3f v);
+static inline float deg_to_rad(float deg);
 
 #endif // GEOMETRY_H

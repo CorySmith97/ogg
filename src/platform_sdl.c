@@ -4,6 +4,7 @@ bool is_key_down(int key);
 bool is_key_released(int key);
 void on_key_down(int key);
 void on_key_up(int key);
+void on_mouse_moved(float x, float y, float dx, float dy);
 
 #define MAX_KEYS 512
 
@@ -37,6 +38,12 @@ void platform_init(const char *name, uint32_t width, uint32_t height)
 
 void platform_handle_events(bool *quit)
 {
+    if (platform_ctx.mouse_enabled) {
+        SDL_ShowCursor(SDL_ENABLE);
+    } else {
+        // TODO add a way to lock mouse to screen.
+        SDL_ShowCursor(SDL_DISABLE);
+    }
     SDL_Event event;
     while (SDL_PollEvent(&event))
     {
@@ -45,15 +52,18 @@ void platform_handle_events(bool *quit)
                 *quit = true;
                 break;
             case SDL_KEYDOWN:
-                on_key_down(event.key.keysym.scancode);
+                //on_key_down(event.key.keysym.scancode);
                 break;
             case SDL_KEYUP:
-                on_key_up(event.key.keysym.scancode);
+                //on_key_up(event.key.keysym.scancode);
+                break;
+            case SDL_MOUSEMOTION:
+                on_mouse_moved(event.motion.x, event.motion.y, event.motion.xrel, event.motion.yrel);
                 break;
         default:
         }
-
     }
+    platform_ctx.keystate = SDL_GetKeyboardState(NULL);
 }
 
 void platform_deinit(void)
@@ -64,16 +74,10 @@ void platform_deinit(void)
 
 void platform_present()
 {
-    SDL_Rect dst;
-    dst.x = 0;
-    dst.y = 0;
-    dst.w = platform_ctx.width;
-    dst.h = platform_ctx.height;
     void *texpixels;
     int pitch;
     SDL_LockTexture(platform_ctx.texture, NULL, &texpixels, &pitch);
     memcpy(texpixels, renderer.pixels, renderer.width * renderer.height * sizeof(uint32_t));
-    // printf("pixel 0: %d Pixel 100: %d\n", s->pixels[0], s->pixels[100]);
     SDL_UnlockTexture(platform_ctx.texture);
 
     SDL_RenderClear(platform_ctx.renderer);
@@ -110,15 +114,14 @@ typedef enum {
     KEY_Z = SDL_SCANCODE_Z,
 
     KEY_ENTER = SDLK_RETURN,
-    KEY_ESCAPE = SDLK_ESCAPE,
+    KEY_ESCAPE = SDL_SCANCODE_ESCAPE,
     KEY_SPACE = SDLK_SPACE
 } Keys;
 
 bool is_key_down(int key) {
     bool pressed = false;
     if ((key > 0) && (key < MAX_KEYS)) {
-        if ((keyboard_state.key_previous_state[key] == true) && 
-             (keyboard_state.key_curr_state[key] == true))
+        if (platform_ctx.keystate[key])
         pressed = true;
     }
     return pressed;
@@ -133,12 +136,54 @@ bool is_key_released(int key) {
     return pressed;
 }
 
-void on_key_down(int key) { 
+void on_key_down(int key) 
+{
+    log_info("key %d", key);
     if (keyboard_state.key_curr_state[key] == true) {
         keyboard_state.key_previous_state[key] = true;
     }
     keyboard_state.key_curr_state[key] = true;
 }
-void on_key_up(int key) { 
+void on_key_up(int key) 
+{ 
     keyboard_state.key_curr_state[key] = false;
+}
+
+void on_mouse_down(int button) 
+{
+
+}
+
+void onMouseUp(int button) 
+{ 
+}
+
+V2f get_mouse_pos()
+{
+    return v2f(
+            platform_ctx.mouse_state.mouse_pos_x,
+            platform_ctx.mouse_state.mouse_pos_y);
+}
+
+V2f get_mouse_delta()
+{
+    return v2f(
+            platform_ctx.mouse_state.mouse_pos_dx,
+            platform_ctx.mouse_state.mouse_pos_dy);
+}
+
+void on_mouse_moved(float x, float y, float dx, float dy) 
+{ 
+    platform_ctx.mouse_state.mouse_pos_x = x;
+    platform_ctx.mouse_state.mouse_pos_y = y;
+    platform_ctx.mouse_state.mouse_pos_dx = dx;
+    platform_ctx.mouse_state.mouse_pos_dy = dy;
+}
+
+void set_escape_quit(bool *quit)
+{
+    if (is_key_down(KEY_ESCAPE)) {
+        log_info("Hello");
+        *quit = true;
+    }
 }

@@ -70,6 +70,8 @@ static struct
         .position = {0,0,0},
         .up = {0, 1, 0},
         .front = {0, 0, 1},
+        .pitch = 0.0f,
+        .yaw = -90.0f,
     },
 };
 

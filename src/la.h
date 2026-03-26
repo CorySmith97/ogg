@@ -69,6 +69,8 @@ typedef struct Camera {
     V3f up;
     V3f front;
     float fovy;
+    float pitch;
+    float yaw;
 } Camera;
 
 void camera_update(Camera *cam);
@@ -125,5 +127,6 @@ Mat3 mat3_add(Mat3 m1, Mat3 m2);
 
 Mat4 mat4_identity(void);
 Mat4 mat4_mul(Mat4 m1, Mat4 m2);
+Mat4 perspective(float near, float far, float ar, float fov);
 
 #endif // LA_H

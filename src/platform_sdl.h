@@ -3,24 +3,27 @@
 
 #define MAX_KEYBOARD 512
 
-static struct {
-    SDL_Window *window;
-    SDL_Renderer *renderer;
-    SDL_Texture *texture;
-    uint32_t width;
-    uint32_t height;
-    uint8_t keystate[MAX_KEYBOARD];
-    uint8_t prev_keystate[MAX_KEYBOARD];
-} platform_ctx = {
-};
-
 typedef struct MouseState {
-    f32 mouse_pos_x;
-    f32 mouse_pos_y;
-    f32 mouse_pos_dx;
-    f32 mouse_pos_dy;
+    float mouse_pos_x;
+    float mouse_pos_y;
+    float mouse_pos_dx;
+    float mouse_pos_dy;
     bool mouse_button_state;
 } MouseState;
+
+static struct {
+    SDL_Window      *window;
+    SDL_Renderer    *renderer;
+    SDL_Texture     *texture;
+    uint32_t        width;
+    uint32_t        height;
+    uint8_t         *keystate;
+    MouseState      mouse_state;
+    bool            mouse_enabled;
+} platform_ctx = {
+    .mouse_enabled = true,
+};
+
 
 typedef enum {
     MOUSEBUTTON_LEFT = 0x0,
@@ -36,5 +39,6 @@ void platform_deinit(void);
 void platform_present(void);
 bool is_key_down(int key);
 bool is_key_released(int key);
+void set_escape_quit(bool *quit);
 
 #endif // PLATFORM_SDL_H

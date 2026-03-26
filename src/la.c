@@ -322,10 +322,10 @@ void camera_update(Camera *cam)
 {
 }
 
-Mat4 camera_matrix(Camera cam)
+/* Mat4 camera_matrix(Camera cam)
 {
     V3f dir = v3f_normalize(cam.front);
-    V3f right = v3f_cross(cam.up, dir);
+    V3f right = v3f_normalize(v3f_cross(cam.up, dir));
 
     Mat4 camera_rud = (Mat4){
         right.x,  right.y,  right.z,  0,
@@ -341,6 +341,20 @@ Mat4 camera_matrix(Camera cam)
         0, 0, 0, 1,
     };
     return mat4_mul(camera_rud, cam_trans);
+} */
+
+Mat4 camera_matrix(Camera cam)
+{
+    V3f f = v3f_normalize(cam.front);
+    V3f r = v3f_normalize(v3f_cross(cam.up, f));
+    V3f u = v3f_cross(f, r);
+
+    return (Mat4){
+        r.x, r.y, r.z, -v3f_dot(r, cam.position),
+        u.x, u.y, u.z, -v3f_dot(u, cam.position),
+        f.x, f.y, f.z, -v3f_dot(f, cam.position),
+        0,   0,   0,    1,
+    };
 }
 
 Mat4 mat4_mul(Mat4 m1, Mat4 m2)
@@ -379,4 +393,15 @@ V3f v3f_translate_by_mat4(V3f v, Mat4 m)
     V4f translated = v4f_mul_mat4(v1, m);
 
     return v3f(translated.x, translated.y, translated.z);
+}
+
+Mat4 perspective(float near, float far, float ar, float fov)
+{
+    return (Mat4){
+        tanf(fov/2)/ar, 0, 0, 0,
+        0, tanf(fov/2), 0, 0,
+        0, 0, -((far + near)/(far-near)), -((2*far*near)/(far-near)),
+        0, 0, -1, 0,
+
+    };
 }

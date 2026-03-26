@@ -9,8 +9,7 @@
 #define COL_GAME_WIDTH (GAME_WIDTH / TILE_W)
 #define TILE_COUNT ((GAME_WIDTH / TILE_W) * (GAME_HEIGHT / TILE_H))
 
-typedef struct
-{
+typedef struct {
     int tile_x, tile_y;
     size_t *tri_idx;
 } TileBin;
@@ -468,17 +467,23 @@ void set_quad(V2i v1, V2i v2, V2i v3, V2i v4, Color c)
     set_triangle(v1, v3, v4, c);
 }
 
-Color get_color_from_image(Image *i, V2f uv)
+Color get_color_from_texture(Texture *t, V2f uv)
 {
-    Color c = {0};
-    size_t x = uv.x * i->width;
-    size_t y = uv.y * i->height;
+    // Clamp UVs to [0, 1] to avoid out-of-bounds
+    uv.x = fmaxf(0.0f, fminf(1.0f, uv.x));
+    uv.y = fmaxf(0.0f, fminf(1.0f, uv.y));
 
-    c.r = i->pixels[x + y];
-    c.g = i->pixels[x + y + 1];
-    c.b = i->pixels[x + y + 2];
-    c.a = i->pixels[x + y + 3];
+    size_t x = (size_t)(uv.x * (t->width  - 1));
+    size_t y = (size_t)(uv.y * (t->height - 1));
 
+    // Row-major 2D index, then * channels to get byte offset
+    size_t idx = (y * t->width + x) * t->stride;
+
+    Color c;
+    c.r = t->data[idx + 0];
+    c.g = t->data[idx + 1];
+    c.b = t->data[idx + 2];
+    c.a = t->stride == 4 ? t->data[idx + 3] : 255;
     return c;
 }
 
@@ -565,6 +570,7 @@ void draw_model(Asset_Model *model, V3f position, Mat3 rotation)
 
 void draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Light light)
 {
+    //Mat4 pers = perspective(NEAR, FAR, ASPECT_RATIO, FOV);
     Mat4 view = camera_matrix(renderer.camera);
     for (int i = 0; i < arrlen(model->vertices); i += 3)
     {
@@ -594,9 +600,13 @@ void draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Ligh
         if (p1.z <= NEAR || p2.z <= NEAR || p3.z <= NEAR)
             continue;
 
-        Color c1 = simple_reflection(model->mtl, light.position, p1, n1, light.color, COLOR_WHITE);
-        Color c2 = simple_reflection(model->mtl, light.position, p2, n2, light.color, COLOR_WHITE);
-        Color c3 = simple_reflection(model->mtl, light.position, p3, n3, light.color, COLOR_WHITE);
+        Color t1 = get_color_from_texture(model->mtl->diffuse_texture, v2f(v1.uv.x, v1.uv.y));
+        Color t2 = get_color_from_texture(model->mtl->diffuse_texture, v2f(v2.uv.x, v2.uv.y));
+        Color t3 = get_color_from_texture(model->mtl->diffuse_texture, v2f(v3.uv.x, v3.uv.y));
+
+        Color c1 = simple_reflection(model->mtl, light.position, p1, n1, light.color, t1);
+        Color c2 = simple_reflection(model->mtl, light.position, p2, n2, light.color, t2);
+        Color c3 = simple_reflection(model->mtl, light.position, p3, n3, light.color, t3);
 
         Color colors[3] = {c1, c2, c3};
         renderer_push_triangle(
