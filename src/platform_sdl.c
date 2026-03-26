@@ -138,7 +138,6 @@ bool is_key_released(int key) {
 
 void on_key_down(int key) 
 {
-    log_info("key %d", key);
     if (keyboard_state.key_curr_state[key] == true) {
         keyboard_state.key_previous_state[key] = true;
     }
@@ -151,11 +150,12 @@ void on_key_up(int key)
 
 void on_mouse_down(int button) 
 {
-
+    UNUSED(button);
 }
 
 void onMouseUp(int button) 
 { 
+    UNUSED(button);
 }
 
 V2f get_mouse_pos()

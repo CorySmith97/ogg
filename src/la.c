@@ -1,9 +1,9 @@
 #include "la.h"
 
-V2f v2f(float x, float y)
+/* V2f v2f(float x, float y)
 {
     return (V2f){x, y};
-}
+} */
 
 V2f v2f_add(V2f v, V2f u)
 {

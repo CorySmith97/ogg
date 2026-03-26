@@ -62,8 +62,6 @@ union Mat4 {
     float c[16];
 };
 
-// The camera is just primarily a mental model. The world actually moves
-// around the camera as opposed to the camera.
 typedef struct Camera {
     V3f position;
     V3f up;
@@ -78,7 +76,8 @@ Mat4 camera_matrix(Camera cam);
 
 // TODO i think the contructors should be macros?
 
-V2f   v2f(float x, float y);
+#define v2f(_x, _y) (V2f){(_x), (_y)}
+//V2f   v2f(float x, float y);
 V2f   v2f_add(V2f v, V2f u);
 V2f   v2f_sub(V2f v, V2f u);
 V2f   v2f_scale(V2f v, float scalar);

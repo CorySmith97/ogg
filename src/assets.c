@@ -3,10 +3,6 @@
 #define ASSET_DIR "data/"
 #define BUFFER_SIZE 1024
 
-Texture *load_texture_file(const char *file);
-SimpleMtl *load_material_file(const char *file);
-Asset_Model *load_model_from_file(const char *file);
-
 SimpleMtl *load_material_file(const char *file)
 {
     char *line = NULL;
@@ -132,4 +128,9 @@ Asset_Model *load_model_from_file(const char *file)
 ret:
     fclose(f);
     return model;
+}
+
+
+Font *load_font(const char *file, int cwidth, int cheight)
+{
 }

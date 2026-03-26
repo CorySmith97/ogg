@@ -73,12 +73,12 @@ typedef struct {
 /* Fonts are monospaces texture maps. Each character is the same size "sprite"
  */
 typedef struct {
-    int width;
-    int height;
-    int character_width;
-    int character_height;
+    int         width;
+    int         height;
+    int         character_width;
+    int         character_height;
     Orientation orientation;
-    char *bitmap;
+    Texture    *texture;
 } Font;
 
 typedef struct {
@@ -94,5 +94,9 @@ typedef struct {
 
 Asset_Model *load_model_from_file(const char *file);
 void         deload_model(Asset_Model *model);
+// Loads fonts via a font atlas
+Font        *load_font(const char *file, int cwidth, int cheight);
+Texture     *load_texture_file(const char *file);
+SimpleMtl   *load_material_file(const char *file);
 
 #endif // ASSET_H

@@ -9,6 +9,17 @@
 #define COL_GAME_WIDTH (GAME_WIDTH / TILE_W)
 #define TILE_COUNT ((GAME_WIDTH / TILE_W) * (GAME_HEIGHT / TILE_H))
 
+
+// Internal Function Declarations
+void set_verline(uint32_t x, uint32_t start, uint32_t end, Color color);
+void set_line(V2i v, V2i u, Color color);
+void set_triangle(V2i v1, V2i v2, V2i v3, Color color);
+void set_triangle_multicolor(V2i v1, V2i v2, V2i v3, Color c1, Color c2, Color c3);
+void set_triangle_3d(V3f v1, V3f v2, V3f v3, Color color);
+void set_triangle_3d_multicolor(V3f v1, V3f v2, V3f v3, Color c1, Color c2, Color c3);
+void set_quad(V2i v1, V2i v2, V2i v3, V2i v4, Color c);
+void renderer_draw_triangle(uint32_t tile_x, uint32_t tile_y, Triangle tri);
+
 typedef struct {
     int tile_x, tile_y;
     size_t *tri_idx;
@@ -21,8 +32,6 @@ typedef struct
     TileBin *bin;
     int active;
 } Worker;
-
-Color phong_reflection(V3f light, V3f n1, V3f n2, V3f n3);
 
 TileBin triangle_bins[(GAME_WIDTH / TILE_W) * (GAME_HEIGHT / TILE_H)];
 Triangle *triangles = NULL;
@@ -135,14 +144,6 @@ void renderer_draw_triangles(void)
 
     // clear triangle list for next frame
     arrsetlen(triangles, 0);
-}
-
-uint32_t pack_color(Color color)
-{
-    return ((uint32_t)color.a << 24) |
-           ((uint32_t)color.b << 16) |
-           ((uint32_t)color.g << 8) |
-           ((uint32_t)color.r);
 }
 
 Color color_scale(Color c, double value)
@@ -270,25 +271,7 @@ void set_triangle_multicolor(V2i v1, V2i v2, V2i v3, Color c1, Color c2, Color c
         }
     }
 }
-/*
-void renderer_draw_triangles(void)
-{
-    int tri_count = 0;
-    Triangle tri;
-    TileBin bin;
-    for (size_t i = 0; i < sizeof(triangle_bins)/sizeof(triangle_bins[0]); i++) {
-         bin = triangle_bins[i];
-         size_t len = arrlen(bin.tri_idx);
-         tri_count += len;
-         //if (len > 0) logger(LOG_INFO, "BIN LENGTH: %zu", len);
-         for (size_t idx = 0; idx < len; idx++) {
-            size_t inx = arrpop(bin.tri_idx);
-            renderer_draw_triangle(bin.tile_x * TILE_W, bin.tile_y * TILE_H, triangles[inx]);
-         }
-    }
-    logger(LOG_INFO, "total triangles renderered: %d", tri_count);
-}
- */
+
 void renderer_push_triangle(V3f v1, V3f v2, V3f v3, Color color[3])
 {
     V2i pos1 = to_screen(project(v1));
@@ -326,7 +309,6 @@ void renderer_push_triangle(V3f v1, V3f v2, V3f v3, Color color[3])
         }
     }
 }
-
 
 void renderer_push_triangle_w_normals(V3f positions[3], V3f normals[3], Color color[3])
 {
@@ -419,6 +401,10 @@ void renderer_draw_triangle(uint32_t tile_x, uint32_t tile_y, Triangle tri)
     }
 }
 
+void draw_text(Font *f, const char *str, V2i x, V2i y, float size, Color color)
+{
+}
+
 void draw_point(V3f p, Color color)
 {
     V2i pos = to_screen(project(p));
@@ -467,16 +453,15 @@ void set_quad(V2i v1, V2i v2, V2i v3, V2i v4, Color c)
     set_triangle(v1, v3, v4, c);
 }
 
+// TODO there is some speed up that could be done here. SIMD
 Color get_color_from_texture(Texture *t, V2f uv)
 {
-    // Clamp UVs to [0, 1] to avoid out-of-bounds
     uv.x = fmaxf(0.0f, fminf(1.0f, uv.x));
     uv.y = fmaxf(0.0f, fminf(1.0f, uv.y));
 
     size_t x = (size_t)(uv.x * (t->width  - 1));
     size_t y = (size_t)(uv.y * (t->height - 1));
 
-    // Row-major 2D index, then * channels to get byte offset
     size_t idx = (y * t->width + x) * t->stride;
 
     Color c;
@@ -486,35 +471,6 @@ Color get_color_from_texture(Texture *t, V2f uv)
     c.a = t->stride == 4 ? t->data[idx + 3] : 255;
     return c;
 }
-
-/* void draw_textured_triangle(Image *t, Vertex v1, Vertex v2, Vertex v3)
-{
-    UNUSED(t);
-
-    AABBi rec = {
-        v2i(min(v1.pos.x, min(v2.pos.x, v3.pos.x)), min(v1.pos.y, min(v2.pos.y, v3.pos.y))),
-        v2i(max(v1.pos.x, max(v2.pos.x, v3.pos.x)), max(v1.pos.y, max(v2.pos.y, v3.pos.y))),
-    };
-    V3f bary;
-
-    for (int x = rec.min.x; x < rec.max.x; x++) {
-        for (int y = rec.min.y; y < rec.max.y; y++) {
-            if (barycentric(v1.pos, v2.pos, v3.pos, v2i(x, y), &bary)) {
-                V2f uv1 = v2f_scale(v1.uv, bary.x);
-                V2f uv2 = v2f_scale(v2.uv, bary.x);
-                V2f uv3 = v2f_scale(v3.uv, bary.x);
-                UNUSED(uv1);
-                UNUSED(uv2);
-                UNUSED(uv3);
-                // @todo:cs get color from texture.
-                //Color color = color_add(color_add(, color_scale(c2, bary.y)), color_scale(c3, bary.z));
-
-                //set_pixel((uint32_t)x, (uint32_t)y, color);
-            }
-        }
-    }
-
-} */
 
 void clear_background(Color color)
 {
@@ -599,10 +555,18 @@ void draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Ligh
 
         if (p1.z <= NEAR || p2.z <= NEAR || p3.z <= NEAR)
             continue;
-
-        Color t1 = get_color_from_texture(model->mtl->diffuse_texture, v2f(v1.uv.x, v1.uv.y));
-        Color t2 = get_color_from_texture(model->mtl->diffuse_texture, v2f(v2.uv.x, v2.uv.y));
-        Color t3 = get_color_from_texture(model->mtl->diffuse_texture, v2f(v3.uv.x, v3.uv.y));
+        Color t1;
+        Color t2;
+        Color t3;
+        if (model->mtl->diffuse_texture) {
+            t1 = get_color_from_texture(model->mtl->diffuse_texture, v2f(v1.uv.x, v1.uv.y));
+            t2 = get_color_from_texture(model->mtl->diffuse_texture, v2f(v2.uv.x, v2.uv.y));
+            t3 = get_color_from_texture(model->mtl->diffuse_texture, v2f(v3.uv.x, v3.uv.y));
+        } else {
+            t1 = COLOR_WHITE;
+            t2 = COLOR_WHITE;
+            t3 = COLOR_WHITE;
+        }
 
         Color c1 = simple_reflection(model->mtl, light.position, p1, n1, light.color, t1);
         Color c2 = simple_reflection(model->mtl, light.position, p2, n2, light.color, t2);
@@ -642,4 +606,8 @@ Color simple_reflection(SimpleMtl *mtl, V3f light_pos, V3f v, V3f n, V3f light_c
         .a = 255,
     };
     return res;
+}
+
+void draw_texture(Texture *tex, Reci rec)
+{
 }

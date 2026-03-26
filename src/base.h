@@ -26,7 +26,6 @@ enum
 };
 
 // @todo:cs add a log handler for logging.
-
 //typedef (*log_handler)(Log_Level level, const char *msg, ...) log_handler;
 
 void log_handler(Log_Level level, const char *msg, va_list args);

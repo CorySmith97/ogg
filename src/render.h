@@ -51,6 +51,11 @@ typedef struct
     V3f color;
 } Light;
 
+typedef union {
+    struct {int x, y, w, h;};
+    struct {V2i min, max;};
+} Reci;
+
 static struct
 {
     Vertex *vertices;
@@ -75,21 +80,16 @@ static struct
     },
 };
 
-void        render_init(void);
-void        clear_background(Color color);
-void        set_verline(uint32_t x, uint32_t start, uint32_t end, Color color);
-void        set_line(V2i v, V2i u, Color color);
-void        set_triangle(V2i v1, V2i v2, V2i v3, Color color);
-void        set_triangle_multicolor(V2i v1, V2i v2, V2i v3, Color c1, Color c2, Color c3);
-void        set_triangle_3d(V3f v1, V3f v2, V3f v3, Color color);
-void        set_triangle_3d_multicolor(V3f v1, V3f v2, V3f v3, Color c1, Color c2, Color c3);
-void        set_quad(V2i v1, V2i v2, V2i v3, V2i v4, Color c);
-void        draw_textured_triangle(Image *t, TextVertex v1, TextVertex v2, TextVertex v3);
-uint32_t    pack_color(Color color);
-void        renderer_draw_triangle(uint32_t tile_x, uint32_t tile_y, Triangle tri);
-void        draw_model(Asset_Model *model, V3f position, Mat3 rotation);
-void        draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Light light);
-Color       simple_reflection(SimpleMtl *mtl, V3f light_pos, V3f v, V3f n, V3f light_color, Color object_color);
-static inline void set_pixel(int x, int y, Color color);
+void  render_init(void);
+void  clear_background(Color color);
+void  draw_textured_triangle(Image *t, TextVertex v1, TextVertex v2, TextVertex v3);
+void  renderer_draw_triangles(void);
+
+void  draw_model(Asset_Model *model, V3f position, Mat3 rotation);
+void  draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Light light);
+void  draw_model_textured(Asset_Model *model, V3f position, Mat3 rotation);
+Color simple_reflection(SimpleMtl *mtl, V3f light_pos, V3f v, V3f n, V3f light_color, Color object_color);
+void  draw_texture(Texture *tex, Reci rec);
+void  draw_text(Font *f, const char *str, V2i x, V2i y, float size, Color color);
 
 #endif /* RENDER_H */

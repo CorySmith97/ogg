@@ -19,7 +19,7 @@ void game_run(void)
         game_frame();
 
         platform_present();
-        //profiler_report();
+        profiler_report();
         profiler_reset();
     }
     game_deinit();
@@ -32,31 +32,34 @@ void game_init(void)
 {
     render_init();
 
-    SectionStart("ModelLoad");
+    SectionStart("Model Loading");
     model = load_model_from_file("data/shopkeeper.obj");
     model2 = load_model_from_file("data/cube.obj");
 
-    SectionEnd("ModelLoad");
+    SectionEnd("Model Loading");
 }
 
 Light sun = {
     .position = {4, 0, 0},
     .color = {0, 0.5, 0.5},
 };
+
 void game_frame(void)
 {
     V2f mouse_pos = get_mouse_pos();
     V2f mouse_delta = get_mouse_delta();
 
     SectionStart("Render");
-    clear_background(COLOR_PURPLE);
+    clear_background(COLOR_WHITE);
 
     SectionStart("Renderd");
-    Mat3 rotation = mat3_mul(rotation_y(angle),mat3_mul(rotation_z(angle), rotation_x(angle)));
+    Mat3 rotation = mat3_mul(rotation_y(angle),mat3_mul(rotation_z(angle/2), rotation_x(angle)));
     //draw_model(model, v3f(0, 0, 2), rotation);
     //draw_model(model2, v3f(-2, -1, 8), rotation);
-    //draw_model(model2, v3f(0, -1, 5), rotation);
-    draw_model_with_light(model, v3f(0, -1, 2), mat3_identity(), sun);
+    for (int i = 0; i < 10; i++) {
+        draw_model_with_light(model2, v3f(0, -1, i * 3 + 5), rotation, sun);
+    }
+    draw_model_with_light(model, v3f(0, -1,  2), mat3_identity(), sun);
     renderer_draw_triangles();
     sun.position = renderer.camera.position;
     //sun.position = v3f_rotate_y_around_point(sun.position, v3f(0,0,4), sinf(angle));
@@ -82,8 +85,8 @@ void game_frame(void)
             direction.y = sin(deg_to_rad(renderer.camera.pitch));
             direction.z = -sin(deg_to_rad(renderer.camera.yaw)) * cos(deg_to_rad(renderer.camera.pitch));
             renderer.camera.front = v3f_normalize(direction);
-            log_debug("Mouse: %f %f", x_offset, y_offset);
-            log_debug("Camera front: %f %f %f", renderer.camera.front.x, renderer.camera.front.y, renderer.camera.front.z);
+            /* log_debug("Mouse: %f %f", x_offset, y_offset);
+            log_debug("Camera front: %f %f %f", renderer.camera.front.x, renderer.camera.front.y, renderer.camera.front.z); */
 
     }
     if (is_key_down(KEY_W)) {
@@ -101,7 +104,7 @@ void game_frame(void)
 
     SectionEnd("Renderd");
 
-    angle = 0.0001f;
+    angle += 0.1f;
 
     SectionEnd("Render");
     ///renderer.camera.position.x += 0.001;
