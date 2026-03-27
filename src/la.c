@@ -320,6 +320,7 @@ Mat4 mat4_identity(void)
 
 void camera_update(Camera *cam)
 {
+    UNUSED(cam);
 }
 
 /* Mat4 camera_matrix(Camera cam)

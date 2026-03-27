@@ -17,7 +17,7 @@ static struct {
     SDL_Texture     *texture;
     uint32_t        width;
     uint32_t        height;
-    uint8_t         *keystate;
+    const uint8_t   *keystate;
     MouseState      mouse_state;
     bool            mouse_enabled;
 } platform_ctx = {

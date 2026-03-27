@@ -28,7 +28,7 @@ SimpleMtl *load_material_file(const char *file)
             line[strcspn(line, "\n")] = '\0';
             char file_name[256];
             snprintf(file_name, sizeof(file_name), "data/%s",  &line[7]);
-            mtl->diffuse_texture = load_texture_file(file_name);
+            mtl->diffuse_texture = load_texture_from_file(file_name, true);
         }
     }
 
@@ -37,11 +37,11 @@ ret:
     return mtl;
 }
 
-Texture *load_texture_file(const char *file)
+Texture *load_texture_from_file(const char *file, bool flip)
 {
     Texture *tex = malloc(sizeof(Texture));
 
-    stbi_set_flip_vertically_on_load(true);
+    stbi_set_flip_vertically_on_load(flip);
     unsigned char *data = stbi_load(file, &tex->width, &tex->height, &tex->stride, 0);
     int size = tex->width * tex->height * tex->stride;
     tex->data = malloc(size);
@@ -133,4 +133,9 @@ ret:
 
 Font *load_font(const char *file, int cwidth, int cheight)
 {
+    Font *font = malloc(sizeof(Font));
+    font->character_width = cwidth;
+    font->character_height = cheight;
+    font->texture = load_texture_from_file(file, true);
+    return font;
 }

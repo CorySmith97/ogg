@@ -69,6 +69,7 @@ void profiler_report(void)
         Section s = profiler.sections[i];
         logger(LOG_INFO, "%s: (%.3fms)", s.name, s.delta_ns / 1000000.0);
     }
+    printf("\e[1;1H\e[2J");
 }
 
 

@@ -3,12 +3,16 @@
 float angle = 0;
 Asset_Model *model;
 Asset_Model *model2;
+Texture *entity_1;
+Font *font;
 
 void game_run(void)
 {
     platform_init(GAME_NAME, SCREEN_WIDTH, SCREEN_HEIGHT);
 
     game_init();
+
+    font = load_font("data/VGA8x16.bmp", 8, 16);
     
     bool quit = false;
     while (!quit) {
@@ -35,6 +39,7 @@ void game_init(void)
     SectionStart("Model Loading");
     model = load_model_from_file("data/shopkeeper.obj");
     model2 = load_model_from_file("data/cube.obj");
+    entity_1 = load_texture_from_file("data/entity_1.png", false);
 
     SectionEnd("Model Loading");
 }
@@ -46,20 +51,19 @@ Light sun = {
 
 void game_frame(void)
 {
-    V2f mouse_pos = get_mouse_pos();
+    //V2f mouse_pos = get_mouse_pos();
     V2f mouse_delta = get_mouse_delta();
 
     SectionStart("Render");
-    clear_background(COLOR_WHITE);
+    clear_background(COLOR_BLACK);
 
     SectionStart("Renderd");
     Mat3 rotation = mat3_mul(rotation_y(angle),mat3_mul(rotation_z(angle/2), rotation_x(angle)));
     //draw_model(model, v3f(0, 0, 2), rotation);
     //draw_model(model2, v3f(-2, -1, 8), rotation);
-    for (int i = 0; i < 10; i++) {
-        draw_model_with_light(model2, v3f(0, -1, i * 3 + 5), rotation, sun);
-    }
-    draw_model_with_light(model, v3f(0, -1,  2), mat3_identity(), sun);
+    //draw_model_with_light(model, v3f(0, -1,  2), mat3_identity(), sun);
+    //draw_texture(entity_1, (Reci){.x = 10, .y = 10, .w = 500, .h = 500});
+    draw_text(font, "Test message", v2i(10, 10), 50, COLOR_RED);
     renderer_draw_triangles();
     sun.position = renderer.camera.position;
     //sun.position = v3f_rotate_y_around_point(sun.position, v3f(0,0,4), sinf(angle));

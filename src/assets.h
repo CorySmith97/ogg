@@ -96,7 +96,7 @@ Asset_Model *load_model_from_file(const char *file);
 void         deload_model(Asset_Model *model);
 // Loads fonts via a font atlas
 Font        *load_font(const char *file, int cwidth, int cheight);
-Texture     *load_texture_file(const char *file);
+Texture     *load_texture_from_file(const char *file, bool flip);
 SimpleMtl   *load_material_file(const char *file);
 
 #endif // ASSET_H
