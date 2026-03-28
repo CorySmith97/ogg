@@ -1,5 +1,8 @@
 #include "game.h"
 
+
+void handle_camera(V2f mouse_delta);
+
 float angle = 0;
 Asset_Model *model;
 Asset_Model *model2;
@@ -11,8 +14,6 @@ void game_run(void)
     platform_init(GAME_NAME, SCREEN_WIDTH, SCREEN_HEIGHT);
 
     game_init();
-
-    font = load_font("data/VGA8x16.bmp", 8, 16);
     
     bool quit = false;
     while (!quit) {
@@ -23,7 +24,7 @@ void game_run(void)
         game_frame();
 
         platform_present();
-        profiler_report();
+        //profiler_report();
         profiler_reset();
     }
     game_deinit();
@@ -41,6 +42,8 @@ void game_init(void)
     model2 = load_model_from_file("data/cube.obj");
     entity_1 = load_texture_from_file("data/entity_1.png", false);
 
+    font = load_font("data/VGA8x16.png", 8, 16);
+
     SectionEnd("Model Loading");
 }
 
@@ -54,19 +57,49 @@ void game_frame(void)
     //V2f mouse_pos = get_mouse_pos();
     V2f mouse_delta = get_mouse_delta();
 
-    SectionStart("Render");
-    clear_background(COLOR_BLACK);
+    handle_camera(mouse_delta);
 
-    SectionStart("Renderd");
+    SectionStart("Render");
+    clear_background(COLOR_GRAY);
+
+    SectionStart("Multithreaded triangle");
     Mat3 rotation = mat3_mul(rotation_y(angle),mat3_mul(rotation_z(angle/2), rotation_x(angle)));
     //draw_model(model, v3f(0, 0, 2), rotation);
     //draw_model(model2, v3f(-2, -1, 8), rotation);
-    //draw_model_with_light(model, v3f(0, -1,  2), mat3_identity(), sun);
+    draw_model_with_light(model, v3f(0, -1,  2), mat3_identity(), sun);
     //draw_texture(entity_1, (Reci){.x = 10, .y = 10, .w = 500, .h = 500});
-    draw_text(font, "Test message", v2i(10, 10), 50, COLOR_RED);
+    draw_text(font, "Test message", v2i(10, 10), 64, COLOR_RED);
+    draw_reci((Reci){.x = 5, .y = 5, .w = 100, .h = 100}, 1, COLOR_WHITE);
     renderer_draw_triangles();
     sun.position = renderer.camera.position;
     //sun.position = v3f_rotate_y_around_point(sun.position, v3f(0,0,4), sinf(angle));
+
+    SectionEnd("Multithreaded triangle");
+
+    angle += 0.1f;
+
+    SectionEnd("Render");
+    ///renderer.camera.position.x += 0.001;
+}
+
+void game_deinit(void)
+{
+}
+
+void handle_camera(V2f mouse_delta)
+{
+    if (is_key_down(KEY_W)) {
+        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(renderer.camera.front, 0.01));
+    }
+    if (is_key_down(KEY_S)) {
+        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(renderer.camera.front, -0.01));
+    }
+    if (is_key_down(KEY_A)) {
+        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(v3f_cross(renderer.camera.front, renderer.camera.up), 0.01));
+    }
+    if (is_key_down(KEY_D)) {
+        renderer.camera.position = v3f_sub(renderer.camera.position, v3f_scale(v3f_cross(renderer.camera.front, renderer.camera.up), 0.01));
+    }
 
     if (mouse_delta.x != 0 && mouse_delta.y != 0) {
             float x_offset = mouse_delta.x;
@@ -93,27 +126,4 @@ void game_frame(void)
             log_debug("Camera front: %f %f %f", renderer.camera.front.x, renderer.camera.front.y, renderer.camera.front.z); */
 
     }
-    if (is_key_down(KEY_W)) {
-        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(renderer.camera.front, 0.01));
-    }
-    if (is_key_down(KEY_S)) {
-        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(renderer.camera.front, -0.01));
-    }
-    if (is_key_down(KEY_A)) {
-        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(v3f_cross(renderer.camera.front, renderer.camera.up), 0.01));
-    }
-    if (is_key_down(KEY_D)) {
-        renderer.camera.position = v3f_sub(renderer.camera.position, v3f_scale(v3f_cross(renderer.camera.front, renderer.camera.up), 0.01));
-    }
-
-    SectionEnd("Renderd");
-
-    angle += 0.1f;
-
-    SectionEnd("Render");
-    ///renderer.camera.position.x += 0.001;
-}
-
-void game_deinit(void)
-{
 }

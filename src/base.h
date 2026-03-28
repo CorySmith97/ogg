@@ -16,6 +16,9 @@
 #define min(val1, val2) ((val1 < val2) ? val1 : val2)
 #define max(val1, val2) ((val1 > val2) ? val1 : val2)
 
+#define internal static
+#define global   static
+
 typedef uint32_t Log_Level;
 enum
 {

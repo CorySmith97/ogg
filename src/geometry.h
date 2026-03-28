@@ -13,6 +13,10 @@ typedef struct {
     V2i min, max;
 } AABBi;
 
+typedef union {
+    struct {float x, y, w, h;};
+} Recf;
+
 // todo:cs this needs to be visited for what happens when something is clipped behind the camera plane.
 // right now it results in a divide by zero that will fail an assert.
 static V2i          to_screen(V2f v);

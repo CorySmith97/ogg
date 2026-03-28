@@ -57,6 +57,9 @@ Asset_Model *load_model_from_file(const char *file)
     size_t len;
     ssize_t read;
     Asset_Model *model = calloc(1, sizeof(Asset_Model));
+    V3f *position = NULL;
+    V3f *normals = NULL;
+    V3f *tex = NULL;
 
     FILE *f = fopen(file, "r"); 
     if (f == NULL)
@@ -67,15 +70,15 @@ Asset_Model *load_model_from_file(const char *file)
             if (line[1] == 'n') {
                 V3f v = {0};
                 sscanf(line, "vn %f %f %f", &v.x, &v.y, &v.z);
-                arrput(model->normals, v);
+                arrput(normals, v);
             } else if (line[1] == 't') {
                 V3f v = {0};
                 sscanf(line, "vt %f %f %f", &v.x, &v.y, &v.z);
-                arrput(model->tex, v);
+                arrput(tex, v);
             } else {
                 V3f v = {0};
                 sscanf(line, "v %f %f %f", &v.x, &v.y, &v.z);
-                arrput(model->position, v);
+                arrput(position, v);
             }
         }
         if (line[0] == 'f') {
@@ -98,9 +101,9 @@ Asset_Model *load_model_from_file(const char *file)
                 for (int v = 0; v < 3; v++) {
                     int fi = indices[t * 3 + v];
                     Vertex vert = {0};
-                    vert.position = model->position[fv[fi].vertex_idx - 1];
-                    vert.normal   = model->normals[fv[fi].normal_idx - 1];
-                    vert.uv       = model->tex[fv[fi].tex_idx - 1];
+                    vert.position = position[fv[fi].vertex_idx - 1];
+                    vert.normal   = normals[fv[fi].normal_idx - 1];
+                    vert.uv       = tex[fv[fi].tex_idx - 1];
                     arrput(model->vertices, vert);
                 }
             }
@@ -118,10 +121,8 @@ Asset_Model *load_model_from_file(const char *file)
             if (strncmp(line, "usemtl", 6) == 1){}
         }
     }
-    printf("Position Lenght = %td\n", arrlen(model->position));
-    printf("Normals Lenght = %td\n", arrlen(model->normals));
-    printf("Tex Lenght = %td\n", arrlen(model->tex));
-    printf("Vertex Lenght = %td\n", arrlen(model->vertices));
+    log_info("MODEL LOADED: %s", file);
+    log_info("Vertices loaded: %td", arrlen(model->vertices));
     goto ret;
 
 

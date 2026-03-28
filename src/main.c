@@ -7,6 +7,8 @@
 #include "render.h"
 #include "assets.h"
 #include "prof.h"
+#include "ui.h"
+#include "entity.h"
 
 #include "base.c"
 #include "la.c"
@@ -15,6 +17,8 @@
 #include "render.c"
 #include "assets.c"
 #include "game.c"
+#include "ui.c"
+#include "entity.c"
 
 // TODO https://www.dgtlgrove.com/p/multi-core-by-default
 // By nature of this project, it is primed for a multithread by default

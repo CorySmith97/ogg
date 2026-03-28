@@ -1,3 +1,10 @@
+/*
+ * Plans for the asset managment. I would like to implement my own animation format.
+ * The general idea of the format would be a tree of objs. Then there would be rotation/translation
+ * matrices for each frame. It would then move each model in correspondence with the matrix with
+ * some light interpolation. I dont care for, at the moment, a super high fidelity animation system.
+ * I just want to be able to have some simple, and low data, animations to add some life to the engine.
+ */
 #ifndef ASSET_H
 #define ASSET_H
 
@@ -62,9 +69,6 @@ typedef struct {
 } SimpleMtl;
 
 typedef struct {
-    V3f *position;
-    V3f *normals;
-    V3f *tex;
     Vertex *vertices;
     Face *faces;
     SimpleMtl *mtl;

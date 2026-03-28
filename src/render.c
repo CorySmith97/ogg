@@ -23,6 +23,12 @@ void set_quad(V2i v1, V2i v2, V2i v3, V2i v4, Color c);
 void renderer_draw_triangle(uint32_t tile_x, uint32_t tile_y, Triangle tri);
 Color get_color_from_texture(Texture *t, V2f uv);
 
+
+// TODO there is a need to redo some of this. Because of the nature of the way things are being
+// processed via popping off of a stack, rather than it being FIFO, it leads to weird rendering
+// issues where for UI the base needs to be pushed on the stack after the text has been rendered.
+// It is not ergonomic and is fundamentally wrong in my opinion. It could be fixed by using an
+// index that gets reset every frame, and we would zero the arrays out after processing. 
 typedef struct {
     int tile_x, tile_y;
     size_t *tri_idx;
@@ -402,10 +408,9 @@ void renderer_draw_triangle(uint32_t tile_x, uint32_t tile_y, Triangle tri)
 
                 if (z >= renderer.zbuffer[idx])
                     continue;
-                renderer.zbuffer[idx] = z;
 
                 // TODO Interpolate colors
-
+                Color int_color;
                 if (tri.texture != NULL) {
                     V3f v1 = tri.uvs[0];
                     V3f v2 = tri.uvs[1];
@@ -421,16 +426,18 @@ void renderer_draw_triangle(uint32_t tile_x, uint32_t tile_y, Triangle tri)
                                 color_scale(tri.colors[1], bary.y)),
                             color_scale(tri.colors[2], bary.z));
 
-                    Color int_color = color_modulate(tex_color, vert_color);
-                    set_pixel((uint32_t)x, (uint32_t)y, int_color);
+                    int_color = color_modulate(tex_color, vert_color);
+                    if (int_color.rgba == 0) continue;
                 } else {
-                    Color int_color = color_add(
+                    int_color = color_add(
                             color_add(
                                 color_scale(tri.colors[0], bary.x),
                                 color_scale(tri.colors[1], bary.y)),
                             color_scale(tri.colors[2], bary.z));
-                    set_pixel((uint32_t)x, (uint32_t)y, int_color); //  (Color){c, c, c, 255});
                 }
+
+                renderer.zbuffer[idx] = z;
+                set_pixel((uint32_t)x, (uint32_t)y, int_color); //  (Color){c, c, c, 255});
             }
         }
     }
@@ -499,7 +506,8 @@ Color get_color_from_texture(Texture *t, V2f uv)
     c.r = t->data[idx + 0];
     c.g = t->data[idx + 1];
     c.b = t->data[idx + 2];
-    c.a = t->stride == 4 ? t->data[idx + 3] : 255;
+    // TODO add ability to have clear parts from a texture come through
+    c.a = t->stride == 4 ? t->data[idx + 3] : 0;
     return c;
 }
 
@@ -717,6 +725,29 @@ void draw_texture_w_uvs(Texture *tex, Reci rec, V3f uvs[4], Color colors[4])
             v3f(x1, y1, 1),   // BR
             v3f(x0, y0, 1),   // TL
         c2, uvs2, tex);
+}
+
+void draw_reci(Reci rec, float z, Color color)
+{
+    float x0 = to_ndc_x(rec.x);
+    float y0 = to_ndc_y(rec.y);
+    float x1 = to_ndc_x(rec.x + rec.w);
+    float y1 = to_ndc_y(rec.y + rec.h);
+
+    V3f uvs[3] = {};
+    Color colors[3] = {color, color, color};
+
+    renderer_push_triangle(
+            v3f(x1, y1, z),   // BR
+            v3f(x1, y0, z),   // TR
+            v3f(x0, y0, z),   // TL
+        colors, uvs, NULL);
+
+    renderer_push_triangle(
+            v3f(x0, y1, z),   // BL
+            v3f(x1, y1, z),   // BR
+            v3f(x0, y0, z),   // TL
+        colors, uvs, NULL);
 }
 
 // TODO AI GENERATED. REVISIT FOR FIXES
