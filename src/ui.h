@@ -1,3 +1,7 @@
+/*
+ * Heavily heavily inspired by Ryan Fleury's series on UI.
+ * https://www.dgtlgrove.com/p/ui-part-2-build-it-every-frame-immediate
+ */
 #ifndef UI_H
 #define UI_H
 

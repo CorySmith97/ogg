@@ -2,3 +2,6 @@ bin/
 *.swp
 *.DS_Store
 data/
+src/stb_image.h
+src/stb_ds.h
+
