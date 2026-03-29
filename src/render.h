@@ -87,6 +87,7 @@ void  draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Lig
 void  draw_model_textured(Asset_Model *model, V3f position, Mat3 rotation);
 Color simple_reflection(SimpleMtl *mtl, V3f light_pos, V3f v, V3f n, V3f light_color, Color object_color);
 void  draw_texture(Texture *tex, Reci rec);
-void  draw_text(Font *f, const char *str, V2i pos, float size, Color color);
+void  draw_text(Font *f, char *str, V2i pos, float size, Color color);
+void  draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color);
 
 #endif /* RENDER_H */

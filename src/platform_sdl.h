@@ -40,5 +40,6 @@ void platform_present(void);
 bool is_key_down(int key);
 bool is_key_released(int key);
 void set_escape_quit(bool *quit);
+uint64_t get_time(void);
 
 #endif // PLATFORM_SDL_H

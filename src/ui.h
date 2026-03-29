@@ -40,6 +40,7 @@ typedef struct UI_Node {
 } UI_Node;
 
 bool ui_button(const char *name);
+int  measure_text(Font *f, const char *text, int size);
 
 #endif // UI_H
 

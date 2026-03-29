@@ -69,7 +69,20 @@ void profiler_report(void)
         Section s = profiler.sections[i];
         logger(LOG_INFO, "%s: (%.3fms)", s.name, s.delta_ns / 1000000.0);
     }
-    printf("\e[1;1H\e[2J");
+    //printf("\e[1;1H\e[2J");
+}
+
+double profiler_get_fps(void)
+{
+    Section *sec;
+    for (int i = arrlen(profiler.sections) - 1; i >= 0; i--) {
+        sec = &profiler.sections[i];
+        if (strcmp("Frame", sec->name) == 0 && sec->end_ns == 0) { 
+            break;
+        }
+    }
+
+    return sec->delta_ns / 1000000.0;
 }
 
 

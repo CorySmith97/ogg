@@ -39,10 +39,10 @@ void platform_init(const char *name, uint32_t width, uint32_t height)
 void platform_handle_events(bool *quit)
 {
     if (platform_ctx.mouse_enabled) {
-        SDL_ShowCursor(SDL_ENABLE);
+        SDL_SetRelativeMouseMode(SDL_TRUE);
     } else {
         // TODO add a way to lock mouse to screen.
-        SDL_ShowCursor(SDL_DISABLE);
+        SDL_SetRelativeMouseMode(SDL_FALSE);
     }
     SDL_Event event;
     while (SDL_PollEvent(&event))
@@ -127,7 +127,13 @@ bool is_key_down(int key) {
     return pressed;
 }
 
-bool is_key_released(int key) {
+uint64_t get_time()
+{
+    return SDL_GetPerformanceCounter();
+}
+
+bool is_key_released(int key) 
+{
     bool pressed = false;
     if ((key > 0) && (key < MAX_KEYS)) {
         if ((keyboard_state.key_previous_state[key] == true) && (keyboard_state.key_curr_state[key] == false))
@@ -187,3 +193,11 @@ void set_escape_quit(bool *quit)
         *quit = true;
     }
 }
+
+void set_mouse_toggle_key(int key)
+{
+    if (is_key_down(key)) {
+        platform_ctx.mouse_enabled = !platform_ctx.mouse_enabled;
+    }
+}
+        

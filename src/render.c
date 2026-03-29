@@ -595,28 +595,28 @@ void draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Ligh
         p2 = v3f_translate_by_mat4(p2, view);
         p3 = v3f_translate_by_mat4(p3, view);
 
-        if (p1.z <= NEAR || p2.z <= NEAR || p3.z <= NEAR)
-            continue;
-        Color t1;
-        Color t2;
-        Color t3;
-        t1 = COLOR_WHITE;
-        t2 = COLOR_WHITE;
-        t3 = COLOR_WHITE;
+        if (p1.z >= NEAR && p2.z >= NEAR && p3.z >= NEAR) {
+            Color t1;
+            Color t2;
+            Color t3;
+            t1 = COLOR_WHITE;
+            t2 = COLOR_WHITE;
+            t3 = COLOR_WHITE;
 
-        Color c1 = simple_reflection(model->mtl, light.position, p1, n1, light.color, t1);
-        Color c2 = simple_reflection(model->mtl, light.position, p2, n2, light.color, t2);
-        Color c3 = simple_reflection(model->mtl, light.position, p3, n3, light.color, t3);
+            Color c1 = simple_reflection(model->mtl, light.position, p1, n1, light.color, t1);
+            Color c2 = simple_reflection(model->mtl, light.position, p2, n2, light.color, t2);
+            Color c3 = simple_reflection(model->mtl, light.position, p3, n3, light.color, t3);
 
-        Color colors[3] = {c1, c2, c3};
-        V3f uvs[3] = {v1.uv, v2.uv, v3.uv};
-        renderer_push_triangle(
-            p1,
-            p2,
-            p3,
-            colors,
-            uvs,
-            model->mtl->diffuse_texture);
+            Color colors[3] = {c1, c2, c3};
+            V3f uvs[3] = {v1.uv, v2.uv, v3.uv};
+            renderer_push_triangle(
+                    p1,
+                    p2,
+                    p3,
+                    colors,
+                    uvs,
+                    model->mtl->diffuse_texture);
+        }
     }
 }
 
@@ -755,7 +755,7 @@ void draw_reci(Reci rec, float z, Color color)
 #define GLYPH_W   8
 #define GLYPH_H   16
 
-void draw_text(Font *f, const char *str, V2i pos, float size, Color color)
+void draw_text(Font *f, char *str, V2i pos, float size, Color color)
 {
     int atlas_w = f->texture->width;
     int atlas_h = f->texture->height;
@@ -780,14 +780,40 @@ void draw_text(Font *f, const char *str, V2i pos, float size, Color color)
             v3f(u_min, v_max, 0),  /* bottom-left  */
         };
         Color colors[4] = {color, color, color, color};
+        Reci rec = (Reci){ .x = pos.x + (i * (int)size), .y = pos.y,
+                    .w = (int)size, .h = (int)size };
         draw_texture_w_uvs(
             f->texture,
-            (Reci){ .x = pos.x + (i * (int)size), .y = pos.y,
-                    .w = (int)size, .h = (int)size },
+            rec,
             uvs,
             colors);
 
         i++;
         c = str[i];
     }
+}
+
+
+void draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color)
+{
+    Mat4 view = camera_matrix(renderer.camera);
+
+    V3f uvs[3] = {};
+    Color colors[3] = {color, color, color};
+    V3f p1 = v3f_translate_by_mat4(bl, view);
+    V3f p2 = v3f_translate_by_mat4(br, view);
+    V3f p3 = v3f_translate_by_mat4(tl, view);
+    V3f p4 = v3f_translate_by_mat4(tr, view);
+
+    renderer_push_triangle(
+            p2,   // BR
+            p4,   // TR
+            p3,   // TL
+        colors, uvs, NULL);
+
+    renderer_push_triangle(
+            p1,   // BL
+            p2,   // BR
+            p3,   // TL
+        colors, uvs, NULL);
 }

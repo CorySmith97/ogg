@@ -9,12 +9,13 @@
 
 static V2f project(V3f v)
 {
+    float z = (v.z < NEAR) ? NEAR : v.z;
     assert(v.z != 0);
     float fov_rad = 1.0f / tanf((FOV * 0.5f) * (M_PI / 180.0f));
     float aspect = (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT;
 
-    float x = (v.x * fov_rad) / (aspect * v.z);
-    float y = (v.y * fov_rad) / v.z;
+    float x = (v.x * fov_rad) / (aspect * z);
+    float y = (v.y * fov_rad) / z;
     return v2f(x, y);
     //return v2f(v.x / v.z, v.y / v.z);
 }
