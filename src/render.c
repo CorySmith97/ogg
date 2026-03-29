@@ -23,6 +23,8 @@ void set_quad(V2i v1, V2i v2, V2i v3, V2i v4, Color c);
 void renderer_draw_triangle(uint32_t tile_x, uint32_t tile_y, Triangle tri);
 Color get_color_from_texture(Texture *t, V2f uv);
 
+// TODO When using ndc coords, it does not map from 0..GAME_WIDTH. Its like 150 pixels off on either side.
+
 
 // TODO there is a need to redo some of this. Because of the nature of the way things are being
 // processed via popping off of a stack, rather than it being FIFO, it leads to weird rendering
@@ -804,6 +806,8 @@ void draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color)
     V3f p2 = v3f_translate_by_mat4(br, view);
     V3f p3 = v3f_translate_by_mat4(tl, view);
     V3f p4 = v3f_translate_by_mat4(tr, view);
+
+    if (p1.z <= NEAR || p2.z <= NEAR || p3.z <= NEAR || p4.z <= NEAR) return;
 
     renderer_push_triangle(
             p2,   // BR

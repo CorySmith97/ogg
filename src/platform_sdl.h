@@ -3,12 +3,20 @@
 
 #define MAX_KEYBOARD 512
 
+
+typedef enum {
+    MOUSEBUTTON_LEFT = 1,
+    MOUSEBUTTON_RIGHT = 3,
+    MOUSEBUTTON_MIDDLE = 2,
+    MOUSEBUTTON_COUNT,
+} MouseCode;
+
 typedef struct MouseState {
     float mouse_pos_x;
     float mouse_pos_y;
     float mouse_pos_dx;
     float mouse_pos_dy;
-    bool mouse_button_state;
+    bool mouse_button_state[MOUSEBUTTON_COUNT];
 } MouseState;
 
 static struct {
@@ -21,16 +29,8 @@ static struct {
     MouseState      mouse_state;
     bool            mouse_enabled;
 } platform_ctx = {
-    .mouse_enabled = true,
 };
 
-
-typedef enum {
-    MOUSEBUTTON_LEFT = 0x0,
-    MOUSEBUTTON_RIGHT = 0x1,
-    MOUSEBUTTON_MIDDLE = 0x2,
-    MOUSEBUTTON_INVALID = 0x100,
-} MouseCode;
 
 void present(void);
 void platform_init(const char *name, uint32_t width, uint32_t height);

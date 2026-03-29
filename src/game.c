@@ -79,11 +79,16 @@ void game_frame(void)
     SectionStart("Multithreaded triangle");
     Mat3 rotation = mat3_mul(rotation_y(angle),mat3_mul(rotation_z(angle/2), rotation_x(angle)));
 
-     draw_model_with_light(model, v3f(0, -1,  2), mat3_identity(), sun);
-    draw_rectangle3d(v3f(0, 0, 2), v3f(1, 0, 2), v3f(0, 1, 3), v3f(1, 1, 3), COLOR_PURPLE);
+    draw_model_with_light(model, v3f(0, -1,  2), mat3_identity(), sun);
+    for (int i = 0; i < 100; i++) {
+        int x = i % 10;
+        int z = i / 10;
+        draw_rectangle3d(v3f(x, -1, z + 1), v3f(x + 1, -1, z + 1), v3f(x, -1, z + 2), v3f(x + 1, -1, z + 2), COLOR_PURPLE);
+    }
 
     sprintf(buf, "fps: %.3f", 1/frame_time);
-    draw_text(font, buf, v2i(0, 10), 16, COLOR_RED);
+    draw_text(font, buf, v2i(-150, 10), 16, COLOR_RED);
+    draw_text(font, buf, v2i(GAME_WIDTH, 10), 16, COLOR_RED);
     draw_reci((Reci){.x = 0, .y = 0, .w = 100, .h = 100}, 1, COLOR_WHITE);
 
     renderer_draw_triangles();
@@ -117,29 +122,29 @@ void handle_camera(V2f mouse_delta)
         renderer.camera.position = v3f_sub(renderer.camera.position, v3f_scale(v3f_cross(renderer.camera.front, renderer.camera.up), 0.01));
     }
 
-    if (mouse_delta.x != 0 && mouse_delta.y != 0 && mouse_delta.x != prev_delta.x && mouse_delta.y != prev_delta.y) {
-            float x_offset = mouse_delta.x;
-            float y_offset = -mouse_delta.y;
+    if (is_mouse_button_down(MOUSEBUTTON_MIDDLE)) {
+        float x_offset = mouse_delta.x;
+        float y_offset = -mouse_delta.y;
 
-            float sensitivity = 0.3f;
-            x_offset *= sensitivity;
-            y_offset *= sensitivity;
+        float sensitivity = 0.3f;
+        x_offset *= sensitivity;
+        y_offset *= sensitivity;
 
-            renderer.camera.yaw   += x_offset;
-            renderer.camera.pitch += y_offset;
+        renderer.camera.yaw   += x_offset;
+        renderer.camera.pitch += y_offset;
 
-            if (renderer.camera.pitch > 89.0f)
-                renderer.camera.pitch = 89.0f;
-            if (renderer.camera.pitch < -89.0f)
-                renderer.camera.pitch = -89.0f;
+        if (renderer.camera.pitch > 89.0f)
+            renderer.camera.pitch = 89.0f;
+        if (renderer.camera.pitch < -89.0f)
+            renderer.camera.pitch = -89.0f;
 
-            V3f direction;
-            direction.x = cos(deg_to_rad(renderer.camera.yaw)) * cos(deg_to_rad(renderer.camera.pitch));
-            direction.y = sin(deg_to_rad(renderer.camera.pitch));
-            direction.z = -sin(deg_to_rad(renderer.camera.yaw)) * cos(deg_to_rad(renderer.camera.pitch));
-            renderer.camera.front = v3f_normalize(direction);
-            /* log_debug("Mouse: %f %f", x_offset, y_offset);
-            log_debug("Camera front: %f %f %f", renderer.camera.front.x, renderer.camera.front.y, renderer.camera.front.z); */
+        V3f direction;
+        direction.x = cos(deg_to_rad(renderer.camera.yaw)) * cos(deg_to_rad(renderer.camera.pitch));
+        direction.y = sin(deg_to_rad(renderer.camera.pitch));
+        direction.z = -sin(deg_to_rad(renderer.camera.yaw)) * cos(deg_to_rad(renderer.camera.pitch));
+        renderer.camera.front = v3f_normalize(direction);
+        /* log_debug("Mouse: %f %f", x_offset, y_offset);
+           log_debug("Camera front: %f %f %f", renderer.camera.front.x, renderer.camera.front.y, renderer.camera.front.z); */
 
     }
 

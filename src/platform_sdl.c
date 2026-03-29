@@ -5,6 +5,8 @@ bool is_key_released(int key);
 void on_key_down(int key);
 void on_key_up(int key);
 void on_mouse_moved(float x, float y, float dx, float dy);
+void on_mouse_down(int button); 
+void on_mouse_up(int button);
 
 #define MAX_KEYS 512
 
@@ -15,6 +17,7 @@ typedef struct KeyboardState {
 } KeyboardState;
 
 static KeyboardState keyboard_state;
+static MouseState mouse_state;
 
 void platform_init(const char *name, uint32_t width, uint32_t height)
 {
@@ -30,7 +33,7 @@ void platform_init(const char *name, uint32_t width, uint32_t height)
                                            width, height,
                                            SDL_WINDOW_SHOWN);
 
-    platform_ctx.renderer = SDL_CreateRenderer(platform_ctx.window, 0, SDL_RENDERER_SOFTWARE);
+    platform_ctx.renderer = SDL_CreateRenderer(platform_ctx.window, 0, SDL_RENDERER_ACCELERATED);
     platform_ctx.texture = SDL_CreateTexture(platform_ctx.renderer,
                                              SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING,
                                              GAME_WIDTH, GAME_HEIGHT);
@@ -56,6 +59,12 @@ void platform_handle_events(bool *quit)
                 break;
             case SDL_KEYUP:
                 //on_key_up(event.key.keysym.scancode);
+                break;
+            case SDL_MOUSEBUTTONDOWN:
+                on_mouse_down(event.button.button);
+                break;
+            case SDL_MOUSEBUTTONUP:
+                on_mouse_up(event.button.button);
                 break;
             case SDL_MOUSEMOTION:
                 on_mouse_moved(event.motion.x, event.motion.y, event.motion.xrel, event.motion.yrel);
@@ -127,6 +136,16 @@ bool is_key_down(int key) {
     return pressed;
 }
 
+bool is_mouse_button_down(int key) {
+    bool pressed = false;
+    if ((key > 0) && (key < MOUSEBUTTON_COUNT)) {
+        if (mouse_state.mouse_button_state[key]) {
+            pressed = true;
+        }
+    }
+    return pressed;
+}
+
 uint64_t get_time()
 {
     return SDL_GetPerformanceCounter();
@@ -156,12 +175,12 @@ void on_key_up(int key)
 
 void on_mouse_down(int button) 
 {
-    UNUSED(button);
+    mouse_state.mouse_button_state[button] = true;
 }
 
-void onMouseUp(int button) 
+void on_mouse_up(int button) 
 { 
-    UNUSED(button);
+    mouse_state.mouse_button_state[button] = false;
 }
 
 V2f get_mouse_pos()
