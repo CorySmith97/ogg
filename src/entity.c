@@ -2,6 +2,7 @@
 
 static void update_shopkeeper(Entity *e)
 {
+    UNUSED(e);
 }
 
 void entity_init(void)

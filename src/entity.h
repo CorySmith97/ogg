@@ -2,6 +2,12 @@
 #define ENTITY_H
 
 typedef enum {
+    Entity_Sim_Static,
+    Entity_Sim_Dynamic,
+    Entity_Sim_Count,
+} Entity_Sim_Tag;
+
+typedef enum {
     Entity_Shopkeeper,
     Entity_Count,
 } Entity_Tag;

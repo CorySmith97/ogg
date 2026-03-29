@@ -36,6 +36,7 @@ typedef struct {
     V3f uvs[3];
     Color colors[3];
     Texture *texture;
+    bool twod;
 } Triangle;
 
 typedef struct TextVertex {
@@ -69,9 +70,9 @@ static struct {
     .pixels = {0},
     .zbuffer = {0},
     .camera = {
-        .position = {0,0,0},
+        .position = {4,4,-3},
         .up = {0, 1, 0},
-        .front = {0, 0, 1},
+        .front = {0, -0.75, 1},
         .pitch = 0.0f,
         .yaw = -90.0f,
     },
@@ -79,8 +80,7 @@ static struct {
 
 void  render_init(void);
 void  clear_background(Color color);
-void  draw_textured_triangle(Image *t, TextVertex v1, TextVertex v2, TextVertex v3);
-void  renderer_draw_triangles(void);
+void  renderer_flush(void);
 
 void  draw_model(Asset_Model *model, V3f position, Mat3 rotation);
 void  draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Light light);
@@ -89,5 +89,6 @@ Color simple_reflection(SimpleMtl *mtl, V3f light_pos, V3f v, V3f n, V3f light_c
 void  draw_texture(Texture *tex, Reci rec);
 void  draw_text(Font *f, char *str, V2i pos, float size, Color color);
 void  draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color);
+void  draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color color);
 
 #endif /* RENDER_H */

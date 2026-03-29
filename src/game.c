@@ -1,14 +1,32 @@
 #include "game.h"
 
 
+static struct {
+    // Global Font (ASCII ONLY ATM)
+    Font    *font;
+    double  frame_time;
+    // Global sun (do not overly lean on this. It slows things way down to do light calculations)
+    Light   sun;
+    float   camera_speed;
+    bool    profiling_enabled;
+    // Global texture storage
+    Texture     *textures;
+    Asset_Model *assets;
+} gs = {
+    .sun = {
+        .position = {4, 0, 0},
+        .color = {0, 0.5, 0.5},
+    },
+    .camera_speed = 0.02,
+    .profiling_enabled = false,
+};
+
 void handle_camera(V2f mouse_delta);
 
 float angle = 0;
 Asset_Model *model;
 Asset_Model *model2;
 Texture *entity_1;
-Font *font;
-double frame_time;
 
 void game_run(void)
 {
@@ -26,7 +44,7 @@ void game_run(void)
         last = now;
         now = timespec_to_ns(ts);
 
-        frame_time = (double)(now-last) / 1e9;
+        gs.frame_time = (double)(now-last) / 1e9;
 
         platform_handle_events(&quit);
         if (is_key_down(KEY_ESCAPE))
@@ -36,7 +54,8 @@ void game_run(void)
 
         platform_present();
 
-        //profiler_report();
+        if (gs.profiling_enabled)
+            profiler_report();
         profiler_reset();
     }
     game_deinit();
@@ -54,21 +73,24 @@ void game_init(void)
     model2 = load_model_from_file("data/cube.obj");
     entity_1 = load_texture_from_file("data/entity_1.png", false);
 
-    font = load_font("data/VGA8x16.png", 8, 16);
+    gs.font = load_font("data/VGA8x16.png", 8, 16);
 
     SectionEnd("Model Loading");
 }
 
-Light sun = {
-    .position = {4, 0, 0},
-    .color = {0, 0.5, 0.5},
-};
+float z = 1.0f;
 
 void game_frame(void)
 {
-    char *buf[256];
+    char buf[256];
     //V2f mouse_pos = get_mouse_pos();
     V2f mouse_delta = get_mouse_delta();
+
+    if (is_key_down(KEY_M)) {
+        gs.profiling_enabled = !gs.profiling_enabled;
+    }
+    if (is_key_down(KEY_N)) z += 0.01;
+    if (is_key_down(KEY_B)) z -= 0.01;
 
     set_mouse_toggle_key(KEY_P);
     handle_camera(mouse_delta);
@@ -78,21 +100,22 @@ void game_frame(void)
 
     SectionStart("Multithreaded triangle");
     Mat3 rotation = mat3_mul(rotation_y(angle),mat3_mul(rotation_z(angle/2), rotation_x(angle)));
+    UNUSED(rotation);
 
-    draw_model_with_light(model, v3f(0, -1,  2), mat3_identity(), sun);
+    draw_model_with_light(model, v3f(0, -1,  2), mat3_identity(), gs.sun);
     for (int i = 0; i < 100; i++) {
         int x = i % 10;
         int z = i / 10;
         draw_rectangle3d(v3f(x, -1, z + 1), v3f(x + 1, -1, z + 1), v3f(x, -1, z + 2), v3f(x + 1, -1, z + 2), COLOR_PURPLE);
     }
 
-    sprintf(buf, "fps: %.3f", 1/frame_time);
-    draw_text(font, buf, v2i(-150, 10), 16, COLOR_RED);
-    draw_text(font, buf, v2i(GAME_WIDTH, 10), 16, COLOR_RED);
-    draw_reci((Reci){.x = 0, .y = 0, .w = 100, .h = 100}, 1, COLOR_WHITE);
+    sprintf(buf, "fps: %.3f", 1/gs.frame_time);
+    draw_text(gs.font, buf, v2i(0, 10), 16, COLOR_RED);
+    draw_reci((Reci){.x = 0, .y = 0, .w = 200, .h = 100}, 1.0f, COLOR_WHITE);
 
-    renderer_draw_triangles();
-    sun.position = renderer.camera.position;
+
+    renderer_flush();
+    gs.sun.position = renderer.camera.position;
 
     SectionEnd("Multithreaded triangle");
 
@@ -106,20 +129,21 @@ void game_deinit(void)
 {
 }
 
+// TODO there is a laggy feel and it does not respond well at all.
+// Specifically when turning.
 void handle_camera(V2f mouse_delta)
 {
-    static V2f prev_delta;
     if (is_key_down(KEY_W)) {
-        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(renderer.camera.front, 0.01));
+        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(renderer.camera.front, gs.camera_speed));
     }
     if (is_key_down(KEY_S)) {
-        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(renderer.camera.front, -0.01));
+        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(renderer.camera.front, -gs.camera_speed));
     }
     if (is_key_down(KEY_A)) {
-        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(v3f_cross(renderer.camera.front, renderer.camera.up), 0.01));
+        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(v3f_cross(renderer.camera.front, renderer.camera.up), gs.camera_speed));
     }
     if (is_key_down(KEY_D)) {
-        renderer.camera.position = v3f_sub(renderer.camera.position, v3f_scale(v3f_cross(renderer.camera.front, renderer.camera.up), 0.01));
+        renderer.camera.position = v3f_sub(renderer.camera.position, v3f_scale(v3f_cross(renderer.camera.front, renderer.camera.up), gs.camera_speed));
     }
 
     if (is_mouse_button_down(MOUSEBUTTON_MIDDLE)) {
@@ -147,6 +171,4 @@ void handle_camera(V2f mouse_delta)
            log_debug("Camera front: %f %f %f", renderer.camera.front.x, renderer.camera.front.y, renderer.camera.front.z); */
 
     }
-
-    prev_delta = mouse_delta;
 }
