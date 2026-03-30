@@ -3,6 +3,11 @@
 #define ASSET_DIR "data/"
 #define BUFFER_SIZE 1024
 
+void deload_model(Asset_Model *model)
+{
+    UNUSED(model);
+}
+
 SimpleMtl *load_material_file(const char *file)
 {
     char *line = NULL;

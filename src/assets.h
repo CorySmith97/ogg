@@ -69,8 +69,8 @@ typedef struct {
 } SimpleMtl;
 
 typedef struct {
-    Vertex *vertices;
-    Face *faces;
+    Vertex    *vertices;
+    Face      *faces;
     SimpleMtl *mtl;
 } Asset_Model;
 
@@ -87,8 +87,8 @@ typedef struct {
 
 typedef struct {
     char *pixels;
-    int width;
-    int height;
+    int   width;
+    int   height;
 } Image;
 
 typedef struct {

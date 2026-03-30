@@ -9,6 +9,7 @@
 #include "prof.h"
 #include "ui.h"
 #include "entity.h"
+#include "tile.h"
 
 #include "base.c"
 #include "la.c"
@@ -19,6 +20,7 @@
 #include "game.c"
 #include "ui.c"
 #include "entity.c"
+#include "tile.c"
 
 // TODO https://www.dgtlgrove.com/p/multi-core-by-default
 // By nature of this project, it is primed for a multithread by default

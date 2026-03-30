@@ -11,21 +11,28 @@ static struct {
     bool    profiling_enabled;
     // Global texture storage
     Texture     *textures;
-    Asset_Model *assets;
+    Asset_Model_KV *assets;
+    
+    // Gameplay
+    Entity *dynamic_entities;
+    Entity *static_entities;
+    Tile *tiles;
 } gs = {
     .sun = {
         .position = {4, 0, 0},
         .color = {0, 0.5, 0.5},
     },
-    .camera_speed = 0.02,
+    .camera_speed = 0.05,
     .profiling_enabled = false,
+    .assets = NULL,
+    .dynamic_entities = NULL,
+    .static_entities = NULL,
+    .tiles = NULL,
 };
 
 void handle_camera(V2f mouse_delta);
 
 float angle = 0;
-Asset_Model *model;
-Asset_Model *model2;
 Texture *entity_1;
 
 void game_run(void)
@@ -66,16 +73,24 @@ void game_run(void)
 
 void game_init(void)
 {
+    SectionStart("Intialization");
     render_init();
 
-    SectionStart("Model Loading");
-    model = load_model_from_file("data/shopkeeper.obj");
-    model2 = load_model_from_file("data/cube.obj");
-    entity_1 = load_texture_from_file("data/entity_1.png", false);
+    sh_new_strdup(gs.assets);
+
+    entity_init();
+    tiles_init();
+
+    Asset_Model *a = load_model_from_file("data/shopkeeper.obj");
+
+    shput(gs.assets, "shopkeeper", a);
+    //shput(gs.assets, "cube", load_model_from_file("data/cube.obj"));
 
     gs.font = load_font("data/VGA8x16.png", 8, 16);
 
-    SectionEnd("Model Loading");
+    SectionEnd("Intialization");
+    profiler_report();
+    profiler_reset();
 }
 
 float z = 1.0f;
@@ -95,38 +110,53 @@ void game_frame(void)
     set_mouse_toggle_key(KEY_P);
     handle_camera(mouse_delta);
 
+    SectionStart("Entity Update");
+    for (int i = 0; i < arrlen(gs.dynamic_entities); i++) {
+        entity_update(&gs.dynamic_entities[i]);
+    }
+    SectionEnd("Entity Update");
+
+
     SectionStart("Render");
-    clear_background(COLOR_GRAY);
+    clear_background(COLOR_BROWN);
 
-    SectionStart("Multithreaded triangle");
-    Mat3 rotation = mat3_mul(rotation_y(angle),mat3_mul(rotation_z(angle/2), rotation_x(angle)));
-    UNUSED(rotation);
-
-    draw_model_with_light(model, v3f(0, -1,  2), mat3_identity(), gs.sun);
+    draw_model_with_light(shget(gs.assets, "shopkeeper"), v3f(0, -1,  2), mat3_identity(), gs.sun);
     for (int i = 0; i < 100; i++) {
         int x = i % 10;
         int z = i / 10;
         draw_rectangle3d(v3f(x, -1, z + 1), v3f(x + 1, -1, z + 1), v3f(x, -1, z + 2), v3f(x + 1, -1, z + 2), COLOR_PURPLE);
     }
 
+    for (int i = 0; i < arrlen(gs.tiles); i++) {
+        tile_draw(&gs.tiles[i]);
+    }
+    for (int i = 0; i < arrlen(gs.static_entities); i++) {
+        entity_draw(&gs.static_entities[i]);
+    }
+    for (int i = 0; i < arrlen(gs.dynamic_entities); i++) {
+        entity_draw(&gs.dynamic_entities[i]);
+    }
+
+
+    SectionStart("UI Render");
+
     sprintf(buf, "fps: %.3f", 1/gs.frame_time);
     draw_text(gs.font, buf, v2i(0, 10), 16, COLOR_RED);
     draw_reci((Reci){.x = 0, .y = 0, .w = 200, .h = 100}, 1.0f, COLOR_WHITE);
 
-
+    SectionEnd("UI Render");
     renderer_flush();
-    gs.sun.position = renderer.camera.position;
-
-    SectionEnd("Multithreaded triangle");
-
-    angle += 0.1f;
 
     SectionEnd("Render");
-    ///renderer.camera.position.x += 0.001;
+
+    gs.sun.position = renderer.camera.position;
 }
 
 void game_deinit(void)
 {
+    /* for (int i = 0; i < arrlen(gs.assets); i++) {
+        deload_model(&gs.assets[i]);
+    } */
 }
 
 // TODO there is a laggy feel and it does not respond well at all.
