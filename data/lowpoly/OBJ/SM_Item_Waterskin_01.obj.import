@@ -1,0 +1,21 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://bxubyev0ixvrc"
+path="res://.godot/imported/SM_Item_Waterskin_01.obj-431c6f914c5fca9168b288598c7c81e1.mesh"
+
+[deps]
+
+files=["res://.godot/imported/SM_Item_Waterskin_01.obj-431c6f914c5fca9168b288598c7c81e1.mesh"]
+
+source_file="res://assets/POLYGON_Adventure_Pack_SourceFiles/OBJ/SM_Item_Waterskin_01.obj"
+dest_files=["res://.godot/imported/SM_Item_Waterskin_01.obj-431c6f914c5fca9168b288598c7c81e1.mesh", "res://.godot/imported/SM_Item_Waterskin_01.obj-431c6f914c5fca9168b288598c7c81e1.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true

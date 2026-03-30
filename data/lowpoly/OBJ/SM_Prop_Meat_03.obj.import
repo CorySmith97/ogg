@@ -1,0 +1,21 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://bdvpynro5fhf"
+path="res://.godot/imported/SM_Prop_Meat_03.obj-5e1247c731bb6a4e8b476ad72d74072c.mesh"
+
+[deps]
+
+files=["res://.godot/imported/SM_Prop_Meat_03.obj-5e1247c731bb6a4e8b476ad72d74072c.mesh"]
+
+source_file="res://assets/POLYGON_Adventure_Pack_SourceFiles/OBJ/SM_Prop_Meat_03.obj"
+dest_files=["res://.godot/imported/SM_Prop_Meat_03.obj-5e1247c731bb6a4e8b476ad72d74072c.mesh", "res://.godot/imported/SM_Prop_Meat_03.obj-5e1247c731bb6a4e8b476ad72d74072c.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true

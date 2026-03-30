@@ -1,0 +1,21 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://brpmduhag6g5c"
+path="res://.godot/imported/SM_Env_Hedge_01_Snow.obj-e89f3fc58810cc0e33c2a903e1b3b181.mesh"
+
+[deps]
+
+files=["res://.godot/imported/SM_Env_Hedge_01_Snow.obj-e89f3fc58810cc0e33c2a903e1b3b181.mesh"]
+
+source_file="res://assets/POLYGON_Adventure_Pack_SourceFiles/OBJ/SM_Env_Hedge_01_Snow.obj"
+dest_files=["res://.godot/imported/SM_Env_Hedge_01_Snow.obj-e89f3fc58810cc0e33c2a903e1b3b181.mesh", "res://.godot/imported/SM_Env_Hedge_01_Snow.obj-e89f3fc58810cc0e33c2a903e1b3b181.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true

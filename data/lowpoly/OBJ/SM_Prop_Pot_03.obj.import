@@ -1,0 +1,21 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://ohywwpc6y7f3"
+path="res://.godot/imported/SM_Prop_Pot_03.obj-b6e6f398cb6a8de508406bd23ddf3b40.mesh"
+
+[deps]
+
+files=["res://.godot/imported/SM_Prop_Pot_03.obj-b6e6f398cb6a8de508406bd23ddf3b40.mesh"]
+
+source_file="res://assets/POLYGON_Adventure_Pack_SourceFiles/OBJ/SM_Prop_Pot_03.obj"
+dest_files=["res://.godot/imported/SM_Prop_Pot_03.obj-b6e6f398cb6a8de508406bd23ddf3b40.mesh", "res://.godot/imported/SM_Prop_Pot_03.obj-b6e6f398cb6a8de508406bd23ddf3b40.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true

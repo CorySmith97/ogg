@@ -1,0 +1,21 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://bruftx8fe0bav"
+path="res://.godot/imported/SM_Env_Road_T_01_Snow.obj-c4fbabb7b569507815b2d394914e9eac.mesh"
+
+[deps]
+
+files=["res://.godot/imported/SM_Env_Road_T_01_Snow.obj-c4fbabb7b569507815b2d394914e9eac.mesh"]
+
+source_file="res://assets/POLYGON_Adventure_Pack_SourceFiles/OBJ/SM_Env_Road_T_01_Snow.obj"
+dest_files=["res://.godot/imported/SM_Env_Road_T_01_Snow.obj-c4fbabb7b569507815b2d394914e9eac.mesh", "res://.godot/imported/SM_Env_Road_T_01_Snow.obj-c4fbabb7b569507815b2d394914e9eac.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true

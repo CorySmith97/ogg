@@ -1,0 +1,21 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://clea4rvjn85jt"
+path="res://.godot/imported/SM_Env_Lillypads_03.obj-2334af59e2e7dd6b112ade0610b6cd4d.mesh"
+
+[deps]
+
+files=["res://.godot/imported/SM_Env_Lillypads_03.obj-2334af59e2e7dd6b112ade0610b6cd4d.mesh"]
+
+source_file="res://assets/POLYGON_Adventure_Pack_SourceFiles/OBJ/SM_Env_Lillypads_03.obj"
+dest_files=["res://.godot/imported/SM_Env_Lillypads_03.obj-2334af59e2e7dd6b112ade0610b6cd4d.mesh", "res://.godot/imported/SM_Env_Lillypads_03.obj-2334af59e2e7dd6b112ade0610b6cd4d.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true

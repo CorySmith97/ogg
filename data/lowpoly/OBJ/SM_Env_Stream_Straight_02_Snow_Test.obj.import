@@ -1,0 +1,21 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://dt10m6k56i00w"
+path="res://.godot/imported/SM_Env_Stream_Straight_02_Snow_Test.obj-d22450dd33a578a84860f73b55d3885e.mesh"
+
+[deps]
+
+files=["res://.godot/imported/SM_Env_Stream_Straight_02_Snow_Test.obj-d22450dd33a578a84860f73b55d3885e.mesh"]
+
+source_file="res://assets/POLYGON_Adventure_Pack_SourceFiles/OBJ/SM_Env_Stream_Straight_02_Snow_Test.obj"
+dest_files=["res://.godot/imported/SM_Env_Stream_Straight_02_Snow_Test.obj-d22450dd33a578a84860f73b55d3885e.mesh", "res://.godot/imported/SM_Env_Stream_Straight_02_Snow_Test.obj-d22450dd33a578a84860f73b55d3885e.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true

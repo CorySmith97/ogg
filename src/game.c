@@ -121,28 +121,28 @@ void game_frame(void)
     clear_background(COLOR_BROWN);
 
     draw_model_with_light(shget(gs.assets, "shopkeeper"), v3f(0, -1,  2), mat3_identity(), gs.sun);
-    for (int i = 0; i < 100; i++) {
-        int x = i % 10;
-        int z = i / 10;
-        draw_rectangle3d(v3f(x, -1, z + 1), v3f(x + 1, -1, z + 1), v3f(x, -1, z + 2), v3f(x + 1, -1, z + 2), COLOR_PURPLE);
-    }
-
-    for (int i = 0; i < arrlen(gs.tiles); i++) {
-        tile_draw(&gs.tiles[i]);
-    }
-    for (int i = 0; i < arrlen(gs.static_entities); i++) {
-        entity_draw(&gs.static_entities[i]);
-    }
-    for (int i = 0; i < arrlen(gs.dynamic_entities); i++) {
-        entity_draw(&gs.dynamic_entities[i]);
-    }
-
 
     SectionStart("UI Render");
+    /* mu_begin(platform_ctx.ui);
+    if (mu_begin_window(platform_ctx.ui, "Demo Window", mu_rect(40, 40, 300, 450))) {
+        mu_Container *win = mu_get_current_container(platform_ctx.ui);
+        win->rect.w = mu_max(win->rect.w, 240);
+        win->rect.h = mu_max(win->rect.h, 300);
+    }
+    mu_end(platform_ctx.ui); */
+
 
     sprintf(buf, "fps: %.3f", 1/gs.frame_time);
     draw_text(gs.font, buf, v2i(0, 10), 16, COLOR_RED);
     draw_reci((Reci){.x = 0, .y = 0, .w = 200, .h = 100}, 1.0f, COLOR_WHITE);
+
+    /* mu_Command *cmd = NULL;
+    while (mu_next_command(platform_ctx.ui, &cmd)) {
+      switch (cmd->type) {
+        case MU_COMMAND_TEXT: draw_text(gs.font, cmd->text.str, v2i(cmd->text.pos.x, cmd->text.pos.y), 14, mu_to_color(cmd->text.color)); break;
+        case MU_COMMAND_RECT: draw_reci(mu_to_rect(cmd->rect.rect), 1, mu_to_color(cmd->rect.color)); break;
+      }
+    } */
 
     SectionEnd("UI Render");
     renderer_flush();
@@ -197,8 +197,6 @@ void handle_camera(V2f mouse_delta)
         direction.y = sin(deg_to_rad(renderer.camera.pitch));
         direction.z = -sin(deg_to_rad(renderer.camera.yaw)) * cos(deg_to_rad(renderer.camera.pitch));
         renderer.camera.front = v3f_normalize(direction);
-        /* log_debug("Mouse: %f %f", x_offset, y_offset);
-           log_debug("Camera front: %f %f %f", renderer.camera.front.x, renderer.camera.front.y, renderer.camera.front.z); */
 
     }
 }

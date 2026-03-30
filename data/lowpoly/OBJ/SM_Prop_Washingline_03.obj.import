@@ -1,0 +1,21 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://dng2pkm8mrldf"
+path="res://.godot/imported/SM_Prop_Washingline_03.obj-46224d3f80ac2d57a673972f7c4ba1c5.mesh"
+
+[deps]
+
+files=["res://.godot/imported/SM_Prop_Washingline_03.obj-46224d3f80ac2d57a673972f7c4ba1c5.mesh"]
+
+source_file="res://assets/POLYGON_Adventure_Pack_SourceFiles/OBJ/SM_Prop_Washingline_03.obj"
+dest_files=["res://.godot/imported/SM_Prop_Washingline_03.obj-46224d3f80ac2d57a673972f7c4ba1c5.mesh", "res://.godot/imported/SM_Prop_Washingline_03.obj-46224d3f80ac2d57a673972f7c4ba1c5.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true

@@ -1,0 +1,21 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://dj5ck08u477pf"
+path="res://.godot/imported/SM_Env_Tree_08.obj-c9e1ab3d8247adb3a710193ea1e4d17c.mesh"
+
+[deps]
+
+files=["res://.godot/imported/SM_Env_Tree_08.obj-c9e1ab3d8247adb3a710193ea1e4d17c.mesh"]
+
+source_file="res://assets/POLYGON_Adventure_Pack_SourceFiles/OBJ/SM_Env_Tree_08.obj"
+dest_files=["res://.godot/imported/SM_Env_Tree_08.obj-c9e1ab3d8247adb3a710193ea1e4d17c.mesh", "res://.godot/imported/SM_Env_Tree_08.obj-c9e1ab3d8247adb3a710193ea1e4d17c.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true

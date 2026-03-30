@@ -1,0 +1,21 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://cwcgsscdpfayk"
+path="res://.godot/imported/SM_Env_Bush_02.obj-e19d84ad8d1ecb8e17051161a399274d.mesh"
+
+[deps]
+
+files=["res://.godot/imported/SM_Env_Bush_02.obj-e19d84ad8d1ecb8e17051161a399274d.mesh"]
+
+source_file="res://assets/POLYGON_Adventure_Pack_SourceFiles/OBJ/SM_Env_Bush_02.obj"
+dest_files=["res://.godot/imported/SM_Env_Bush_02.obj-e19d84ad8d1ecb8e17051161a399274d.mesh", "res://.godot/imported/SM_Env_Bush_02.obj-e19d84ad8d1ecb8e17051161a399274d.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true

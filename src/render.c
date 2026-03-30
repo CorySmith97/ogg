@@ -862,3 +862,24 @@ void draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color)
         p3, // TL
         colors, uvs, NULL, false);
 }
+
+
+Color mu_to_color(mu_Color c)
+{
+    return (Color){
+        .r = c.r,
+        .g = c.g,
+        .b = c.b,
+        .a = c.a,
+    };
+}
+
+Reci mu_to_rect(mu_Rect rec)
+{
+    return (Reci){
+        .x = rec.x,
+        .y = rec.y,
+        .w = rec.w,
+        .h = rec.h,
+    };
+}

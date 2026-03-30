@@ -1,0 +1,21 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://bp1y5fosrxfox"
+path="res://.godot/imported/SM_Env_Stream_Corner_01.obj-fafecf8bb0c8fc2977cc3752eaff623a.mesh"
+
+[deps]
+
+files=["res://.godot/imported/SM_Env_Stream_Corner_01.obj-fafecf8bb0c8fc2977cc3752eaff623a.mesh"]
+
+source_file="res://assets/POLYGON_Adventure_Pack_SourceFiles/OBJ/SM_Env_Stream_Corner_01.obj"
+dest_files=["res://.godot/imported/SM_Env_Stream_Corner_01.obj-fafecf8bb0c8fc2977cc3752eaff623a.mesh", "res://.godot/imported/SM_Env_Stream_Corner_01.obj-fafecf8bb0c8fc2977cc3752eaff623a.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true

@@ -1,0 +1,21 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://b5n4iav8iw017"
+path="res://.godot/imported/SM_Wep_Staff_02.obj-cadf746024012dce2061e303ec56e323.mesh"
+
+[deps]
+
+files=["res://.godot/imported/SM_Wep_Staff_02.obj-cadf746024012dce2061e303ec56e323.mesh"]
+
+source_file="res://assets/POLYGON_Adventure_Pack_SourceFiles/OBJ/SM_Wep_Staff_02.obj"
+dest_files=["res://.godot/imported/SM_Wep_Staff_02.obj-cadf746024012dce2061e303ec56e323.mesh", "res://.godot/imported/SM_Wep_Staff_02.obj-cadf746024012dce2061e303ec56e323.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true

@@ -1,0 +1,21 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://c0nvwfr387ise"
+path="res://.godot/imported/SM_Prop_Pumpkin_01.obj-19fbb60844e52d175430afcbc2d53290.mesh"
+
+[deps]
+
+files=["res://.godot/imported/SM_Prop_Pumpkin_01.obj-19fbb60844e52d175430afcbc2d53290.mesh"]
+
+source_file="res://assets/POLYGON_Adventure_Pack_SourceFiles/OBJ/SM_Prop_Pumpkin_01.obj"
+dest_files=["res://.godot/imported/SM_Prop_Pumpkin_01.obj-19fbb60844e52d175430afcbc2d53290.mesh", "res://.godot/imported/SM_Prop_Pumpkin_01.obj-19fbb60844e52d175430afcbc2d53290.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true

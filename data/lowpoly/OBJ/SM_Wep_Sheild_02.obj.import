@@ -1,0 +1,21 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://bi1e60kdbqv7"
+path="res://.godot/imported/SM_Wep_Sheild_02.obj-4a04625b8232d9f48acbfeef3fba94c1.mesh"
+
+[deps]
+
+files=["res://.godot/imported/SM_Wep_Sheild_02.obj-4a04625b8232d9f48acbfeef3fba94c1.mesh"]
+
+source_file="res://assets/POLYGON_Adventure_Pack_SourceFiles/OBJ/SM_Wep_Sheild_02.obj"
+dest_files=["res://.godot/imported/SM_Wep_Sheild_02.obj-4a04625b8232d9f48acbfeef3fba94c1.mesh", "res://.godot/imported/SM_Wep_Sheild_02.obj-4a04625b8232d9f48acbfeef3fba94c1.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true

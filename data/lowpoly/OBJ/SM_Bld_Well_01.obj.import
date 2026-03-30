@@ -1,0 +1,21 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://c482da5ysjugj"
+path="res://.godot/imported/SM_Bld_Well_01.obj-b11a47f5009d0bbcc2fcd07da48e4d1f.mesh"
+
+[deps]
+
+files=["res://.godot/imported/SM_Bld_Well_01.obj-b11a47f5009d0bbcc2fcd07da48e4d1f.mesh"]
+
+source_file="res://assets/POLYGON_Adventure_Pack_SourceFiles/OBJ/SM_Bld_Well_01.obj"
+dest_files=["res://.godot/imported/SM_Bld_Well_01.obj-b11a47f5009d0bbcc2fcd07da48e4d1f.mesh", "res://.godot/imported/SM_Bld_Well_01.obj-b11a47f5009d0bbcc2fcd07da48e4d1f.mesh"]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+optimize_mesh=true

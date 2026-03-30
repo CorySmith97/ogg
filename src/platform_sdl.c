@@ -19,6 +19,23 @@ typedef struct KeyboardState {
 static KeyboardState keyboard_state;
 static MouseState mouse_state;
 
+static const char button_map[256] = {
+  [ SDL_BUTTON_LEFT   & 0xff ] =  MU_MOUSE_LEFT,
+  [ SDL_BUTTON_RIGHT  & 0xff ] =  MU_MOUSE_RIGHT,
+  [ SDL_BUTTON_MIDDLE & 0xff ] =  MU_MOUSE_MIDDLE,
+};
+
+static const char key_map[256] = {
+  [ SDLK_LSHIFT       & 0xff ] = MU_KEY_SHIFT,
+  [ SDLK_RSHIFT       & 0xff ] = MU_KEY_SHIFT,
+  [ SDLK_LCTRL        & 0xff ] = MU_KEY_CTRL,
+  [ SDLK_RCTRL        & 0xff ] = MU_KEY_CTRL,
+  [ SDLK_LALT         & 0xff ] = MU_KEY_ALT,
+  [ SDLK_RALT         & 0xff ] = MU_KEY_ALT,
+  [ SDLK_RETURN       & 0xff ] = MU_KEY_RETURN,
+  [ SDLK_BACKSPACE    & 0xff ] = MU_KEY_BACKSPACE,
+};
+
 void platform_init(const char *name, uint32_t width, uint32_t height)
 {
     SDL_SetMainReady();
@@ -37,6 +54,22 @@ void platform_init(const char *name, uint32_t width, uint32_t height)
     platform_ctx.texture = SDL_CreateTexture(platform_ctx.renderer,
                                              SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING,
                                              GAME_WIDTH, GAME_HEIGHT);
+
+    platform_ctx.ui = malloc(sizeof(mu_Context));
+    mu_init(platform_ctx.ui);
+
+/* static int text_width(mu_Font font, const char *text, int len) {
+  if (len == -1) { len = strlen(text); }
+  return r_get_text_width(text, len);
+}
+
+static int text_height(mu_Font font) {
+  return r_get_text_height();
+} */
+
+    // TODO these functions need to be implemented
+    //platform_ctx.ui->text_width = 8;
+    //platform_ctx.ui->text_height = 16;
 }
 
 void platform_handle_events(bool *quit)
@@ -47,6 +80,7 @@ void platform_handle_events(bool *quit)
         // TODO add a way to lock mouse to screen.
         SDL_SetRelativeMouseMode(SDL_FALSE);
     }
+    int b, c;
     SDL_Event event;
     while (SDL_PollEvent(&event))
     {
@@ -55,18 +89,29 @@ void platform_handle_events(bool *quit)
                 *quit = true;
                 break;
             case SDL_KEYDOWN:
+                c = key_map[event.key.keysym.sym & 0xff];
+                if (c && event.type == SDL_KEYDOWN) { mu_input_keydown(platform_ctx.ui, c); }
                 //on_key_down(event.key.keysym.scancode);
                 break;
             case SDL_KEYUP:
+                c = key_map[event.key.keysym.sym & 0xff];
+                if (c && event.type ==   SDL_KEYUP) { mu_input_keyup(platform_ctx.ui, c);   }
                 //on_key_up(event.key.keysym.scancode);
                 break;
             case SDL_MOUSEBUTTONDOWN:
                 on_mouse_down(event.button.button);
+                b = button_map[event.button.button & 0xff];
+                if (b && event.type == SDL_MOUSEBUTTONDOWN) { mu_input_mousedown(platform_ctx.ui, event.button.x, event.button.y, b); }
                 break;
             case SDL_MOUSEBUTTONUP:
+                b = button_map[event.button.button & 0xff];
+                if (b && event.type ==   SDL_MOUSEBUTTONUP) { mu_input_mouseup(platform_ctx.ui, event.button.x, event.button.y, b);   }
                 on_mouse_up(event.button.button);
                 break;
+            case SDL_MOUSEWHEEL: mu_input_scroll(platform_ctx.ui, 0, event.wheel.y * -30); break;
+            case SDL_TEXTINPUT: mu_input_text(platform_ctx.ui, event.text.text); break;
             case SDL_MOUSEMOTION:
+                mu_input_mousemove(platform_ctx.ui, event.motion.x, event.motion.y);
                 on_mouse_moved(event.motion.x, event.motion.y, event.motion.xrel, event.motion.yrel);
                 break;
         default:
