@@ -31,12 +31,18 @@ typedef union Color {
 #define COLOR_PURPLE (Color){.r = 0x50, .b = 0x50, .a = 255}
 #define COLOR_YELLOW (Color){.r = 0x50, .g = 0x50, .a = 255}
 
+typedef union {
+    struct {int x, y, w, h;};
+    struct {V2i min, max;};
+} Reci;
+
 typedef struct {
     V3f vertices[3];
     V3f normals[3];
     V3f uvs[3];
     Color colors[3];
     Texture *texture;
+    Reci clip;
     bool twod;
 } Triangle;
 
@@ -50,11 +56,6 @@ typedef struct {
     V3f position;
     V3f color;
 } Light;
-
-typedef union {
-    struct {int x, y, w, h;};
-    struct {V2i min, max;};
-} Reci;
 
 static struct {
     Vertex *vertices;

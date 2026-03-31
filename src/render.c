@@ -11,6 +11,9 @@
 
 #define to_ndc_x(px) ((float)(px) / GAME_WIDTH * 2.0f - 1.0f)
 #define to_ndc_y(py) (1.0f - (float)(py) / GAME_HEIGHT * 2.0f)
+#define PIXEL_INDEX(x, y) ((size_t)(x) + (size_t)(y) * (size_t)renderer.width)
+
+static Reci g_clip = (Reci){0, 0, GAME_WIDTH, GAME_HEIGHT};
 
 // Internal Function Declarations
 void set_verline(uint32_t x, uint32_t start, uint32_t end, Color color);
@@ -136,6 +139,7 @@ void render_shutdown(void)
 
 void renderer_flush(void)
 {
+    g_clip = (Reci){0, 0, GAME_WIDTH, GAME_HEIGHT};
     // enqueue all non-empty bins
     pthread_mutex_lock(&queue_mutex);
     for (int i = 0; i < TILE_COUNT; i++)
@@ -188,21 +192,34 @@ Color color_mul(Color c1, Color c2)
     };
 }
 
-#define PIXEL_INDEX(x, y) ((size_t)(x) + (size_t)(y) * (size_t)renderer.width)
 
-static inline void set_pixel(int x, int y, Color color)
+void renderer_set_clip(Reci r) {
+    g_clip = r;
+}
+
+static inline void set_pixel(int x, int y, Color color, Reci clip) {
+    if (x < clip.x || y < clip.y ||
+        x >= clip.x + clip.w ||
+        y >= clip.y + clip.h)
+        return;
+    if (x < 0 || y < 0 || x >= renderer.width || y >= renderer.height)
+        return;
+    renderer.pixels[PIXEL_INDEX(x, y)] = color.rgba;
+}
+
+/* static inline void set_pixel(int x, int y, Color color)
 {
     if (x < 0 || y < 0 || x >= renderer.width || y >= renderer.height)
         return;
 
     renderer.pixels[PIXEL_INDEX(x, y)] = color.rgba;
 }
-
+ */
 void set_verline(uint32_t x, uint32_t start, uint32_t end, Color color)
 {
     for (uint32_t i = start; i < end; i++)
     {
-        set_pixel(x, i, color);
+        set_pixel(x, i, color, g_clip);
     }
 }
 
@@ -223,9 +240,9 @@ void set_line(V2i v, V2i u, Color color)
     for (int x = v.x; x < u.x; x++)
     {
         if (steep)
-            set_pixel(y, x, color);
+            set_pixel(y, x, color, g_clip);
         else
-            set_pixel(x, y, color);
+            set_pixel(x, y, color, g_clip);
         ierror += abs(u.y - v.y);
         if (ierror > u.x - v.x)
         {
@@ -257,7 +274,7 @@ void set_triangle(V2i v1, V2i v2, V2i v3, Color color)
         {
             if (barycentric(v1, v2, v3, v2i(x, y), &bary))
             {
-                set_pixel((uint32_t)x, (uint32_t)y, color);
+                set_pixel((uint32_t)x, (uint32_t)y, color, g_clip);
             }
         }
     }
@@ -278,7 +295,7 @@ void set_triangle_multicolor(V2i v1, V2i v2, V2i v3, Color c1, Color c2, Color c
             if (barycentric(v1, v2, v3, v2i(x, y), &bary))
             {
                 Color color = color_add(color_add(color_scale(c1, bary.x), color_scale(c2, bary.y)), color_scale(c3, bary.z));
-                set_pixel((uint32_t)x, (uint32_t)y, color);
+                set_pixel((uint32_t)x, (uint32_t)y, color, g_clip);
             }
         }
     }
@@ -301,8 +318,8 @@ void renderer_push_triangle(V3f v1, V3f v2, V3f v3, Color color[3], V3f uvs[3], 
         pos2 = v2i(v2.x, v2.y);
         pos3 = v2i(v3.x, v3.y);
     }
-    if (!check_bounds(pos1, pos2, pos3))
-        return;
+    //if (!check_bounds(pos1, pos2, pos3))
+    //    return;
 
     AABBi rec = {
         v2i(min(pos1.x, min(pos2.x, pos3.x)), min(pos1.y, min(pos2.y, pos3.y))),
@@ -323,6 +340,7 @@ void renderer_push_triangle(V3f v1, V3f v2, V3f v3, Color color[3], V3f uvs[3], 
         .uvs = {uvs[0], uvs[1], uvs[2]},
         .texture = t,
         .twod = twod,
+        .clip = g_clip,
     };
     arrput(triangles, triangle);
     size_t idx = arrlen(triangles) - 1;
@@ -445,8 +463,9 @@ void renderer_draw_triangle(uint32_t tile_x, uint32_t tile_y, Triangle tri)
 
                 size_t idx = PIXEL_INDEX(x, y);
 
-                if (z >= renderer.zbuffer[idx])
+                if (z > renderer.zbuffer[idx])
                     continue;
+                renderer.zbuffer[idx] = z;
 
                 // TODO Interpolate colors
                 Color int_color;
@@ -479,8 +498,7 @@ void renderer_draw_triangle(uint32_t tile_x, uint32_t tile_y, Triangle tri)
                         color_scale(tri.colors[2], bary.z));
                 }
 
-                renderer.zbuffer[idx] = z;
-                set_pixel((uint32_t)x, (uint32_t)y, int_color); //  (Color){c, c, c, 255});
+                set_pixel((uint32_t)x, (uint32_t)y, int_color, tri.clip); //  (Color){c, c, c, 255});
             }
         }
     }
@@ -490,7 +508,7 @@ void draw_point(V3f p, Color color)
 {
     V2i pos = to_screen(project(p));
 
-    set_pixel(pos.x, pos.y, color);
+    set_pixel(pos.x, pos.y, color, g_clip);
 }
 
 void set_triangle_3d(V3f v1, V3f v2, V3f v3, Color color)
@@ -521,7 +539,7 @@ void set_triangle_3d(V3f v1, V3f v2, V3f v3, Color color)
                     continue;
                 renderer.zbuffer[x + y * GAME_WIDTH] = z;
 
-                set_pixel((uint32_t)x, (uint32_t)y, color); // (Color){c, c, c, 255});
+                set_pixel((uint32_t)x, (uint32_t)y, color, g_clip); // (Color){c, c, c, 255});
             }
         }
     }
@@ -714,15 +732,15 @@ void draw_texture(Texture *tex, Reci rec)
     Color colors[3] = {};
 
     renderer_push_triangle(
-        v3f(x1, y1, 1), // BR
-        v3f(x1, y0, 1), // TR
-        v3f(x0, y0, 1), // TL
+        v3f(x1, y1, 0.1), // BR
+        v3f(x1, y0, 0.1), // TR
+        v3f(x0, y0, 0.1), // TL
         colors, uvs1, tex, true);
 
     renderer_push_triangle(
-        v3f(x0, y1, 1), // BL
-        v3f(x1, y1, 1), // BR
-        v3f(x0, y0, 1), // TL
+        v3f(x0, y1, 0.1), // BL
+        v3f(x1, y1, 0.1), // BR
+        v3f(x0, y0, 0.1), // TL
         colors, uvs2, tex, true);
 }
 
@@ -824,7 +842,14 @@ void draw_text(Font *f, char *str, V2i pos, float size, Color color)
             v3f(u_min, v_max, 0), /* bottom-left  */
         };
         Color colors[4] = {color, color, color, color};
-        Reci rec = (Reci){.x = pos.x + (i * (int)size), .y = pos.y, .w = (int)size, .h = (int)size};
+        // In draw_text, replace the Reci line:
+        int char_w = (int)((float)size * GLYPH_W / GLYPH_H);  // e.g. size=16 → 8px wide
+        Reci rec = (Reci){
+            .x = pos.x + (i * char_w),
+            .y = pos.y,
+            .w = char_w,
+            .h = (int)size
+        };
         draw_texture_w_uvs(
             f->texture,
             rec,

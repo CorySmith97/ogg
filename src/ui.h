@@ -5,6 +5,8 @@
 #ifndef UI_H
 #define UI_H
 
+static mu_Context ui_context;
+
 typedef enum {
     Axis2_x,
     Axis2_y,

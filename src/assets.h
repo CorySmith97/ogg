@@ -4,6 +4,10 @@
  * matrices for each frame. It would then move each model in correspondence with the matrix with
  * some light interpolation. I dont care for, at the moment, a super high fidelity animation system.
  * I just want to be able to have some simple, and low data, animations to add some life to the engine.
+ *
+ * TODO global asset store should be sequential I think, and then have 
+ * a string to index map of somekind. For serialization that may make 
+ * life much easier. It could also make it way more difficult though.
  */
 #ifndef ASSET_H
 #define ASSET_H

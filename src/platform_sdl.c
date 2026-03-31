@@ -36,6 +36,15 @@ static const char key_map[256] = {
   [ SDLK_BACKSPACE    & 0xff ] = MU_KEY_BACKSPACE,
 };
 
+static int text_width(mu_Font font, const char *text, int len) {
+  if (len == -1) { len = strlen(text); }
+  return len * 16;
+}
+
+static int text_height(mu_Font font) {
+  return 16;
+}
+
 void platform_init(const char *name, uint32_t width, uint32_t height)
 {
     SDL_SetMainReady();
@@ -58,18 +67,10 @@ void platform_init(const char *name, uint32_t width, uint32_t height)
     platform_ctx.ui = malloc(sizeof(mu_Context));
     mu_init(platform_ctx.ui);
 
-/* static int text_width(mu_Font font, const char *text, int len) {
-  if (len == -1) { len = strlen(text); }
-  return r_get_text_width(text, len);
-}
-
-static int text_height(mu_Font font) {
-  return r_get_text_height();
-} */
 
     // TODO these functions need to be implemented
-    //platform_ctx.ui->text_width = 8;
-    //platform_ctx.ui->text_height = 16;
+    platform_ctx.ui->text_width  = text_width;
+    platform_ctx.ui->text_height = text_height;
 }
 
 void platform_handle_events(bool *quit)
@@ -109,7 +110,7 @@ void platform_handle_events(bool *quit)
                 on_mouse_up(event.button.button);
                 break;
             case SDL_MOUSEWHEEL: mu_input_scroll(platform_ctx.ui, 0, event.wheel.y * -30); break;
-            case SDL_TEXTINPUT: mu_input_text(platform_ctx.ui, event.text.text); break;
+            //case SDL_TEXTINPUT: mu_input_text(platform_ctx.ui, event.text.text); break;
             case SDL_MOUSEMOTION:
                 mu_input_mousemove(platform_ctx.ui, event.motion.x, event.motion.y);
                 on_mouse_moved(event.motion.x, event.motion.y, event.motion.xrel, event.motion.yrel);

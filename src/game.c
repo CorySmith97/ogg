@@ -84,7 +84,8 @@ void game_init(void)
     Asset_Model *a = load_model_from_file("data/shopkeeper.obj");
 
     shput(gs.assets, "shopkeeper", a);
-    //shput(gs.assets, "cube", load_model_from_file("data/cube.obj"));
+    a = load_model_from_file("data/cube.obj");
+    shput(gs.assets, "cube", a);
 
     gs.font = load_font("data/VGA8x16.png", 8, 16);
 
@@ -118,35 +119,66 @@ void game_frame(void)
 
 
     SectionStart("Render");
-    clear_background(COLOR_BROWN);
+    clear_background(COLOR_GRAY);
 
     draw_model_with_light(shget(gs.assets, "shopkeeper"), v3f(0, -1,  2), mat3_identity(), gs.sun);
 
     SectionStart("UI Render");
-    /* mu_begin(platform_ctx.ui);
+
+    renderer_flush();
+    mu_begin(platform_ctx.ui);
     if (mu_begin_window(platform_ctx.ui, "Demo Window", mu_rect(40, 40, 300, 450))) {
         mu_Container *win = mu_get_current_container(platform_ctx.ui);
         win->rect.w = mu_max(win->rect.w, 240);
         win->rect.h = mu_max(win->rect.h, 300);
+        if (mu_header_ex(platform_ctx.ui, "Test Buttons", MU_OPT_EXPANDED)) {
+        if (mu_button(platform_ctx.ui, "Button 1")) { log_info("Pressed button 1"); }
+        if (mu_button(platform_ctx.ui, "Button 2")) { log_info("Pressed button 2"); }
+        }
+        mu_end_window(platform_ctx.ui);
     }
-    mu_end(platform_ctx.ui); */
+    mu_end(platform_ctx.ui);
 
 
     sprintf(buf, "fps: %.3f", 1/gs.frame_time);
+    draw_reci((Reci){.x = 0, .y = 0, .w = 200, .h = 32}, 1.0f, COLOR_WHITE);
+    draw_reci((Reci){.x = 0, .y = 0, .w = 100, .h = 32}, 1.0f, COLOR_BLUE);
     draw_text(gs.font, buf, v2i(0, 10), 16, COLOR_RED);
-    draw_reci((Reci){.x = 0, .y = 0, .w = 200, .h = 100}, 1.0f, COLOR_WHITE);
 
-    /* mu_Command *cmd = NULL;
+    mu_Command *cmd = NULL;
+    float ui_z = 2.0f;  // Start just behind text (z=1.0)
     while (mu_next_command(platform_ctx.ui, &cmd)) {
       switch (cmd->type) {
-        case MU_COMMAND_TEXT: draw_text(gs.font, cmd->text.str, v2i(cmd->text.pos.x, cmd->text.pos.y), 14, mu_to_color(cmd->text.color)); break;
-        case MU_COMMAND_RECT: draw_reci(mu_to_rect(cmd->rect.rect), 1, mu_to_color(cmd->rect.color)); break;
+          case MU_COMMAND_ICON: {
+              char icon_char;
+              switch (cmd->icon.id) {
+                  case 1: icon_char = 'X'; break;        // MU_ICON_CLOSE
+                  case 2: icon_char = 'V'; break;        // MU_ICON_CHECK
+                  case 3: icon_char = '>'; break;        // MU_ICON_COLLAPSED
+                  case 4: icon_char = 'v'; break;        // MU_ICON_EXPANDED
+                  default: icon_char = '?'; break;
+              }
+              char icon_str[2] = {icon_char, '\0'};
+              draw_text(gs.font, icon_str, v2i(cmd->icon.rect.x, cmd->icon.rect.y),
+                      18, mu_to_color(cmd->icon.color));
+            }
+            break;
+        case MU_COMMAND_TEXT: 
+            if ((unsigned char)cmd->text.str[0] >= 32)
+                draw_text(gs.font, cmd->text.str, v2i(cmd->text.pos.x, cmd->text.pos.y),
+                        16, mu_to_color(cmd->text.color));
+            break;
+        case MU_COMMAND_RECT: 
+            draw_reci(mu_to_rect(cmd->rect.rect), ui_z, mu_to_color(cmd->rect.color)); 
+            ui_z -= 0.001f;  // Increment z to preserve draw order
+            break;
+        case MU_COMMAND_CLIP: renderer_set_clip(mu_to_rect(cmd->clip.rect)); break;
       }
-    } */
+    }
 
     SectionEnd("UI Render");
-    renderer_flush();
 
+    renderer_flush();
     SectionEnd("Render");
 
     gs.sun.position = renderer.camera.position;
