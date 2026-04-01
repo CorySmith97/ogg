@@ -830,10 +830,13 @@ void draw_text(Font *f, char *str, V2i pos, float size, Color color)
         int col = tex_id % sprites_per_row;
         int row = tex_id / sprites_per_row;
 
-        float u_min = (float)(col * GLYPH_W) / (float)atlas_w;
-        float v_min = (float)(row * GLYPH_H) / (float)atlas_h;
-        float u_max = (float)(col * GLYPH_W + GLYPH_W) / (float)atlas_w;
-        float v_max = (float)(row * GLYPH_H + GLYPH_H) / (float)atlas_h;
+        // Uniform inset on all sides to prevent texture bleeding from neighboring characters
+        float inset_u = 1.0f / (float)atlas_w;
+        float inset_v = 1.0f / (float)atlas_h;
+        float u_min = (float)(col * GLYPH_W) / (float)atlas_w + inset_u;
+        float v_min = (float)(row * GLYPH_H) / (float)atlas_h + inset_v;
+        float u_max = (float)(col * GLYPH_W + GLYPH_W) / (float)atlas_w + inset_u;
+        float v_max = (float)(row * GLYPH_H + GLYPH_H) / (float)atlas_h + inset_v;
 
         V3f uvs[4] = {
             v3f(u_min, v_min, 0), /* top-left     */
