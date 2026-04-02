@@ -91,7 +91,5 @@ void  draw_texture(Texture *tex, Reci rec);
 void  draw_text(Font *f, char *str, V2i pos, float size, Color color);
 void  draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color);
 void  draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color color);
-Color  mu_to_color(mu_Color c);
-Reci   mu_to_rect(mu_Rect rec);
 
 #endif /* RENDER_H */

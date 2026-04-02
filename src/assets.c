@@ -37,6 +37,8 @@ SimpleMtl *load_material_file(const char *file)
         }
     }
 
+    log_info("Loaded material %s", file);
+
 ret:
     fclose(f);
     return mtl;
@@ -52,6 +54,7 @@ Texture *load_texture_from_file(const char *file, bool flip)
     tex->data = malloc(size);
     memcpy(tex->data, data, size);
 
+    log_info("Loaded texture  %s", file);
     stbi_image_free(data);
     return tex;
 }
@@ -126,8 +129,8 @@ Asset_Model *load_model_from_file(const char *file)
             if (strncmp(line, "usemtl", 6) == 1){}
         }
     }
-    log_info("MODEL LOADED: %s", file);
-    log_info("Vertices loaded: %td", arrlen(model->vertices));
+    log_info("Model loaded    %s", file);
+    log_info("Vertices loaded %td", arrlen(model->vertices));
     goto ret;
 
 

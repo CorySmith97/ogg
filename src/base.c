@@ -31,3 +31,26 @@ void logger(Log_Level level, const char *msg, ...)
     log_handler(level, msg, args);
     va_end(args);
 }
+
+Arena *_arena_alloc(Arena_Params params)
+{
+}
+
+void arena_checkpoint(Arena *arena)
+{
+    arena->checkpoint = arena->position;
+}
+
+void arena_reset_to_checkpoint(Arena *arena)
+{
+    arena->position = arena->checkpoint;
+}
+
+void arena_reset(Arena *arena)
+{
+    arena->position = arena->data;
+}
+
+void *arena_push(Arena *arena)
+{
+}

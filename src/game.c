@@ -118,31 +118,16 @@ void game_frame(void)
 
 
     SectionStart("Render");
-    clear_background(COLOR_BROWN);
+    clear_background(COLOR_GRAY);
 
     draw_model_with_light(shget(gs.assets, "shopkeeper"), v3f(0, -1,  2), mat3_identity(), gs.sun);
 
     SectionStart("UI Render");
-    /* mu_begin(platform_ctx.ui);
-    if (mu_begin_window(platform_ctx.ui, "Demo Window", mu_rect(40, 40, 300, 450))) {
-        mu_Container *win = mu_get_current_container(platform_ctx.ui);
-        win->rect.w = mu_max(win->rect.w, 240);
-        win->rect.h = mu_max(win->rect.h, 300);
-    }
-    mu_end(platform_ctx.ui); */
 
 
     sprintf(buf, "fps: %.3f", 1/gs.frame_time);
     draw_text(gs.font, buf, v2i(0, 10), 16, COLOR_RED);
     draw_reci((Reci){.x = 0, .y = 0, .w = 200, .h = 100}, 1.0f, COLOR_WHITE);
-
-    /* mu_Command *cmd = NULL;
-    while (mu_next_command(platform_ctx.ui, &cmd)) {
-      switch (cmd->type) {
-        case MU_COMMAND_TEXT: draw_text(gs.font, cmd->text.str, v2i(cmd->text.pos.x, cmd->text.pos.y), 14, mu_to_color(cmd->text.color)); break;
-        case MU_COMMAND_RECT: draw_reci(mu_to_rect(cmd->rect.rect), 1, mu_to_color(cmd->rect.color)); break;
-      }
-    } */
 
     SectionEnd("UI Render");
     renderer_flush();

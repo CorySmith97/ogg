@@ -28,7 +28,6 @@ static struct {
     const uint8_t   *keystate;
     MouseState      mouse_state;
     bool            mouse_enabled;
-    mu_Context     *ui;
 } platform_ctx = {
 };
 

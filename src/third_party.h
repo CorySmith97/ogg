@@ -8,4 +8,5 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-#include "microui.h"
+#define CLAY_IMPLEMENTATION
+#include "clay.h"
