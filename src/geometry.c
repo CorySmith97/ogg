@@ -11,7 +11,7 @@ static V2f project(V3f v)
 {
     float z = (v.z < NEAR) ? NEAR : v.z;
     assert(v.z != 0);
-    float fov_rad = 1.0f / tanf((FOV * 0.5f) * (M_PI / 180.0f));
+    float fov_rad = 1.0f / tanf((renderer.camera.fovy * 0.5f) * (M_PI / 180.0f));
     float aspect = (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT;
 
     float x = (v.x * fov_rad) / (aspect * z);

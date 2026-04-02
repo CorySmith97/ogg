@@ -17,6 +17,7 @@ static struct {
     Entity *dynamic_entities;
     Entity *static_entities;
     Tile *tiles;
+    GameState state;
 } gs = {
     .sun = {
         .position = {4, 0, 0},
@@ -28,9 +29,11 @@ static struct {
     .dynamic_entities = NULL,
     .static_entities = NULL,
     .tiles = NULL,
+    .state = GAME_STATE_GAMEPLAY,
 };
 
-void handle_camera(V2f mouse_delta);
+void handle_camera_editor(V2f mouse_delta);
+void handle_camera_gameplay(V2f mouse_delta);
 
 float angle = 0;
 Texture *entity_1;
@@ -91,6 +94,9 @@ void game_init(void)
     SectionEnd("Intialization");
     profiler_report();
     profiler_reset();
+
+
+    renderer.camera.front = v3f_scale(v3f_normalize(v3f_sub(renderer.camera.position, renderer.camera.target)), -1);
 }
 
 float z = 1.0f;
@@ -104,11 +110,24 @@ void game_frame(void)
     if (is_key_down(KEY_M)) {
         gs.profiling_enabled = !gs.profiling_enabled;
     }
-    if (is_key_down(KEY_N)) z += 0.01;
-    if (is_key_down(KEY_B)) z -= 0.01;
+    if (is_key_down(KEY_K)) renderer.camera.fovy += 0.01;
+    if (is_key_down(KEY_J)) renderer.camera.fovy -= 0.01;
+    if (is_key_down(KEY_I)) {
+        gs.state = GAME_STATE_EDITOR;
+    }
+    if (is_key_down(KEY_O)) {
+        gs.state = GAME_STATE_GAMEPLAY;
+    }
 
     set_mouse_toggle_key(KEY_P);
-    handle_camera(mouse_delta);
+    switch(gs.state) {
+        case GAME_STATE_GAMEPLAY:
+            handle_camera_gameplay(mouse_delta);
+            break;
+        default:
+            handle_camera_editor(mouse_delta);
+            break;
+    }
 
     SectionStart("Entity Update");
     for (int i = 0; i < arrlen(gs.dynamic_entities); i++) {
@@ -116,9 +135,16 @@ void game_frame(void)
     }
     SectionEnd("Entity Update");
 
-
     SectionStart("Render");
     clear_background(COLOR_GRAY);
+
+    draw_rectangle3d(
+            v3f(renderer.camera.target.x - 0.2, renderer.camera.target.y, renderer.camera.target.z - 0.2), 
+            v3f(renderer.camera.target.x - 0.2, renderer.camera.target.y, renderer.camera.target.z + 0.2), 
+            v3f(renderer.camera.target.x + 0.2, renderer.camera.target.y, renderer.camera.target.z - 0.2), 
+            v3f(renderer.camera.target.x + 0.2, renderer.camera.target.y, renderer.camera.target.z + 0.2), 
+            COLOR_RED
+            );
 
     draw_model_with_light(shget(gs.assets, "shopkeeper"), v3f(0, -1,  2), mat3_identity(), gs.sun);
 
@@ -127,7 +153,14 @@ void game_frame(void)
 
     sprintf(buf, "fps: %.3f", 1/gs.frame_time);
     draw_text(gs.font, buf, v2i(0, 10), 16, COLOR_RED);
-    draw_reci((Reci){.x = 0, .y = 0, .w = 200, .h = 100}, 1.0f, COLOR_WHITE);
+    sprintf(buf, "position: %.3f %.3f %.3f", renderer.camera.position.x, renderer.camera.position.y, renderer.camera.position.z);
+    draw_text(gs.font, buf, v2i(0, 26), 16, COLOR_RED);
+    sprintf(buf, "target:   %.3f %.3f %.3f", renderer.camera.target.x, renderer.camera.target.y, renderer.camera.target.z);
+    draw_text(gs.font, buf, v2i(0, 42), 16, COLOR_RED);
+    sprintf(buf, "front:    %.3f %.3f %.3f", renderer.camera.front.x, renderer.camera.front.y, renderer.camera.front.z);
+    draw_text(gs.font, buf, v2i(0, 58), 16, COLOR_RED);
+    sprintf(buf, "front:    %.3f", renderer.camera.fovy);
+    draw_text(gs.font, buf, v2i(0, 70), 16, COLOR_RED);
 
     SectionEnd("UI Render");
     renderer_flush();
@@ -146,7 +179,7 @@ void game_deinit(void)
 
 // TODO there is a laggy feel and it does not respond well at all.
 // Specifically when turning.
-void handle_camera(V2f mouse_delta)
+void handle_camera_editor(V2f mouse_delta)
 {
     if (is_key_down(KEY_W)) {
         renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(renderer.camera.front, gs.camera_speed));
@@ -183,5 +216,47 @@ void handle_camera(V2f mouse_delta)
         direction.z = -sin(deg_to_rad(renderer.camera.yaw)) * cos(deg_to_rad(renderer.camera.pitch));
         renderer.camera.front = v3f_normalize(direction);
 
+    }
+}
+
+// TODO this is currently producing some real weird perspective things.
+void handle_camera_gameplay(V2f mouse_delta)
+{
+    V3f front_no_y = v3f(renderer.camera.front.x, 0, renderer.camera.front.z);
+    if (is_key_down(KEY_W)) {
+        renderer.camera.target = v3f_add(renderer.camera.target, v3f_scale(front_no_y, gs.camera_speed));
+        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(front_no_y, gs.camera_speed));
+    }
+    if (is_key_down(KEY_S)) {
+        renderer.camera.target = v3f_add(renderer.camera.target, v3f_scale(front_no_y, -gs.camera_speed));
+        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(front_no_y, -gs.camera_speed));
+    }
+    if (is_key_down(KEY_A)) {
+        renderer.camera.target = v3f_add(renderer.camera.target, v3f_scale(v3f_cross(front_no_y, renderer.camera.up), gs.camera_speed));
+        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(v3f_cross(front_no_y, renderer.camera.up), gs.camera_speed));
+    }
+    if (is_key_down(KEY_D)) {
+        renderer.camera.target = v3f_sub(renderer.camera.target, v3f_scale(v3f_cross(front_no_y, renderer.camera.up), gs.camera_speed));
+        renderer.camera.position = v3f_sub(renderer.camera.position, v3f_scale(v3f_cross(front_no_y, renderer.camera.up), gs.camera_speed));
+    }
+
+
+    if (is_mouse_button_down(MOUSEBUTTON_LEFT)) {
+        float angle = 0.0f;
+        angle += mouse_delta.x * 0.001;
+
+        renderer.camera.position = v3f_rotate_y_around_point(renderer.camera.position, renderer.camera.target, -angle);
+
+        float x_offset = mouse_delta.x;
+        float y_offset = -mouse_delta.y;
+
+        renderer.camera.front = v3f_normalize(v3f_sub(renderer.camera.target, renderer.camera.position));
+
+
+        /* log_debug("camera front %f %f %f", renderer.camera.front.x, renderer.camera.front.y, renderer.camera.front.z);
+        float old_y = renderer.camera.front.y;
+        renderer.camera.front = v3f_normalize(v3f_sub(renderer.camera.position, renderer.camera.target));
+        renderer.camera.front.y = 1;
+        log_debug("camera front %f %f %f", renderer.camera.front.x, renderer.camera.front.y, renderer.camera.front.z); */
     }
 }

@@ -121,6 +121,7 @@ void render_init(void)
 
     for (int i = 0; i < NUM_THREADS; i++)
         pthread_create(&workers[i].thread, NULL, worker_thread, NULL);
+
 }
 
 void render_shutdown(void)

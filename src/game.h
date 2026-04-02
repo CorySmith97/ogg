@@ -13,7 +13,7 @@ typedef enum {
     GAME_STATE_GAMEPLAY,
     GAME_STATE_PAUSE,
     GAME_STATE_COUNT,
-} GameStates;
+} GameState;
 
 void game_run(void);
 void game_init(void);

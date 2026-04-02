@@ -71,11 +71,13 @@ static struct {
     .pixels = {0},
     .zbuffer = {0},
     .camera = {
-        .position = {4,4,-3},
+        .target = {2, 0, 1},
+        .position = {2,1,-1},
         .up = {0, 1, 0},
-        .front = {0, -0.75, 1},
+        .front = {0},
         .pitch = 0.0f,
         .yaw = -90.0f,
+        .fovy = 45.0f,
     },
 };
 

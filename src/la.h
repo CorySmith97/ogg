@@ -63,6 +63,7 @@ union Mat4 {
 };
 
 typedef struct Camera {
+    V3f target;
     V3f position;
     V3f up;
     V3f front;
