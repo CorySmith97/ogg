@@ -48,7 +48,7 @@ void arena_reset_to_checkpoint(Arena *arena)
 
 void arena_reset(Arena *arena)
 {
-    arena->position = arena->data;
+    arena->position = (uintptr_t)arena->data;
 }
 
 void *arena_push(Arena *arena)
