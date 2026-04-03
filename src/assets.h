@@ -96,6 +96,11 @@ typedef struct {
     Asset_Model *value;
 } Asset_Model_KV;
 
+typedef struct {
+    char *key;
+    Texture *value;
+} Texture_KV;
+
 Asset_Model *load_model_from_file(const char *file);
 void         deload_model(Asset_Model *model);
 // Loads fonts via a font atlas

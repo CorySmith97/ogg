@@ -10,7 +10,7 @@ static struct {
     float   camera_speed;
     bool    profiling_enabled;
     // Global texture storage
-    Texture     *textures;
+    Texture_KV     *textures;
     Asset_Model_KV *assets;
     
     // Gameplay
@@ -85,8 +85,10 @@ void game_init(void)
     tiles_init();
 
     Asset_Model *a = load_model_from_file("data/shopkeeper.obj");
+    Texture *t = load_texture_from_file("data/target.png", false);
 
     shput(gs.assets, "shopkeeper", a);
+    shput(gs.textures, "target", t);
     //shput(gs.assets, "cube", load_model_from_file("data/cube.obj"));
 
     gs.font = load_font("data/VGA8x16.png", 8, 16);
@@ -96,7 +98,7 @@ void game_init(void)
     profiler_reset();
 
 
-    renderer.camera.front = v3f_scale(v3f_normalize(v3f_sub(renderer.camera.position, renderer.camera.target)), -1);
+    renderer.camera.front = v3f_normalize(v3f_sub(renderer.camera.target, renderer.camera.position));
 }
 
 float z = 1.0f;
@@ -110,14 +112,12 @@ void game_frame(void)
     if (is_key_down(KEY_M)) {
         gs.profiling_enabled = !gs.profiling_enabled;
     }
-    if (is_key_down(KEY_K)) renderer.camera.fovy += 0.01;
-    if (is_key_down(KEY_J)) renderer.camera.fovy -= 0.01;
-    if (is_key_down(KEY_I)) {
-        gs.state = GAME_STATE_EDITOR;
-    }
-    if (is_key_down(KEY_O)) {
-        gs.state = GAME_STATE_GAMEPLAY;
-    }
+    if (is_key_down(KEY_K)) renderer.camera.position.z += 0.1;
+    if (is_key_down(KEY_J)) renderer.camera.position.z -= 0.1;
+    if (is_key_down(KEY_U)) renderer.camera.fovy += 0.1;
+    if (is_key_down(KEY_I)) renderer.camera.fovy -= 0.1;
+    if (is_key_down(KEY_T)) gs.state = GAME_STATE_EDITOR;
+    if (is_key_down(KEY_Y)) gs.state = GAME_STATE_GAMEPLAY;
 
     set_mouse_toggle_key(KEY_P);
     switch(gs.state) {
@@ -138,15 +138,18 @@ void game_frame(void)
     SectionStart("Render");
     clear_background(COLOR_GRAY);
 
-    draw_rectangle3d(
-            v3f(renderer.camera.target.x - 0.2, renderer.camera.target.y, renderer.camera.target.z - 0.2), 
-            v3f(renderer.camera.target.x - 0.2, renderer.camera.target.y, renderer.camera.target.z + 0.2), 
-            v3f(renderer.camera.target.x + 0.2, renderer.camera.target.y, renderer.camera.target.z - 0.2), 
-            v3f(renderer.camera.target.x + 0.2, renderer.camera.target.y, renderer.camera.target.z + 0.2), 
-            COLOR_RED
+    draw_texture3d(
+            shget(gs.textures, "target"),
+            v3f(renderer.camera.target.x - 0.3, renderer.camera.target.y, renderer.camera.target.z - 0.3), 
+            v3f(renderer.camera.target.x - 0.3, renderer.camera.target.y, renderer.camera.target.z + 0.3), 
+            v3f(renderer.camera.target.x + 0.3, renderer.camera.target.y, renderer.camera.target.z - 0.3), 
+            v3f(renderer.camera.target.x + 0.3, renderer.camera.target.y, renderer.camera.target.z + 0.3), 
+            COLOR_WHITE
             );
 
-    draw_model_with_light(shget(gs.assets, "shopkeeper"), v3f(0, -1,  2), mat3_identity(), gs.sun);
+    draw_model_with_light(shget(gs.assets, "shopkeeper"), v3f(1, 0,  2), mat3_identity(), gs.sun);
+    
+    draw_model(shget(gs.assets, "shopkeeper"), v3f(-1, 0,  2), mat3_identity());
 
     SectionStart("UI Render");
 
@@ -159,8 +162,19 @@ void game_frame(void)
     draw_text(gs.font, buf, v2i(0, 42), 16, COLOR_RED);
     sprintf(buf, "front:    %.3f %.3f %.3f", renderer.camera.front.x, renderer.camera.front.y, renderer.camera.front.z);
     draw_text(gs.font, buf, v2i(0, 58), 16, COLOR_RED);
-    sprintf(buf, "front:    %.3f", renderer.camera.fovy);
+    sprintf(buf, "fovy:     %.3f", renderer.camera.fovy);
     draw_text(gs.font, buf, v2i(0, 70), 16, COLOR_RED);
+
+    Mat4 view = camera_matrix(renderer.camera);
+
+    sprintf(buf, "%.3f %.3f %.3f %.3f", view.c[0], view.c[1], view.c[2], view.c[3]);
+    draw_text(gs.font, buf, v2i(0, 90), 16, COLOR_RED);
+    sprintf(buf, "%.3f %.3f %.3f %.3f", view.c[4], view.c[5], view.c[6], view.c[7]);
+    draw_text(gs.font, buf, v2i(0, 110), 16, COLOR_RED);
+    sprintf(buf, "%.3f %.3f %.3f %.3f", view.c[8], view.c[9], view.c[10], view.c[11]);
+    draw_text(gs.font, buf, v2i(0, 130), 16, COLOR_RED);
+    sprintf(buf, "%.3f %.3f %.3f %.3f", view.c[12], view.c[13], view.c[14], view.c[15]);
+    draw_text(gs.font, buf, v2i(0, 150), 16, COLOR_RED);
 
     SectionEnd("UI Render");
     renderer_flush();
@@ -222,6 +236,8 @@ void handle_camera_editor(V2f mouse_delta)
 // TODO this is currently producing some real weird perspective things.
 void handle_camera_gameplay(V2f mouse_delta)
 {
+
+    float mouse_scroll = get_mouse_scroll();
     V3f front_no_y = v3f(renderer.camera.front.x, 0, renderer.camera.front.z);
     if (is_key_down(KEY_W)) {
         renderer.camera.target = v3f_add(renderer.camera.target, v3f_scale(front_no_y, gs.camera_speed));
@@ -240,23 +256,40 @@ void handle_camera_gameplay(V2f mouse_delta)
         renderer.camera.position = v3f_sub(renderer.camera.position, v3f_scale(v3f_cross(front_no_y, renderer.camera.up), gs.camera_speed));
     }
 
+    if (mouse_scroll != 0) {
+        float min_dist = 5.0f;
+        float max_dist = 30.0f;
 
-    if (is_mouse_button_down(MOUSEBUTTON_LEFT)) {
-        float angle = 0.0f;
-        angle += mouse_delta.x * 0.001;
+        // Direction from target to camera
+        V3f dir = v3f_normalize(v3f_sub(renderer.camera.position, renderer.camera.target));
 
-        renderer.camera.position = v3f_rotate_y_around_point(renderer.camera.position, renderer.camera.target, -angle);
+        // Current distance
+        float distance = v3f_len(v3f_sub(renderer.camera.position, renderer.camera.target));
 
-        float x_offset = mouse_delta.x;
-        float y_offset = -mouse_delta.y;
+        // Apply scroll (invert if needed depending on your controls)
+        distance += mouse_scroll;
 
-        renderer.camera.front = v3f_normalize(v3f_sub(renderer.camera.target, renderer.camera.position));
+        // Clamp distance
+        if (distance < min_dist) distance = min_dist;
+        if (distance > max_dist) distance = max_dist;
 
+        // Rebuild position from clamped distance
+        renderer.camera.position = v3f_add(
+                renderer.camera.target,
+                v3f_scale(dir, distance)
+                );
+        renderer.camera.front = v3f_normalize(
+                v3f_sub(renderer.camera.target, renderer.camera.position)
+                );
 
-        /* log_debug("camera front %f %f %f", renderer.camera.front.x, renderer.camera.front.y, renderer.camera.front.z);
-        float old_y = renderer.camera.front.y;
-        renderer.camera.front = v3f_normalize(v3f_sub(renderer.camera.position, renderer.camera.target));
-        renderer.camera.front.y = 1;
-        log_debug("camera front %f %f %f", renderer.camera.front.x, renderer.camera.front.y, renderer.camera.front.z); */
+    }
+
+    if (is_mouse_button_down(MOUSEBUTTON_MIDDLE)) {
+
+        renderer.camera.position = v3f_rotate_y_around_point(renderer.camera.position, renderer.camera.target, mouse_delta.x * 0.03);
+
+        renderer.camera.front = v3f_normalize(
+                v3f_sub(renderer.camera.target, renderer.camera.position)
+                );
     }
 }

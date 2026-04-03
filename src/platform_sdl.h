@@ -16,6 +16,7 @@ typedef struct MouseState {
     float mouse_pos_y;
     float mouse_pos_dx;
     float mouse_pos_dy;
+    float scroll_delta;
     bool mouse_button_state[MOUSEBUTTON_COUNT];
 } MouseState;
 

@@ -302,8 +302,8 @@ void renderer_push_triangle(V3f v1, V3f v2, V3f v3, Color color[3], V3f uvs[3], 
         pos2 = v2i(v2.x, v2.y);
         pos3 = v2i(v3.x, v3.y);
     }
-    if (!check_bounds(pos1, pos2, pos3))
-        return;
+    /* if (!check_bounds(pos1, pos2, pos3))
+        return; */
 
     AABBi rec = {
         v2i(min(pos1.x, min(pos2.x, pos3.x)), min(pos1.y, min(pos2.y, pos3.y))),
@@ -315,8 +315,8 @@ void renderer_push_triangle(V3f v1, V3f v2, V3f v3, Color color[3], V3f uvs[3], 
     size_t t_miny = max(0, floor(rec.min.y / TILE_H));
     size_t t_maxy = min((GAME_HEIGHT / TILE_H) - 1, floor(rec.max.y / TILE_H));
 
-    if (t_minx > t_maxx || t_miny > t_maxy)
-        return;
+    /* if (t_minx > t_maxx || t_miny > t_maxy)
+        return; */
 
     Triangle triangle = {
         .vertices = {v1, v2, v3},
@@ -570,8 +570,7 @@ void clear_background(Color color)
 
 void draw_model(Asset_Model *model, V3f position, Mat3 rotation)
 {
-    V3f light_pos = (V3f){1, 0, 2};
-
+    Mat4 view = camera_matrix(renderer.camera);
     for (int i = 0; i < arrlen(model->vertices); i += 3)
     {
         Vertex v1 = model->vertices[i];
@@ -582,6 +581,10 @@ void draw_model(Asset_Model *model, V3f position, Mat3 rotation)
         V3f p2 = v3f_mul_mat3(v2.position, rotation);
         V3f p3 = v3f_mul_mat3(v3.position, rotation);
 
+        V3f n1 = v3f_mul_mat3(v1.normal, rotation);
+        V3f n2 = v3f_mul_mat3(v2.normal, rotation);
+        V3f n3 = v3f_mul_mat3(v3.normal, rotation);
+
         p1.z = -p1.z;
         p2.z = -p2.z;
         p3.z = -p3.z;
@@ -589,24 +592,30 @@ void draw_model(Asset_Model *model, V3f position, Mat3 rotation)
         p2 = v3f_add(p2, position);
         p3 = v3f_add(p3, position);
 
-        if (p1.z <= NEAR || p2.z <= NEAR || p3.z <= NEAR)
-            continue;
-        light_pos.z += 0.01;
-        Color color;
-        color.r = (uint8_t)((v1.normal.x * 0.5f + 0.5f) * 255);
-        color.g = (uint8_t)((v1.normal.y * 0.5f + 0.5f) * 255);
-        color.b = (uint8_t)((v1.normal.z * 0.5f + 0.5f) * 255);
-        color.a = 255;
-        Color colors[3] = {color};
-        V3f uvs[3] = {};
+        p1 = v3f_translate_by_mat4(p1, view);
+        p2 = v3f_translate_by_mat4(p2, view);
+        p3 = v3f_translate_by_mat4(p3, view);
 
-        renderer_push_triangle(
-            p1,
-            p2,
-            p3,
-            colors,
-            uvs,
-            NULL, false);
+        if (p1.z >= NEAR && p2.z >= NEAR && p3.z >= NEAR)
+        {
+            Color t1;
+            Color t2;
+            Color t3;
+            t1 = COLOR_WHITE;
+            t2 = COLOR_WHITE;
+            t3 = COLOR_WHITE;
+
+            Color colors[3] = {t1, t2, t3};
+            V3f uvs[3] = {v1.uv, v2.uv, v3.uv};
+            renderer_push_triangle(
+                p1,
+                p2,
+                p3,
+                colors,
+                uvs,
+                model->mtl->diffuse_texture,
+                false);
+        }
     }
 }
 
@@ -863,5 +872,46 @@ void draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color)
         p3, // TL
         colors, uvs, NULL, false);
 }
+
+void draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color color)
+{
+    Mat4 view = camera_matrix(renderer.camera);
+
+    V3f uvs[3] = {};
+    Color colors[3] = {color, color, color};
+    V3f p1 = v3f_translate_by_mat4(bl, view);
+    V3f p2 = v3f_translate_by_mat4(br, view);
+    V3f p3 = v3f_translate_by_mat4(tl, view);
+    V3f p4 = v3f_translate_by_mat4(tr, view);
+
+    // Tri 1: TL, BR, BL
+    V3f uvs1[3] = {
+        {1.0f, 1.0f, 1.0f}, // BR
+        {1.0f, 0.0f, 1.0f}, // TR
+        {0.0f, 0.0f, 1.0f}, // TL
+    };
+    // Tri 2: TL, TR, BR
+    V3f uvs2[3] = {
+        {0.0f, 1.0f, 1.0f}, // BL
+        {1.0f, 1.0f, 1.0f}, // BR
+        {0.0f, 0.0f, 1.0f}, // TL
+    };
+
+    if (p1.z <= NEAR || p2.z <= NEAR || p3.z <= NEAR || p4.z <= NEAR)
+        return;
+
+    renderer_push_triangle(
+        p2, // BR
+        p4, // TR
+        p3, // TL
+        colors, uvs1, tex, false);
+
+    renderer_push_triangle(
+        p1, // BL
+        p2, // BR
+        p3, // TL
+        colors, uvs2, tex, false);
+}
+
 
 

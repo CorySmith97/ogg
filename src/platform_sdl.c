@@ -7,6 +7,7 @@ void on_key_up(int key);
 void on_mouse_moved(float x, float y, float dx, float dy);
 void on_mouse_down(int button); 
 void on_mouse_up(int button);
+void on_mouse_scroll(float y);
 
 #define MAX_KEYS 512
 
@@ -67,6 +68,9 @@ void platform_handle_events(bool *quit)
                 break;
             case SDL_MOUSEBUTTONUP:
                 on_mouse_up(event.button.button);
+                break;
+            case SDL_MOUSEWHEEL:
+                on_mouse_scroll(event.wheel.y);
                 break;
             case SDL_MOUSEMOTION:
                 on_mouse_moved(event.motion.x, event.motion.y, event.motion.xrel, event.motion.yrel);
@@ -222,3 +226,15 @@ void set_mouse_toggle_key(int key)
     }
 }
         
+void on_mouse_scroll(float y)
+{
+    platform_ctx.mouse_state.scroll_delta = y;
+}
+
+float get_mouse_scroll()
+{
+    float ret = platform_ctx.mouse_state.scroll_delta;
+    platform_ctx.mouse_state.scroll_delta = 0;
+    return ret;
+
+}

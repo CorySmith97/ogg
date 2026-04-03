@@ -64,6 +64,7 @@ static struct {
     int width, height;
     // TODO remove this from here
     Camera camera;
+    Camera swap_camera; // spare camera to hold a different camera in
 } renderer = {
     .quit = false,
     .width = GAME_WIDTH,
@@ -71,13 +72,13 @@ static struct {
     .pixels = {0},
     .zbuffer = {0},
     .camera = {
-        .target = {2, 0, 1},
-        .position = {2,1,-1},
+        .target = {0, 0, 0},
+        .position = {0,2,-2},
         .up = {0, 1, 0},
-        .front = {0},
-        .pitch = 0.0f,
-        .yaw = -90.0f,
-        .fovy = 45.0f,
+        .pitch = 45.0f,
+        .yaw = 45.0f,
+        .distance = 10.0f,
+        .fovy = 60.0f,
     },
 };
 
