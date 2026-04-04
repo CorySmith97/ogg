@@ -7,7 +7,7 @@ static struct {
     double  frame_time;
     // Global sun (do not overly lean on this. It slows things way down to do light calculations)
     Light   sun;
-    float   camera_speed;
+    f32   camera_speed;
     bool    profiling_enabled;
     // Global texture storage
     Texture_KV     *textures;
@@ -35,44 +35,8 @@ static struct {
 void handle_camera_editor(V2f mouse_delta);
 void handle_camera_gameplay(V2f mouse_delta);
 
-float angle = 0;
+f32 angle = 0;
 Texture *entity_1;
-
-void game_run(void)
-{
-    platform_init(GAME_NAME, SCREEN_WIDTH, SCREEN_HEIGHT);
-
-    game_init();
-
-    struct timespec ts;
-    uint64_t now;
-    uint64_t last;
-
-    bool quit = false;
-    while (!quit) {
-        clock_gettime(CLOCK_MONOTONIC, &ts);
-        last = now;
-        now = timespec_to_ns(ts);
-
-        gs.frame_time = (double)(now-last) / 1e9;
-
-        platform_handle_events(&quit);
-        if (is_key_down(KEY_ESCAPE))
-            quit = true;
-
-        game_frame();
-
-        platform_present();
-
-        if (gs.profiling_enabled)
-            profiler_report();
-        profiler_reset();
-    }
-    game_deinit();
-
-    render_shutdown();
-    platform_deinit();
-}
 
 void game_init(void)
 {
@@ -91,6 +55,15 @@ void game_init(void)
     shput(gs.textures, "target", t);
     //shput(gs.assets, "cube", load_model_from_file("data/cube.obj"));
 
+
+    Entity e = (Entity){
+            .model = shget(gs.assets, "shopkeeper"),
+            .position = v3f(0,0,0),
+            .rotation = mat3_identity(),
+            .update_fn = update_shopkeeper,
+            };
+
+    arrput(gs.dynamic_entities, e);
     gs.font = load_font("data/VGA8x16.png", 8, 16);
 
     SectionEnd("Intialization");
@@ -101,7 +74,7 @@ void game_init(void)
     renderer.camera.front = v3f_normalize(v3f_sub(renderer.camera.target, renderer.camera.position));
 }
 
-float z = 1.0f;
+f32 z = 1.0f;
 
 void game_frame(void)
 {
@@ -176,6 +149,11 @@ void game_frame(void)
     sprintf(buf, "%.3f %.3f %.3f %.3f", view.c[12], view.c[13], view.c[14], view.c[15]);
     draw_text(gs.font, buf, v2i(0, 150), 16, COLOR_RED);
 
+
+    for (int i = 0; i < arrlen(gs.dynamic_entities); i++) {
+        entity_draw(&gs.dynamic_entities[i]);
+    }
+
     SectionEnd("UI Render");
     renderer_flush();
 
@@ -209,10 +187,10 @@ void handle_camera_editor(V2f mouse_delta)
     }
 
     if (is_mouse_button_down(MOUSEBUTTON_MIDDLE)) {
-        float x_offset = mouse_delta.x;
-        float y_offset = -mouse_delta.y;
+        f32 x_offset = mouse_delta.x;
+        f32 y_offset = -mouse_delta.y;
 
-        float sensitivity = 0.3f;
+        f32 sensitivity = 0.3f;
         x_offset *= sensitivity;
         y_offset *= sensitivity;
 
@@ -237,7 +215,7 @@ void handle_camera_editor(V2f mouse_delta)
 void handle_camera_gameplay(V2f mouse_delta)
 {
 
-    float mouse_scroll = get_mouse_scroll();
+    f32 mouse_scroll = get_mouse_scroll();
     V3f front_no_y = v3f(renderer.camera.front.x, 0, renderer.camera.front.z);
     if (is_key_down(KEY_W)) {
         renderer.camera.target = v3f_add(renderer.camera.target, v3f_scale(front_no_y, gs.camera_speed));
@@ -257,23 +235,18 @@ void handle_camera_gameplay(V2f mouse_delta)
     }
 
     if (mouse_scroll != 0) {
-        float min_dist = 5.0f;
-        float max_dist = 30.0f;
+        f32 min_dist = 5.0f;
+        f32 max_dist = 30.0f;
 
-        // Direction from target to camera
         V3f dir = v3f_normalize(v3f_sub(renderer.camera.position, renderer.camera.target));
 
-        // Current distance
-        float distance = v3f_len(v3f_sub(renderer.camera.position, renderer.camera.target));
+        f32 distance = v3f_len(v3f_sub(renderer.camera.position, renderer.camera.target));
 
-        // Apply scroll (invert if needed depending on your controls)
         distance += mouse_scroll;
 
-        // Clamp distance
         if (distance < min_dist) distance = min_dist;
         if (distance > max_dist) distance = max_dist;
 
-        // Rebuild position from clamped distance
         renderer.camera.position = v3f_add(
                 renderer.camera.target,
                 v3f_scale(dir, distance)
@@ -284,7 +257,7 @@ void handle_camera_gameplay(V2f mouse_delta)
 
     }
 
-    if (is_mouse_button_down(MOUSEBUTTON_MIDDLE)) {
+    if (is_mouse_button_down(MOUSEBUTTON_LEFT)) {
 
         renderer.camera.position = v3f_rotate_y_around_point(renderer.camera.position, renderer.camera.target, mouse_delta.x * 0.03);
 
@@ -293,3 +266,40 @@ void handle_camera_gameplay(V2f mouse_delta)
                 );
     }
 }
+
+void game_run(void)
+{
+    platform_init(GAME_NAME, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+    game_init();
+
+    struct timespec ts;
+    u64 now;
+    u64 last;
+
+    bool quit = false;
+    while (!quit) {
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        last = now;
+        now = timespec_to_ns(ts);
+
+        gs.frame_time = (double)(now-last) / 1e9;
+
+        platform_handle_events(&quit);
+        if (is_key_down(KEY_ESCAPE))
+            quit = true;
+
+        game_frame();
+
+        platform_present();
+
+        if (gs.profiling_enabled)
+            profiler_report();
+        profiler_reset();
+    }
+    game_deinit();
+
+    render_shutdown();
+    platform_deinit();
+}
+

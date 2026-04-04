@@ -2,12 +2,12 @@
 
 static void update_shopkeeper(Entity *e)
 {
-    UNUSED(e);
+    e->position.x += 0.01;
 }
 
 void entity_init(void)
 {
-    global_entities[Entity_Shopkeeper] = (Entity){
+    global_entities[ENTITY_TAG_SHOPKEEPER] = (Entity){
         .update_fn = update_shopkeeper,
     };
 }

@@ -34,6 +34,7 @@ void logger(Log_Level level, const char *msg, ...)
 
 Arena *_arena_alloc(Arena_Params params)
 {
+    return NULL;
 }
 
 void arena_checkpoint(Arena *arena)
@@ -53,4 +54,5 @@ void arena_reset(Arena *arena)
 
 void *arena_push(Arena *arena)
 {
+    return NULL;
 }

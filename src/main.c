@@ -11,19 +11,21 @@
 #include "entity.h"
 #include "tile.h"
 #include "scene.h"
+#include "gizmo.h"
 
 #include "base.c"
 #include "third_party.c"
 #include "la.c"
-#include "geometry.c"
 #include "platform.c"
+#include "geometry.c"
 #include "render.c"
 #include "assets.c"
-#include "game.c"
 #include "ui.c"
 #include "entity.c"
 #include "tile.c"
 #include "scene.c"
+#include "gizmo.c"
+#include "game.c"
 
 // TODO https://www.dgtlgrove.com/p/multi-core-by-default
 // By nature of this project, it is primed for a multithread by default

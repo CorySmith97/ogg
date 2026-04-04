@@ -14,7 +14,7 @@ typedef struct {
 } AABBi;
 
 typedef union {
-    struct {float x, y, w, h;};
+    struct {f32 x, y, w, h;};
 } Recf;
 
 // todo:cs this needs to be visited for what happens when something is clipped behind the camera plane.
@@ -23,9 +23,9 @@ static V2i          to_screen(V2f v);
 static V2f          project(V3f v);
 static inline AABBi calc_triangle_aabbi(V2i v1, V2i v2, V2i v3);
 static bool         aabbi_collision(AABBi a, AABBi b);
-static float        signed_area(int ax, int ay, int bx, int by, int cx, int cy);
+static f32        signed_area(s32 ax, s32 ay, s32 bx, s32 by, s32 cx, s32 cy);
 static bool         barycentric(V2i v1, V2i v2, V2i v3, V2i p, V3f *b);
 static V2i          world_coord_to_2d(Camera c, V3f v);
-static inline float deg_to_rad(float deg);
+static inline f32 deg_to_rad(f32 deg);
 
 #endif // GEOMETRY_H

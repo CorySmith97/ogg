@@ -2,14 +2,14 @@
 #define ENTITY_H
 
 typedef enum {
-    Entity_Sim_Static,
-    Entity_Sim_Dynamic,
-    Entity_Sim_Count,
+    ENTITY_SIM_STATIC,
+    ENTITY_SIM_DYNAMIC,
+    ENTITY_SIM_COUNT,
 } Entity_Sim_Tag;
 
 typedef enum {
-    Entity_Shopkeeper,
-    Entity_Count,
+    ENTITY_TAG_SHOPKEEPER,
+    ENTITY_TAG_COUNT,
 } Entity_Tag;
 
 typedef struct Entity{
@@ -22,7 +22,7 @@ typedef struct Entity{
     void (*update_fn) (struct Entity *e);
 } Entity;
 
-Entity global_entities[Entity_Count];
+Entity global_entities[ENTITY_TAG_COUNT];
 
 void entity_init(void);
 void entity_update(Entity *e);

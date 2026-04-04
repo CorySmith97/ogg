@@ -1,6 +1,6 @@
 #include "la.h"
 
-/* V2f v2f(float x, float y)
+/* V2f v2f(f32 x, f32 y)
 {
     return (V2f){x, y};
 } */
@@ -21,17 +21,17 @@ V2f v2f_sub(V2f v, V2f u)
     };
 }
 
-int v2f_len(V2f v)
+s32 v2f_len(V2f v)
 {
     return v2f_dot(v, v);
 }
 
-float v2f_dot(V2f v, V2f u)
+f32 v2f_dot(V2f v, V2f u)
 {
     return v.x * u.x + v.y * u.y;
 }
 
-V2f v2f_scale(V2f v, float scalar)
+V2f v2f_scale(V2f v, f32 scalar)
 {
     return (V2f){
         v.x * scalar,
@@ -39,7 +39,7 @@ V2f v2f_scale(V2f v, float scalar)
     };
 }
 
-V2i v2i(int x, int y)
+V2i v2i(s32 x, s32 y)
 {
     return (V2i){x, y};
 }
@@ -60,17 +60,17 @@ V2i v2i_sub(V2i v, V2i u)
     };
 }
 
-int v2i_len(V2i v)
+s32 v2i_len(V2i v)
 {
     return v2i_dot(v, v);
 }
 
-float v2i_dot(V2i v, V2i u)
+f32 v2i_dot(V2i v, V2i u)
 {
     return v.x * u.x + v.y * u.y;
 }
 
-V2i v2i_scale(V2i v, float scalar)
+V2i v2i_scale(V2i v, f32 scalar)
 {
     return (V2i){
         v.x * scalar,
@@ -78,7 +78,7 @@ V2i v2i_scale(V2i v, float scalar)
     };
 }
 
-float v2i_det(V2i v)
+f32 v2i_det(V2i v)
 {
     UNUSED(v);
     return 1.0;
@@ -92,14 +92,14 @@ V2i v2i_mul_mat2(V2i v, Mat2 m)
 }
 
 // This rotation is lossy
-V2i v2i_rotate_by_v2i(V2i v, V2i c, float angle)
+V2i v2i_rotate_by_v2i(V2i v, V2i c, f32 angle)
 {
     return v2i(
         c.x + ((v.x - c.x) * cosf(angle)) - ((v.y - c.y) * sinf(angle)),
         c.y + ((v.x - c.x) * sinf(angle)) + ((v.y - c.y) * cosf(angle)));
 }
 
-V3f v3f(float x, float y, float z)
+V3f v3f(f32 x, f32 y, f32 z)
 {
     return (V3f){
         x,
@@ -126,17 +126,17 @@ V3f v3f_sub(V3f v, V3f u)
     };
 }
 
-V3f v3f_scale(V3f v, float scalar)
+V3f v3f_scale(V3f v, f32 scalar)
 {
     return v3f(v.x * scalar, v.y * scalar, v.z * scalar);
 }
 
-float v3f_len(V3f v)
+f32 v3f_len(V3f v)
 {
     return v3f_dot(v, v);
 }
 
-float v3f_dot(V3f v, V3f u)
+f32 v3f_dot(V3f v, V3f u)
 {
     return (v.x * u.x) + (v.y * u.y) + (v.z * u.z);
 }
@@ -155,7 +155,7 @@ V3f v3f_mul_mat3(V3f v, Mat3 m)
     };
 }
 
-V3f v3f_rotate_y(V3f v, float angle)
+V3f v3f_rotate_y(V3f v, f32 angle)
 {
     Mat3 rotation = {
         cosf(angle),
@@ -172,7 +172,7 @@ V3f v3f_rotate_y(V3f v, float angle)
     return v3f_mul_mat3(v, rotation);
 }
 
-V3f v3f_rotate_y_around_point(V3f v, V3f p, float angle)
+V3f v3f_rotate_y_around_point(V3f v, V3f p, f32 angle)
 {
     Mat3 rotation = {
         cosf(angle),
@@ -189,7 +189,7 @@ V3f v3f_rotate_y_around_point(V3f v, V3f p, float angle)
     return v3f_add(p, v3f_mul_mat3(v3f_sub(v, p), rotation));
 }
 
-V3f v3f_rotate_z_around_point(V3f v, V3f p, float angle)
+V3f v3f_rotate_z_around_point(V3f v, V3f p, f32 angle)
 {
     Mat3 rotation = {
         cosf(angle),
@@ -206,7 +206,7 @@ V3f v3f_rotate_z_around_point(V3f v, V3f p, float angle)
     return v3f_add(p, v3f_mul_mat3(v3f_sub(v, p), rotation));
 }
 
-V3f v3f_rotate_z(V3f v, float angle)
+V3f v3f_rotate_z(V3f v, f32 angle)
 {
     Mat3 rotation = {
         cosf(angle),
@@ -225,7 +225,7 @@ V3f v3f_rotate_z(V3f v, float angle)
 
 V3f v3f_normalize(V3f v)
 {
-    float len = v3f_dot(v, v);
+    f32 len = v3f_dot(v, v);
     return v3f_scale(v, 1 / len);
 }
 
@@ -238,7 +238,7 @@ V3f v3f_cross(V3f v, V3f u)
     };
 }
 
-inline V4f v4f(float x, float y, float z, float w)
+inline V4f v4f(f32 x, f32 y, f32 z, f32 w)
 {
     return (V4f){
         x,
@@ -258,7 +258,7 @@ V4f v4f_mul_mat4(V4f v, Mat4 m)
     };
 }
 
-Mat3 rotation_y(float angle)
+Mat3 rotation_y(f32 angle)
 {
     return (Mat3){
         cosf(angle),
@@ -273,7 +273,7 @@ Mat3 rotation_y(float angle)
     };
 }
 
-Mat3 rotation_z(float angle)
+Mat3 rotation_z(f32 angle)
 {
     return (Mat3){
         cosf(angle),
@@ -288,7 +288,7 @@ Mat3 rotation_z(float angle)
     };
 }
 
-Mat3 rotation_x(float angle)
+Mat3 rotation_x(f32 angle)
 {
     return (Mat3){
         1,
@@ -431,7 +431,7 @@ V3f v3f_translate_by_mat4(V3f v, Mat4 m)
     return v3f(translated.x, translated.y, translated.z);
 }
 
-Mat4 perspective(float near, float far, float ar, float fov)
+Mat4 perspective(f32 near, f32 far, f32 ar, f32 fov)
 {
     return (Mat4){
         tanf(fov / 2) / ar,

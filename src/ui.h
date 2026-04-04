@@ -21,15 +21,15 @@ typedef enum {
 
 typedef struct {
     UI_SizeKind kind;
-    float       value;
-    float       strictness;
+    f32       value;
+    f32       strictness;
 } UI_Size;
 
 typedef struct UI_Node {
     const char *label;
     UI_Size     semantic_size[Axis2_count];
-    float       computed_rel_pos[Axis2_count];
-    float       computed_size[Axis2_count];
+    f32       computed_rel_pos[Axis2_count];
+    f32       computed_size[Axis2_count];
     Recf        rect;
 
     struct UI_Node *first;

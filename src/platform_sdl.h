@@ -12,12 +12,12 @@ typedef enum {
 } MouseCode;
 
 typedef struct MouseState {
-    float mouse_pos_x;
-    float mouse_pos_y;
-    float mouse_pos_dx;
-    float mouse_pos_dy;
-    float scroll_delta;
-    bool mouse_button_state[MOUSEBUTTON_COUNT];
+    f32 mouse_pos_x;
+    f32 mouse_pos_y;
+    f32 mouse_pos_dx;
+    f32 mouse_pos_dy;
+    f32 scroll_delta;
+    b32 mouse_button_state[MOUSEBUTTON_COUNT];
 } MouseState;
 
 static struct {

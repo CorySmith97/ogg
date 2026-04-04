@@ -1,13 +1,13 @@
 #include "platform_sdl.h"
 
-bool is_key_down(int key);
-bool is_key_released(int key);
-void on_key_down(int key);
-void on_key_up(int key);
-void on_mouse_moved(float x, float y, float dx, float dy);
-void on_mouse_down(int button); 
-void on_mouse_up(int button);
-void on_mouse_scroll(float y);
+bool is_key_down(s32 key);
+bool is_key_released(s32 key);
+void on_key_down(s32 key);
+void on_key_up(s32 key);
+void on_mouse_moved(f32 x, f32 y, f32 dx, f32 dy);
+void on_mouse_down(s32 button); 
+void on_mouse_up(s32 button);
+void on_mouse_scroll(f32 y);
 
 #define MAX_KEYS 512
 
@@ -20,12 +20,12 @@ typedef struct KeyboardState {
 static KeyboardState keyboard_state;
 static MouseState mouse_state;
 
-void platform_init(const char *name, uint32_t width, uint32_t height)
+void platform_init(const char *name, u32 width, u32 height)
 {
     SDL_SetMainReady();
     if (SDL_Init(SDL_INIT_VIDEO) != SDL_FALSE)
     {
-        printf("Failed to initial Video\n");
+        log_error("Failed to initial Video\n");
         exit(EXIT_FAILURE);
     }
 
@@ -49,7 +49,7 @@ void platform_handle_events(bool *quit)
         // TODO add a way to lock mouse to screen.
         SDL_SetRelativeMouseMode(SDL_FALSE);
     }
-    int b, c;
+    s32 b, c;
     SDL_Event event;
     while (SDL_PollEvent(&event))
     {
@@ -90,9 +90,9 @@ void platform_deinit(void)
 void platform_present()
 {
     void *texpixels;
-    int pitch;
+    s32 pitch;
     SDL_LockTexture(platform_ctx.texture, NULL, &texpixels, &pitch);
-    memcpy(texpixels, renderer.pixels, renderer.width * renderer.height * sizeof(uint32_t));
+    memcpy(texpixels, renderer.pixels, renderer.width * renderer.height * sizeof(u32));
     SDL_UnlockTexture(platform_ctx.texture);
 
     SDL_RenderClear(platform_ctx.renderer);
@@ -133,16 +133,25 @@ typedef enum {
     KEY_SPACE = SDLK_SPACE
 } Keys;
 
-bool is_key_down(int key) {
+bool is_key_down(s32 key) {
     bool pressed = false;
     if ((key > 0) && (key < MAX_KEYS)) {
-        if (platform_ctx.keystate[key])
+    if (platform_ctx.keystate[key])
         pressed = true;
     }
     return pressed;
 }
 
-bool is_mouse_button_down(int key) {
+bool is_key_pressed(s32 key) {
+    bool pressed = false;
+    if ((key > 0) && (key < MAX_KEYS)) {
+    if (keyboard_state.key_curr_state[key] == true && keyboard_state.key_previous_state[key] != true)
+        pressed = true;
+    }
+    return pressed;
+}
+
+bool is_mouse_button_down(s32 key) {
     bool pressed = false;
     if ((key > 0) && (key < MOUSEBUTTON_COUNT)) {
         if (mouse_state.mouse_button_state[key]) {
@@ -152,12 +161,12 @@ bool is_mouse_button_down(int key) {
     return pressed;
 }
 
-uint64_t get_time()
+u64 get_time()
 {
     return SDL_GetPerformanceCounter();
 }
 
-bool is_key_released(int key) 
+bool is_key_released(s32 key) 
 {
     bool pressed = false;
     if ((key > 0) && (key < MAX_KEYS)) {
@@ -167,24 +176,25 @@ bool is_key_released(int key)
     return pressed;
 }
 
-void on_key_down(int key) 
+void on_key_down(s32 key) 
 {
     if (keyboard_state.key_curr_state[key] == true) {
         keyboard_state.key_previous_state[key] = true;
     }
     keyboard_state.key_curr_state[key] = true;
 }
-void on_key_up(int key) 
+
+void on_key_up(s32 key) 
 { 
     keyboard_state.key_curr_state[key] = false;
 }
 
-void on_mouse_down(int button) 
+void on_mouse_down(s32 button) 
 {
     mouse_state.mouse_button_state[button] = true;
 }
 
-void on_mouse_up(int button) 
+void on_mouse_up(s32 button) 
 { 
     mouse_state.mouse_button_state[button] = false;
 }
@@ -203,7 +213,7 @@ V2f get_mouse_delta()
             platform_ctx.mouse_state.mouse_pos_dy);
 }
 
-void on_mouse_moved(float x, float y, float dx, float dy) 
+void on_mouse_moved(f32 x, f32 y, f32 dx, f32 dy) 
 { 
     platform_ctx.mouse_state.mouse_pos_x = x;
     platform_ctx.mouse_state.mouse_pos_y = y;
@@ -219,21 +229,21 @@ void set_escape_quit(bool *quit)
     }
 }
 
-void set_mouse_toggle_key(int key)
+void set_mouse_toggle_key(s32 key)
 {
     if (is_key_down(key)) {
         platform_ctx.mouse_enabled = !platform_ctx.mouse_enabled;
     }
 }
         
-void on_mouse_scroll(float y)
+void on_mouse_scroll(f32 y)
 {
     platform_ctx.mouse_state.scroll_delta = y;
 }
 
-float get_mouse_scroll()
+f32 get_mouse_scroll()
 {
-    float ret = platform_ctx.mouse_state.scroll_delta;
+    f32 ret = platform_ctx.mouse_state.scroll_delta;
     platform_ctx.mouse_state.scroll_delta = 0;
     return ret;
 

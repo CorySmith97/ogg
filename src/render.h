@@ -16,9 +16,9 @@
 
 typedef union Color {
     struct {
-        uint8_t r, g, b, a;
+        u8 r, g, b, a;
     };
-    uint32_t rgba;
+    u32 rgba;
 } Color;
 
 #define COLOR_WHITE  (Color){ 255, 255, 255, 255 }
@@ -37,7 +37,7 @@ typedef struct {
     V3f uvs[3];
     Color colors[3];
     Texture *texture;
-    bool twod;
+    b32 twod;
 } Triangle;
 
 typedef struct TextVertex {
@@ -52,16 +52,16 @@ typedef struct {
 } Light;
 
 typedef union {
-    struct {int x, y, w, h;};
+    struct {s32 x, y, w, h;};
     struct {V2i min, max;};
 } Reci;
 
 static struct {
     Vertex *vertices;
-    uint32_t pixels[GAME_HEIGHT * GAME_WIDTH];
-    float zbuffer[GAME_HEIGHT * GAME_WIDTH];
-    bool quit;
-    int width, height;
+    u32 pixels[GAME_HEIGHT * GAME_WIDTH];
+    f32 zbuffer[GAME_HEIGHT * GAME_WIDTH];
+    b32 quit;
+    s32 width, height;
     // TODO remove this from here
     Camera camera;
     Camera swap_camera; // spare camera to hold a different camera in
@@ -91,7 +91,7 @@ void  draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Lig
 void  draw_model_textured(Asset_Model *model, V3f position, Mat3 rotation);
 Color simple_reflection(SimpleMtl *mtl, V3f light_pos, V3f v, V3f n, V3f light_color, Color object_color);
 void  draw_texture(Texture *tex, Reci rec);
-void  draw_text(Font *f, char *str, V2i pos, float size, Color color);
+void  draw_text(Font *f, char *str, V2i pos, f32 size, Color color);
 void  draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color);
 void  draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color color);
 
