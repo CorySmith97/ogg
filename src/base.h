@@ -95,9 +95,4 @@ void  *arena_push(Arena *arena);
 
 #define arena_alloc(...) _arena_alloc((Arena_Params){})
 
-typedef struct {
-    char *data;
-    u64   len;
-} String_View;
-
 #endif // BASE_H

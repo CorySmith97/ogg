@@ -6,9 +6,9 @@ static struct {
     const char *file;
     FILE *file_handle;
     Recs32 rec;
+    Recs32 draw_rec;
     Keys toggle_key;
     char **lines;
-    f32 open_percentage;
     b32 open;
 } console = {
     .file = "data/console.txt",

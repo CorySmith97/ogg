@@ -15,7 +15,7 @@ typedef struct {
 
 typedef union {
     struct {f32 x, y, w, h;};
-} Recf32;
+} Recf;
 
 typedef union {
     struct {s32 x, y, w, h;};

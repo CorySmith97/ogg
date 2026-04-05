@@ -5,12 +5,12 @@ typedef enum {
     GIZMO_AXIS_X,
     GIZMO_AXIS_Y,
     GIZMO_AXIS_Z,
-    GIZMO_AXIS_COUNT,
+    GIZMO_AXIS_Count,
 } Gizmo_Axis;
 
 typedef struct {
-    Gizmo_Axis  axis[GIZMO_AXIS_COUNT];
-    f32         axis_rotation[GIZMO_AXIS_COUNT];
+    Gizmo_Axis  axis[GIZMO_AXIS_Count];
+    f32         axis_rotation[GIZMO_AXIS_Count];
     V3f         position;
 } Gizmo;
 

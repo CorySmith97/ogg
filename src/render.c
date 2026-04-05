@@ -976,4 +976,3 @@ void draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color color)
 }
 
 
-
