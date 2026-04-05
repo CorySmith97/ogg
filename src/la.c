@@ -21,9 +21,9 @@ V2f v2f_sub(V2f v, V2f u)
     };
 }
 
-s32 v2f_len(V2f v)
+f32 v2f_len(V2f v)
 {
-    return v2f_dot(v, v);
+    return sqrtf(v2f_dot(v, v));
 }
 
 f32 v2f_dot(V2f v, V2f u)
@@ -60,9 +60,9 @@ V2i v2i_sub(V2i v, V2i u)
     };
 }
 
-s32 v2i_len(V2i v)
+f32 v2i_len(V2i v)
 {
-    return v2i_dot(v, v);
+    return sqrtf(v2i_dot(v, v));
 }
 
 f32 v2i_dot(V2i v, V2i u)
@@ -133,7 +133,7 @@ V3f v3f_scale(V3f v, f32 scalar)
 
 f32 v3f_len(V3f v)
 {
-    return v3f_dot(v, v);
+    return sqrtf(v3f_dot(v, v));
 }
 
 f32 v3f_dot(V3f v, V3f u)
@@ -225,7 +225,7 @@ V3f v3f_rotate_z(V3f v, f32 angle)
 
 V3f v3f_normalize(V3f v)
 {
-    f32 len = v3f_dot(v, v);
+    f32 len = sqrtf(v3f_dot(v, v));
     return v3f_scale(v, 1 / len);
 }
 

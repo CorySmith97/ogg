@@ -23,7 +23,7 @@ static struct {
         .position = {4, 0, 0},
         .color = {0, 0.5, 0.5},
     },
-    .camera_speed = 0.05,
+    .camera_speed = 0.25,
     .profiling_enabled = false,
     .assets = NULL,
     .dynamic_entities = NULL,
@@ -34,6 +34,9 @@ static struct {
 
 void handle_camera_editor(V2f mouse_delta);
 void handle_camera_gameplay(V2f mouse_delta);
+V3f orbit_step(f32 rx, f32 ry, V3f start_pos, V3f target);
+V3f spherical_to_cartesian(f32 lon, f32 lat, f32 radius);
+V2f cartesian_to_spherical(V3f v);
 
 f32 angle = 0;
 Texture *entity_1;
@@ -128,8 +131,6 @@ void game_frame(void)
 
     SectionStart("UI Render");
 
-
-    if (gs.state == GAME_STATE_EDITOR) {
         sprintf(buf, "fps: %.3f", 1/gs.frame_time);
         draw_text(gs.font, buf, v2i(0, 10), 16, COLOR_RED);
         sprintf(buf, "position: %.3f %.3f %.3f", renderer.camera.position.x, renderer.camera.position.y, renderer.camera.position.z);
@@ -151,8 +152,6 @@ void game_frame(void)
         draw_text(gs.font, buf, v2i(0, 130), 16, COLOR_RED);
         sprintf(buf, "%.3f %.3f %.3f %.3f", view.c[12], view.c[13], view.c[14], view.c[15]);
         draw_text(gs.font, buf, v2i(0, 150), 16, COLOR_RED);
-
-    }
 
     for (int i = 0; i < arrlen(gs.dynamic_entities); i++) {
         entity_draw(&gs.dynamic_entities[i]);
@@ -262,9 +261,9 @@ void handle_camera_gameplay(V2f mouse_delta)
 
     }
 
-    if (is_mouse_button_down(MOUSEBUTTON_LEFT)) {
+    if (is_mouse_button_down(MOUSEBUTTON_MIDDLE)) {
 
-        renderer.camera.position = v3f_rotate_y_around_point(renderer.camera.position, renderer.camera.target, mouse_delta.x * 0.03);
+        renderer.camera.position = orbit_step(mouse_delta.x * 0.01, mouse_delta.y * 0.01, renderer.camera.position, renderer.camera.target);
 
         renderer.camera.front = v3f_normalize(
                 v3f_sub(renderer.camera.target, renderer.camera.position)
@@ -308,3 +307,39 @@ void game_run(void)
     platform_deinit();
 }
 
+V3f orbit_step(f32 rx, f32 ry, V3f start_pos, V3f target)
+{
+    V3f position = v3f_sub(start_pos, target);
+    f32 dist = v3f_len(position);
+
+    V2f polar = cartesian_to_spherical(position);
+    polar.x = polar.x + rx * 57.2957795131;
+    polar.y = min(89.99999, max(-89.99999, polar.y + ry * 57.2957795131));
+
+    V3f pos = spherical_to_cartesian(polar.x, polar.y, dist);
+    pos = v3f_add(pos, target);
+
+    return pos;
+}
+
+V3f spherical_to_cartesian(f32 lon, f32 lat, f32 radius)
+{
+    f32 phi   = (90-lat) * (M_PI/180);
+    f32 theta = (lon+180) * (M_PI/180);
+    f32 s_phi = sinf(phi);
+
+    V3f out;
+    out.x = -(radius * s_phi * sinf(theta));
+    out.y = radius * cosf(phi);
+    out.z = -(radius * s_phi * cosf(theta));
+
+    return out;
+}
+
+V2f cartesian_to_spherical(V3f v)
+{
+    f32 len = v2f_len(v2f(v.x, v.z));
+    return v2f(
+            atan2f(v.x, v.z) * (180/M_PI),
+            atan2f(v.y, len) * (180/M_PI));
+}

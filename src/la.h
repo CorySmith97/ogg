@@ -83,14 +83,14 @@ Mat4 camera_matrix(Camera cam);
 V2f v2f_add(V2f v, V2f u);
 V2f v2f_sub(V2f v, V2f u);
 V2f v2f_scale(V2f v, f32 scalar);
-s32 v2f_len(V2f v);
+f32 v2f_len(V2f v);
 f32 v2f_dot(V2f v, V2f u);
 
 V2i v2i(s32 x, s32 y);
 V2i v2i_add(V2i v, V2i u);
 V2i v2i_sub(V2i v, V2i u);
 V2i v2i_scale(V2i v, f32 scalar);
-s32 v2i_len(V2i v);
+f32 v2i_len(V2i v);
 f32 v2i_dot(V2i v, V2i u);
 f32 v2i_det(V2i v);
 V2i v2i_rotate(V2i v, f32 angle);
