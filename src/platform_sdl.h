@@ -2,7 +2,45 @@
 #define PLATFORM_SDL_H
 
 #define MAX_KEYBOARD 512
+#define MAX_KEYS 512
 
+typedef enum {
+    KEY_A = SDL_SCANCODE_A,
+    KEY_B = SDL_SCANCODE_B,
+    KEY_C = SDL_SCANCODE_C,
+    KEY_D = SDL_SCANCODE_D,
+    KEY_E = SDL_SCANCODE_E,
+    KEY_F = SDL_SCANCODE_F,
+    KEY_G = SDL_SCANCODE_G,
+    KEY_H = SDL_SCANCODE_H,
+    KEY_I = SDL_SCANCODE_I,
+    KEY_J = SDL_SCANCODE_J,
+    KEY_K = SDL_SCANCODE_K,
+    KEY_L = SDL_SCANCODE_L,
+    KEY_M = SDL_SCANCODE_M,
+    KEY_N = SDL_SCANCODE_N,
+    KEY_O = SDL_SCANCODE_O,
+    KEY_P = SDL_SCANCODE_P,
+    KEY_Q = SDL_SCANCODE_Q,
+    KEY_R = SDL_SCANCODE_R,
+    KEY_S = SDL_SCANCODE_S,
+    KEY_T = SDL_SCANCODE_T,
+    KEY_U = SDL_SCANCODE_U,
+    KEY_V = SDL_SCANCODE_V,
+    KEY_W = SDL_SCANCODE_W,
+    KEY_X = SDL_SCANCODE_X,
+    KEY_Y = SDL_SCANCODE_Y,
+    KEY_Z = SDL_SCANCODE_Z,
+    KEY_F1 = SDL_SCANCODE_F1,
+    KEY_F2 = SDL_SCANCODE_F2,
+    KEY_F3 = SDL_SCANCODE_F3,
+    KEY_F4 = SDL_SCANCODE_F4,
+    KEY_F5 = SDL_SCANCODE_F5,
+
+    KEY_ENTER = SDLK_RETURN,
+    KEY_ESCAPE = SDL_SCANCODE_ESCAPE,
+    KEY_SPACE = SDL_SCANCODE_SPACE
+} Keys;
 
 typedef enum {
     MOUSEBUTTON_LEFT = 1,
@@ -20,6 +58,14 @@ typedef struct MouseState {
     b32 mouse_button_state[MOUSEBUTTON_COUNT];
 } MouseState;
 
+
+typedef struct KeyboardState {
+    bool key_curr_state[MAX_KEYS];
+    bool key_previous_state[MAX_KEYS];
+    bool key_pressed[MAX_KEYS];
+} KeyboardState;
+
+
 static struct {
     SDL_Window      *window;
     SDL_Renderer    *renderer;
@@ -27,9 +73,11 @@ static struct {
     uint32_t        width;
     uint32_t        height;
     const uint8_t   *keystate;
+    u8              prev_keystate[SDL_NUM_SCANCODES];
     MouseState      mouse_state;
     bool            mouse_enabled;
 } platform_ctx = {
+    .prev_keystate = {0},
 };
 
 

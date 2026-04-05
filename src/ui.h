@@ -30,7 +30,7 @@ typedef struct UI_Node {
     UI_Size     semantic_size[Axis2_count];
     f32       computed_rel_pos[Axis2_count];
     f32       computed_size[Axis2_count];
-    Recf        rect;
+    Recf32        rect;
 
     struct UI_Node *first;
     struct UI_Node *last;
@@ -39,6 +39,9 @@ typedef struct UI_Node {
     struct UI_Node *parent;
 } UI_Node;
 
+void ui_init(void);
+void ui_begin(void);
+void ui_end(void);
 bool ui_button(const char *name);
 int  measure_text(Font *f, const char *text, int size);
 

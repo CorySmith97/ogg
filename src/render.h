@@ -22,6 +22,7 @@ typedef union Color {
 } Color;
 
 #define COLOR_WHITE  (Color){ 255, 255, 255, 255 }
+#define COLOR_TRANS  (Color){ 255, 255, 255, 122 }
 #define COLOR_GRAY   (Color){ 122, 122, 122, 255 }
 #define COLOR_BLACK  (Color){ 0, 0, 0, 255 }
 #define COLOR_RED    (Color){.r = 0x50, .a = 255}
@@ -50,11 +51,6 @@ typedef struct {
     V3f position;
     V3f color;
 } Light;
-
-typedef union {
-    struct {s32 x, y, w, h;};
-    struct {V2i min, max;};
-} Reci;
 
 static struct {
     Vertex *vertices;
@@ -90,7 +86,7 @@ void  draw_model(Asset_Model *model, V3f position, Mat3 rotation);
 void  draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Light light);
 void  draw_model_textured(Asset_Model *model, V3f position, Mat3 rotation);
 Color simple_reflection(SimpleMtl *mtl, V3f light_pos, V3f v, V3f n, V3f light_color, Color object_color);
-void  draw_texture(Texture *tex, Reci rec);
+void  draw_texture(Texture *tex, Recs32 rec);
 void  draw_text(Font *f, char *str, V2i pos, f32 size, Color color);
 void  draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color);
 void  draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color color);

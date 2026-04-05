@@ -13,6 +13,32 @@
 #define COL_GAME_WIDTH (GAME_WIDTH / TILE_W)
 #define TILE_COUNT ((GAME_WIDTH / TILE_W) * (GAME_HEIGHT / TILE_H))
 
+typedef struct {
+    u32 len;
+    u32 capacity;
+    Triangle *data;
+} TriangleArray;
+
+typedef struct {
+    u32 len;
+    u32 capacity;
+    size_t *data;
+} SizeArray;
+
+#define array_push(a, v)                                        \
+    do {                                                        \
+        if (((a)->len + 1 < (a)->capacity)) {               \
+            (a)->data[(a)->len] = v;                            \
+            (a)->len += 1;                                      \
+        } else {                                                \
+            u32 new_cap = (a)->capacity ? ((a)->capacity * 2) : 2;\
+            (a)->data = realloc((a)->data, new_cap * sizeof(v));\
+            (a)->capacity = new_cap;                            \
+            (a)->data[(a)->len] = v;                            \
+            (a)->len++;                                         \
+        }                                                       \
+    } while (0);
+
 #define to_ndc_x(px) ((f32)(px) / GAME_WIDTH * 2.0f - 1.0f)
 #define to_ndc_y(py) (1.0f - (f32)(py) / GAME_HEIGHT * 2.0f)
 
@@ -29,7 +55,8 @@ Color get_color_from_texture(Texture *t, V2f uv);
 
 typedef struct {
     s32 tile_x, tile_y;
-    size_t *tri_idx;
+    // TODO this has to be replaced with a struct dynamic array
+    SizeArray tri_idx;
 } TileBin;
 
 typedef struct
@@ -40,7 +67,7 @@ typedef struct
 } Worker;
 
 TileBin triangle_bins[(GAME_WIDTH / TILE_W) * (GAME_HEIGHT / TILE_H)];
-Triangle *triangles = NULL;
+TriangleArray *triangles;
 Worker workers[NUM_THREADS];
 pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t queue_cond = PTHREAD_COND_INITIALIZER;
@@ -75,12 +102,12 @@ void *worker_thread(void *arg)
 
         // Snapshot the triangle indices we need to process
         // so we can release the lock before doing pixel work
-        size_t len = arrlen(bin->tri_idx);
+        size_t len = bin->tri_idx.len;
 
         // TODO this needs to be a fixed buffer of some kind.
         size_t local_idx[len]; // VLA, or heap alloc if len could be huge
-        memcpy(local_idx, bin->tri_idx, len * sizeof(size_t));
-        arrsetlen(bin->tri_idx, 0); // clear while locked, before workers
+        memcpy(local_idx, bin->tri_idx.data, len * sizeof(size_t));
+        bin->tri_idx.len = 0; // clear while locked, before workers
                                     // can re-queue this bin next frame
 
         pthread_mutex_unlock(&queue_mutex);
@@ -90,7 +117,7 @@ void *worker_thread(void *arg)
             renderer_draw_triangle(
                 bin->tile_x * TILE_W,
                 bin->tile_y * TILE_H,
-                triangles[local_idx[i]] // triangles[] is read-only during dispatch
+                triangles->data[local_idx[i]] // triangles[] is read-only during dispatch
             );
         }
 
@@ -104,6 +131,14 @@ void *worker_thread(void *arg)
 
 void render_init(void)
 {
+
+    triangles = malloc(sizeof(TriangleArray));
+    s32 initial = 1000;
+    triangles->capacity = initial;
+    log_debug("Triangle data pointer %p", triangles->data);
+    triangles->data = malloc(sizeof(Triangle) * initial);
+    triangles->len = 0;
+    log_debug("Triangle data pointer %p", triangles->data);
     renderer.width = GAME_WIDTH;
     renderer.height = GAME_HEIGHT;
     for (size_t i = 0; i < TILE_COUNT; i++)
@@ -112,6 +147,8 @@ void render_init(void)
         s32 y = i / (GAME_WIDTH / TILE_W);
         triangle_bins[i].tile_x = x;
         triangle_bins[i].tile_y = y;
+        triangle_bins[i].tri_idx.data = malloc(initial * sizeof(size_t));
+        triangle_bins[i].tri_idx.capacity = initial;
     }
 
     for (s32 i = 0; i < NUM_THREADS; i++)
@@ -132,11 +169,12 @@ void render_shutdown(void)
 
 void renderer_flush(void)
 {
+    //log_info("Triangles rendererd %zd", triangles->len);
     // enqueue all non-empty bins
     pthread_mutex_lock(&queue_mutex);
     for (s32 i = 0; i < TILE_COUNT; i++)
     {
-        if (arrlen(triangle_bins[i].tri_idx) > 0)
+        if (triangle_bins[i].tri_idx.len > 0)
         {
             work_queue[queue_tail % TILE_COUNT] = &triangle_bins[i];
             queue_tail++;
@@ -151,7 +189,7 @@ void renderer_flush(void)
     pthread_mutex_unlock(&queue_mutex);
 
     // clear triangle list for next frame
-    arrsetlen(triangles, 0);
+    triangles->len = 0;
 }
 
 Color color_scale(Color c, double value)
@@ -184,14 +222,49 @@ Color color_mul(Color c1, Color c2)
     };
 }
 
+Color color_modulate(Color a, Color b)
+{
+    return (Color){
+        (u8)(a.r * b.r / 255),
+        (u8)(a.g * b.g / 255),
+        (u8)(a.b * b.b / 255),
+        (u8)(a.a * b.a / 255),
+    };
+}
+
+Color alpha_blend(Color src, Color dst)
+{
+    u32 a = src.a;
+    u32 ia = 255 - a;
+
+    return (Color){
+        .r = (u8)((src.r * a + dst.r * ia) / 255),
+        .g = (u8)((src.g * a + dst.g * ia) / 255),
+        .b = (u8)((src.b * a + dst.b * ia) / 255),
+        .a = 255,
+    };
+}
+
 #define PIXEL_INDEX(x, y) ((size_t)(x) + (size_t)(y) * (size_t)renderer.width)
 
-static inline void set_pixel(s32 x, s32 y, Color color)
+static inline void set_pixel(s32 x, s32 y, Color src)
 {
     if (x < 0 || y < 0 || x >= renderer.width || y >= renderer.height)
         return;
 
-    renderer.pixels[PIXEL_INDEX(x, y)] = color.rgba;
+    size_t idx = PIXEL_INDEX(x, y);
+    Color dst = (Color)renderer.pixels[idx];
+
+    if (src.a == 0)
+        return;
+
+    if (src.a == 255) {
+        renderer.pixels[idx] = src.rgba;
+        return;
+    }
+
+    Color out = alpha_blend(src, dst);
+    renderer.pixels[idx] = out.rgba;
 }
 
 void set_verline(u32 x, u32 start, u32 end, Color color)
@@ -305,29 +378,30 @@ void renderer_push_triangle(V3f v1, V3f v2, V3f v3, Color color[3], V3f uvs[3], 
         v2i(max(pos1.x, max(pos2.x, pos3.x)), max(pos1.y, max(pos2.y, pos3.y))),
     };
 
+    // THERE IS UB HERE. TODO there needs to be a clamp or some kind of better fallback for 
+    // higher optimization levels.
     size_t t_minx = max(0, floor(rec.min.x / TILE_W));
-    size_t t_maxx = min((GAME_WIDTH / TILE_W) - 1, floor(rec.max.x / TILE_W));
+    size_t t_maxx = min((GAME_WIDTH / TILE_W) - 1, floor(rec.max.x > 0 ? rec.max.x : 0 / TILE_W));
     size_t t_miny = max(0, floor(rec.min.y / TILE_H));
-    size_t t_maxy = min((GAME_HEIGHT / TILE_H) - 1, floor(rec.max.y / TILE_H));
-
-    /* if (t_minx > t_maxx || t_miny > t_maxy)
-        return; */
+    size_t t_maxy = min((GAME_HEIGHT / TILE_H) - 1, floor(rec.max.y > 0 ? rec.max.y : 0 / TILE_H));
 
     Triangle triangle = {
         .vertices = {v1, v2, v3},
-        .colors = {color[0], color[1], color[2]},
         .uvs = {uvs[0], uvs[1], uvs[2]},
+        .colors = {color[0], color[1], color[2]},
         .texture = t,
         .twod = twod,
     };
-    arrput(triangles, triangle);
-    size_t idx = arrlen(triangles) - 1;
+    array_push(triangles, triangle);
+    size_t idx = triangles->len - 1;
 
     for (size_t j = t_miny; j <= t_maxy; j++)
     {
         for (size_t i = t_minx; i <= t_maxx; i++)
         {
-            arrput(triangle_bins[i + j * COL_GAME_WIDTH].tri_idx, idx);
+            size_t index = i + j * COL_GAME_WIDTH;
+            if (index < TILE_COUNT)
+                array_push(&triangle_bins[index].tri_idx, idx);
         }
     }
 }
@@ -372,26 +446,16 @@ void renderer_push_triangle_w_normals(V3f positions[3], V3f normals[3], Color co
         .texture = NULL,
         .twod = twod,
     };
-    arrput(triangles, triangle);
-    size_t idx = arrlen(triangles) - 1;
+    array_push(triangles, triangle);
+    size_t idx = triangles->len - 1;
 
     for (size_t j = t_miny; j <= t_maxy; j++)
     {
         for (size_t i = t_minx; i <= t_maxx; i++)
         {
-            arrput(triangle_bins[i + j * COL_GAME_WIDTH].tri_idx, idx);
+            array_push(&triangle_bins[i + j * COL_GAME_WIDTH].tri_idx, idx);
         }
     }
-}
-
-Color color_modulate(Color a, Color b)
-{
-    return (Color){
-        (u8)(a.r * b.r / 255),
-        (u8)(a.g * b.g / 255),
-        (u8)(a.b * b.b / 255),
-        (u8)(a.a * b.a / 255),
-    };
 }
 
 void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
@@ -440,9 +504,11 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
                 double z = 1.0 / inv_z;
 
                 size_t idx = PIXEL_INDEX(x, y);
+                if (idx < 0 || idx > GAME_WIDTH * GAME_HEIGHT) continue;
 
                 if (z >= renderer.zbuffer[idx])
                     continue;
+                renderer.zbuffer[idx] = z;
 
                 // TODO Interpolate colors
                 Color s32_color;
@@ -463,7 +529,7 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
                         color_scale(tri.colors[2], bary.z));
 
                     s32_color = color_modulate(tex_color, vert_color);
-                    if (s32_color.rgba == 0)
+                    if (s32_color.a == 0)
                         continue;
                 }
                 else
@@ -475,7 +541,6 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
                         color_scale(tri.colors[2], bary.z));
                 }
 
-                renderer.zbuffer[idx] = z;
                 set_pixel((u32)x, (u32)y, s32_color); //  (Color){c, c, c, 255});
             }
         }
@@ -546,7 +611,7 @@ Color get_color_from_texture(Texture *t, V2f uv)
     c.g = t->data[idx + 1];
     c.b = t->data[idx + 2];
     // TODO add ability to have clear parts from a texture come through
-    c.a = t->stride == 4 ? t->data[idx + 3] : 0;
+    c.a = t->stride == 4 ? t->data[idx + 3] : 255;
     return c;
 }
 
@@ -602,14 +667,16 @@ void draw_model(Asset_Model *model, V3f position, Mat3 rotation)
 
             Color colors[3] = {t1, t2, t3};
             V3f uvs[3] = {v1.uv, v2.uv, v3.uv};
-            renderer_push_triangle(
-                p1,
-                p2,
-                p3,
-                colors,
-                uvs,
-                model->mtl->diffuse_texture,
-                false);
+
+            if (model->mtl != NULL)
+                renderer_push_triangle(
+                        p1,
+                        p2,
+                        p3,
+                        colors,
+                        uvs,
+                        model->mtl->diffuse_texture,
+                        false);
         }
     }
 }
@@ -696,7 +763,7 @@ Color simple_reflection(SimpleMtl *mtl, V3f light_pos, V3f v, V3f n, V3f light_c
     return res;
 }
 
-void draw_texture(Texture *tex, Reci rec)
+void draw_texture(Texture *tex, Recs32 rec)
 {
     f32 x0 = rec.x;
     f32 y0 = rec.y;
@@ -731,7 +798,7 @@ void draw_texture(Texture *tex, Reci rec)
         colors, uvs2, tex, true);
 }
 
-void draw_texture_w_uvs(Texture *tex, Reci rec, V3f uvs[4], Color colors[4])
+void draw_texture_w_uvs(Texture *tex, Recs32 rec, V3f uvs[4], Color colors[4])
 {
     f32 x0 = rec.x;
     f32 y0 = rec.y;
@@ -775,7 +842,7 @@ void draw_texture_w_uvs(Texture *tex, Reci rec, V3f uvs[4], Color colors[4])
         c2, uvs2, tex, true);
 }
 
-void draw_reci(Reci rec, f32 z, Color color)
+void draw_recs32(Recs32 rec, f32 z, Color color)
 {
     f32 x0 = rec.x;
     f32 y0 = rec.y;
@@ -829,7 +896,7 @@ void draw_text(Font *f, char *str, V2i pos, f32 size, Color color)
             v3f(u_min, v_max, 0), /* bottom-left  */
         };
         Color colors[4] = {color, color, color, color};
-        Reci rec = (Reci){.x = pos.x + (i * (s32)size), .y = pos.y, .w = (s32)size, .h = (s32)size};
+        Recs32 rec = (Recs32){.x = pos.x + (i * (s32)size), .y = pos.y, .w = (s32)size, .h = (s32)size};
         draw_texture_w_uvs(
             f->texture,
             rec,

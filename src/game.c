@@ -42,12 +42,14 @@ void game_init(void)
 {
     SectionStart("Intialization");
     render_init();
+    console_init();
 
     sh_new_strdup(gs.assets);
 
     entity_init();
     tiles_init();
 
+    //Asset_Model *a = load_model_from_file("data/sponza.obj");
     Asset_Model *a = load_model_from_file("data/shopkeeper.obj");
     Texture *t = load_texture_from_file("data/target.png", false);
 
@@ -82,15 +84,16 @@ void game_frame(void)
     //V2f mouse_pos = get_mouse_pos();
     V2f mouse_delta = get_mouse_delta();
 
-    if (is_key_down(KEY_M)) {
+    if (is_key_pressed(KEY_M)) {
         gs.profiling_enabled = !gs.profiling_enabled;
     }
     if (is_key_down(KEY_K)) renderer.camera.position.z += 0.1;
     if (is_key_down(KEY_J)) renderer.camera.position.z -= 0.1;
     if (is_key_down(KEY_U)) renderer.camera.fovy += 0.1;
     if (is_key_down(KEY_I)) renderer.camera.fovy -= 0.1;
-    if (is_key_down(KEY_T)) gs.state = GAME_STATE_EDITOR;
-    if (is_key_down(KEY_Y)) gs.state = GAME_STATE_GAMEPLAY;
+    if (is_key_pressed(KEY_T)) gs.state = GAME_STATE_EDITOR;
+    if (is_key_pressed(KEY_Y)) gs.state = GAME_STATE_GAMEPLAY;
+    console_update();
 
     set_mouse_toggle_key(KEY_P);
     switch(gs.state) {
@@ -121,38 +124,42 @@ void game_frame(void)
             );
 
     draw_model_with_light(shget(gs.assets, "shopkeeper"), v3f(1, 0,  2), mat3_identity(), gs.sun);
-    
+
     draw_model(shget(gs.assets, "shopkeeper"), v3f(-1, 0,  2), mat3_identity());
-
-    SectionStart("UI Render");
-
-
-    sprintf(buf, "fps: %.3f", 1/gs.frame_time);
-    draw_text(gs.font, buf, v2i(0, 10), 16, COLOR_RED);
-    sprintf(buf, "position: %.3f %.3f %.3f", renderer.camera.position.x, renderer.camera.position.y, renderer.camera.position.z);
-    draw_text(gs.font, buf, v2i(0, 26), 16, COLOR_RED);
-    sprintf(buf, "target:   %.3f %.3f %.3f", renderer.camera.target.x, renderer.camera.target.y, renderer.camera.target.z);
-    draw_text(gs.font, buf, v2i(0, 42), 16, COLOR_RED);
-    sprintf(buf, "front:    %.3f %.3f %.3f", renderer.camera.front.x, renderer.camera.front.y, renderer.camera.front.z);
-    draw_text(gs.font, buf, v2i(0, 58), 16, COLOR_RED);
-    sprintf(buf, "fovy:     %.3f", renderer.camera.fovy);
-    draw_text(gs.font, buf, v2i(0, 70), 16, COLOR_RED);
-
-    Mat4 view = camera_matrix(renderer.camera);
-
-    sprintf(buf, "%.3f %.3f %.3f %.3f", view.c[0], view.c[1], view.c[2], view.c[3]);
-    draw_text(gs.font, buf, v2i(0, 90), 16, COLOR_RED);
-    sprintf(buf, "%.3f %.3f %.3f %.3f", view.c[4], view.c[5], view.c[6], view.c[7]);
-    draw_text(gs.font, buf, v2i(0, 110), 16, COLOR_RED);
-    sprintf(buf, "%.3f %.3f %.3f %.3f", view.c[8], view.c[9], view.c[10], view.c[11]);
-    draw_text(gs.font, buf, v2i(0, 130), 16, COLOR_RED);
-    sprintf(buf, "%.3f %.3f %.3f %.3f", view.c[12], view.c[13], view.c[14], view.c[15]);
-    draw_text(gs.font, buf, v2i(0, 150), 16, COLOR_RED);
-
 
     for (int i = 0; i < arrlen(gs.dynamic_entities); i++) {
         entity_draw(&gs.dynamic_entities[i]);
     }
+
+    SectionStart("UI Render");
+
+
+    if (gs.state == GAME_STATE_EDITOR) {
+        snprintf(buf, sizeof(buf), "fps: %.3f", 1/gs.frame_time);
+        draw_text(gs.font, buf, v2i(0, 10), 16, COLOR_RED);
+        snprintf(buf, sizeof(buf), "position: %.3f %.3f %.3f", renderer.camera.position.x, renderer.camera.position.y, renderer.camera.position.z);
+        draw_text(gs.font, buf, v2i(0, 26), 16, COLOR_RED);
+        snprintf(buf, sizeof(buf),"target:   %.3f %.3f %.3f", renderer.camera.target.x, renderer.camera.target.y, renderer.camera.target.z);
+        draw_text(gs.font, buf, v2i(0, 42), 16, COLOR_RED);
+        snprintf(buf, sizeof(buf),"front:    %.3f %.3f %.3f", renderer.camera.front.x, renderer.camera.front.y, renderer.camera.front.z);
+        draw_text(gs.font, buf, v2i(0, 58), 16, COLOR_RED);
+        snprintf(buf, sizeof(buf),"fovy:     %.3f", renderer.camera.fovy);
+        draw_text(gs.font, buf, v2i(0, 70), 16, COLOR_RED);
+
+        Mat4 view = camera_matrix(renderer.camera);
+
+        snprintf(buf, sizeof(buf),"%.3f %.3f %.3f %.3f", view.c[0], view.c[1], view.c[2], view.c[3]);
+        draw_text(gs.font, buf, v2i(0, 90), 16, COLOR_RED);
+        snprintf(buf, sizeof(buf),"%.3f %.3f %.3f %.3f", view.c[4], view.c[5], view.c[6], view.c[7]);
+        draw_text(gs.font, buf, v2i(0, 110), 16, COLOR_RED);
+        snprintf(buf,sizeof(buf), "%.3f %.3f %.3f %.3f", view.c[8], view.c[9], view.c[10], view.c[11]);
+        draw_text(gs.font, buf, v2i(0, 130), 16, COLOR_RED);
+        snprintf(buf,sizeof(buf), "%.3f %.3f %.3f %.3f", view.c[12], view.c[13], view.c[14], view.c[15]);
+        draw_text(gs.font, buf, v2i(0, 150), 16, COLOR_RED);
+    }
+
+    console_draw();
+
 
     SectionEnd("UI Render");
     renderer_flush();

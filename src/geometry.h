@@ -15,7 +15,13 @@ typedef struct {
 
 typedef union {
     struct {f32 x, y, w, h;};
-} Recf;
+} Recf32;
+
+typedef union {
+    struct {s32 x, y, w, h;};
+    struct {V2i min, max;};
+} Recs32;
+
 
 // todo:cs this needs to be visited for what happens when something is clipped behind the camera plane.
 // right now it results in a divide by zero that will fail an assert.
