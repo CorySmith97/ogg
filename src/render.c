@@ -378,8 +378,6 @@ void renderer_push_triangle(V3f v1, V3f v2, V3f v3, Color color[3], V3f uvs[3], 
         v2i(max(pos1.x, max(pos2.x, pos3.x)), max(pos1.y, max(pos2.y, pos3.y))),
     };
 
-    // THERE IS UB HERE. TODO there needs to be a clamp or some kind of better fallback for 
-    // higher optimization levels.
     size_t t_minx = max(0, floor(rec.min.x / TILE_W));
     size_t t_maxx = min((GAME_WIDTH / TILE_W) - 1, floor(rec.max.x > 0 ? rec.max.x : 0 / TILE_W));
     size_t t_miny = max(0, floor(rec.min.y / TILE_H));
@@ -489,7 +487,7 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
     V3f bary;
 
     double total_area = signed_area(pos1.x, pos1.y, pos2.x, pos2.y, pos3.x, pos3.y);
-    if (total_area < -1e6)
+    if (total_area >= 0)
         return;
 
     for (s32 y = y0; y < y1; y++)
@@ -508,7 +506,6 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
 
                 if (z >= renderer.zbuffer[idx])
                     continue;
-                renderer.zbuffer[idx] = z;
 
                 // TODO Interpolate colors
                 Color s32_color;
@@ -517,8 +514,12 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
                     V3f v1 = tri.uvs[0];
                     V3f v2 = tri.uvs[1];
                     V3f v3 = tri.uvs[2];
-                    f32 u = v1.x * bary.x + v2.x * bary.y + v3.x * bary.z;
-                    f32 v = v1.y * bary.x + v2.y * bary.y + v3.y * bary.z;
+                    f32 u = (v1.x/tri.vertices[0].z * bary.x +
+                            v2.x/tri.vertices[1].z * bary.y +
+                            v3.x/tri.vertices[2].z * bary.z) * z;
+                    f32 v = (v1.y/tri.vertices[0].z * bary.x +
+                            v2.y/tri.vertices[1].z * bary.y +
+                            v3.y/tri.vertices[2].z * bary.z) * z;
 
                     Color tex_color = get_color_from_texture(tri.texture, v2f(u, v));
 
@@ -541,6 +542,7 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
                         color_scale(tri.colors[2], bary.z));
                 }
 
+                renderer.zbuffer[idx] = z;
                 set_pixel((u32)x, (u32)y, s32_color); //  (Color){c, c, c, 255});
             }
         }
@@ -870,7 +872,7 @@ void draw_recs32(Recs32 rec, f32 z, Color color)
 #define GLYPH_W 8
 #define GLYPH_H 16
 
-void draw_text(Font *f, char *str, V2i pos, f32 size, Color color)
+void draw_text(Font *f, const char *str, V2i pos, f32 size, Color color)
 {
     s32 atlas_w = f->texture->width;
     s32 atlas_h = f->texture->height;

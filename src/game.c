@@ -89,12 +89,15 @@ void game_frame(void)
     if (is_key_down(KEY_M)) {
         gs.profiling_enabled = !gs.profiling_enabled;
     }
-    if (is_key_down(KEY_K)) renderer.camera.position.z += 0.1;
-    if (is_key_down(KEY_J)) renderer.camera.position.z -= 0.1;
-    if (is_key_down(KEY_U)) renderer.camera.fovy += 0.1;
-    if (is_key_down(KEY_I)) renderer.camera.fovy -= 0.1;
-    if (is_key_down(KEY_T)) gs.state = GAME_STATE_EDITOR;
-    if (is_key_down(KEY_Y)) gs.state = GAME_STATE_GAMEPLAY;
+
+    if (is_key_pressed(KEY_T)) {
+        console_write_log("Game state editor");
+        gs.state = GAME_STATE_EDITOR;
+    }
+    if (is_key_pressed(KEY_Y)) {
+        console_write_log("Game state gameplay");
+        gs.state = GAME_STATE_GAMEPLAY;
+    }
 
     set_mouse_toggle_key(KEY_P);
     switch(gs.state) {
@@ -131,6 +134,7 @@ void game_frame(void)
 
     SectionStart("UI Render");
 
+    if (gs.state == GAME_STATE_EDITOR) {
         sprintf(buf, "fps: %.3f", 1/gs.frame_time);
         draw_text(gs.font, buf, v2i(0, 10), 16, COLOR_RED);
         sprintf(buf, "position: %.3f %.3f %.3f", renderer.camera.position.x, renderer.camera.position.y, renderer.camera.position.z);
@@ -152,12 +156,13 @@ void game_frame(void)
         draw_text(gs.font, buf, v2i(0, 130), 16, COLOR_RED);
         sprintf(buf, "%.3f %.3f %.3f %.3f", view.c[12], view.c[13], view.c[14], view.c[15]);
         draw_text(gs.font, buf, v2i(0, 150), 16, COLOR_RED);
+    }
 
     for (int i = 0; i < arrlen(gs.dynamic_entities); i++) {
         entity_draw(&gs.dynamic_entities[i]);
     }
 
-    console_draw();
+    console_draw(gs.font);
     SectionEnd("UI Render");
     renderer_flush();
 

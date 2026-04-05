@@ -8,7 +8,7 @@ static struct {
     Recs32 rec;
     Recs32 draw_rec;
     Keys toggle_key;
-    char **lines;
+    const char **lines;
     b32 open;
 } console = {
     .file = "data/console.txt",
@@ -19,6 +19,6 @@ static struct {
 void console_init(void);
 void console_deinit(void);
 void console_update(void);
-void console_draw(void);
+void console_draw(Font *font);
 
 #endif // CONSOLE_H

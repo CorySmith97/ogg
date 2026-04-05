@@ -21,6 +21,7 @@ typedef union Color {
     u32 rgba;
 } Color;
 
+
 #define COLOR_WHITE  (Color){ 255, 255, 255, 255 }
 #define COLOR_GRAY   (Color){ 122, 122, 122, 255 }
 #define COLOR_BLACK  (Color){ 0, 0, 0, 255 }
@@ -86,7 +87,7 @@ void  draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Lig
 void  draw_model_textured(Asset_Model *model, V3f position, Mat3 rotation);
 Color simple_reflection(SimpleMtl *mtl, V3f light_pos, V3f v, V3f n, V3f light_color, Color object_color);
 void  draw_texture(Texture *tex, Recs32 rec);
-void  draw_text(Font *f, char *str, V2i pos, f32 size, Color color);
+void  draw_text(Font *f, const char *str, V2i pos, f32 size, Color color);
 void  draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color);
 void  draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color color);
 
