@@ -30,7 +30,7 @@ typedef struct UI_Node {
     UI_Size     semantic_size[Axis2_count];
     f32       computed_rel_pos[Axis2_count];
     f32       computed_size[Axis2_count];
-    Recf        rect;
+    Recs32        rect;
 
     struct UI_Node *first;
     struct UI_Node *last;

@@ -59,11 +59,13 @@ void game_init(void)
     a = load_model_from_file("data/lowpoly/OBJ/SM_Bld_Fence_01_Snow.obj");
     shput(gs.assets, "fence", a);
     shput(gs.textures, "target", t);
-    //shput(gs.assets, "cube", load_model_from_file("data/cube.obj"));
+    a = load_model_from_file("data/cube.obj");
+    shput(gs.assets, "cube", a);
 
 
     Entity e = (Entity){
             .model = shget(gs.assets, "shopkeeper"),
+            .model_tag = "shopkeeper",
             .position = v3f(0,0,0),
             .rotation = mat3_identity(),
             .update_fn = update_shopkeeper,
@@ -122,13 +124,6 @@ void game_frame(void)
         Entity *e = &gs.dynamic_entities[i];
         RayCollision collision = { 0 };
         if (is_mouse_button_pressed(MOUSEBUTTON_LEFT)) {
-            log_debug("Ray: position: %f %f %f\n\tdir: %f %f %f", 
-                    mouse_ray.position.x,
-                    mouse_ray.position.y,
-                    mouse_ray.position.z,
-                    mouse_ray.direction.x,
-                    mouse_ray.direction.y,
-                    mouse_ray.direction.z);
             collision = get_raycollision_box(mouse_ray, e->aabb);
         }
         if (collision.hit)
@@ -146,39 +141,26 @@ void game_frame(void)
             v3f(renderer.camera.target.x - 0.3, renderer.camera.target.y, renderer.camera.target.z + 0.3), 
             v3f(renderer.camera.target.x + 0.3, renderer.camera.target.y, renderer.camera.target.z - 0.3), 
             v3f(renderer.camera.target.x + 0.3, renderer.camera.target.y, renderer.camera.target.z + 0.3), 
-            COLOR_RED
+            COLOR_RED, 0
             );
 
     draw_model_with_light(shget(gs.assets, "shopkeeper"), v3f(1, 0,  2), mat3_identity(), gs.sun);
     
     for (s32 i = 0; i < 10; i++) {
-        draw_model(shget(gs.assets, "fence"), v3f(i * 4, 0,  2), mat3_scale(0.01));
+        draw_model_with_light(shget(gs.assets, "cube"), v3f(i * 4, 0,  2), mat3_scale(0.5), gs.sun);
     }
 
     SectionStart("UI Render");
 
     if (gs.state == GAME_STATE_EDITOR) {
         sprintf(buf, "fps: %.3f", 1/gs.frame_time);
-        draw_text(gs.font, buf, v2i(0, 10), 16, COLOR_RED);
+        draw_text(gs.font, buf, v2i(0, 10), 16, COLOR_BLACK);
         sprintf(buf, "position: %.3f %.3f %.3f", renderer.camera.position.x, renderer.camera.position.y, renderer.camera.position.z);
-        draw_text(gs.font, buf, v2i(0, 26), 16, COLOR_RED);
+        draw_text(gs.font, buf, v2i(0, 26), 16, COLOR_BLACK);
         sprintf(buf, "target:   %.3f %.3f %.3f", renderer.camera.target.x, renderer.camera.target.y, renderer.camera.target.z);
-        draw_text(gs.font, buf, v2i(0, 42), 16, COLOR_RED);
+        draw_text(gs.font, buf, v2i(0, 42), 16, COLOR_BLACK);
         sprintf(buf, "front:    %.3f %.3f %.3f", renderer.camera.front.x, renderer.camera.front.y, renderer.camera.front.z);
-        draw_text(gs.font, buf, v2i(0, 58), 16, COLOR_RED);
-        sprintf(buf, "fovy:     %.3f", renderer.camera.fovy);
-        draw_text(gs.font, buf, v2i(0, 70), 16, COLOR_RED);
-
-        Mat4 view = camera_matrix(renderer.camera);
-
-        sprintf(buf, "%.3f %.3f %.3f %.3f", view.c[0], view.c[1], view.c[2], view.c[3]);
-        draw_text(gs.font, buf, v2i(0, 90), 16, COLOR_RED);
-        sprintf(buf, "%.3f %.3f %.3f %.3f", view.c[4], view.c[5], view.c[6], view.c[7]);
-        draw_text(gs.font, buf, v2i(0, 110), 16, COLOR_RED);
-        sprintf(buf, "%.3f %.3f %.3f %.3f", view.c[8], view.c[9], view.c[10], view.c[11]);
-        draw_text(gs.font, buf, v2i(0, 130), 16, COLOR_RED);
-        sprintf(buf, "%.3f %.3f %.3f %.3f", view.c[12], view.c[13], view.c[14], view.c[15]);
-        draw_text(gs.font, buf, v2i(0, 150), 16, COLOR_RED);
+        draw_text(gs.font, buf, v2i(0, 58), 16, COLOR_BLACK);
     }
 
     for (int i = 0; i < arrlen(gs.dynamic_entities); i++) {
@@ -186,12 +168,11 @@ void game_frame(void)
         entity_draw(&e);
         if (e.hit) {
             Gizmo g = {
-                .axis = {GIZMO_AXIS_X,GIZMO_AXIS_Y,GIZMO_AXIS_Z},
+                .axis = {GIZMO_AXIS_X,GIZMO_AXIS_Z,GIZMO_AXIS_Y},
                 .position = e.position,
             };
             gizmo_draw(&g);
         }
-        draw_rectangle3d(e.aabb.min, e.aabb.max, e.aabb.min, e.aabb.max, COLOR_PURPLE);
     }
 
 
@@ -299,7 +280,7 @@ void handle_camera_gameplay(V2f mouse_delta)
 
     }
 
-    if (is_mouse_button_down(MOUSEBUTTON_MIDDLE)) {
+    if (is_mouse_button_down(MOUSEBUTTON_LEFT)) {
 
         renderer.camera.position = orbit_step(mouse_delta.x * 0.01, mouse_delta.y * 0.01, renderer.camera.position, renderer.camera.target);
 

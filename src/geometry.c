@@ -142,16 +142,6 @@ RayCollision get_raycollision_box(Ray ray, AABB box)
     collision.distance = t[6];
     collision.point = v3f_add(ray.position, v3f_scale(ray.direction, collision.distance));
 
-    if (collision.hit) {
-    char debug_buf[256];
-    sprintf(debug_buf, "RAYCOL: Box(%.1f,%.1f,%.1f)-(%.1f,%.1f,%.1f)", box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z);
-    log_debug(debug_buf);
-    sprintf(debug_buf, "RAYCOL: Ray pos(%.1f,%.1f,%.1f) dir(%.1f,%.1f,%.1f)", ray.position.x, ray.position.y, ray.position.z, ray.direction.x, ray.direction.y, ray.direction.z);
-    log_debug(debug_buf);
-    sprintf(debug_buf, "RAYCOL: t[6]=%.1f t[7]=%.1f hit=%d", t[6], t[7], collision.hit);
-    log_debug(debug_buf);
-    }
-
 
     /* // Get box center point
     collision.normal = Vector3Lerp(box.min, box.max, 0.5f);

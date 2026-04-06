@@ -14,7 +14,10 @@ typedef enum {
 
 typedef struct Entity{
     Entity_Tag   tag;
-    Asset_Model *model;
+    // NON-SERIALIZABLE
+    Asset_Model  *model;
+
+    const char   *model_tag;
     V3f          position;
     V3f          target;
     Mat3         rotation;
@@ -26,9 +29,14 @@ typedef struct Entity{
 
 Entity global_entities[ENTITY_TAG_COUNT];
 
+// CORE
 void entity_init(void);
 void entity_update(Entity *e);
 void entity_draw(Entity *e);
+
+// SERDE
+void entity_serde_write(Entity *e);
+Entity *entity_serde_read(const char *bytes, size_t size);
 
 
 #endif // ENTITY_H

@@ -11,6 +11,7 @@ typedef enum {
 typedef struct {
     Gizmo_Axis  axis[GIZMO_AXIS_COUNT];
     f32         axis_rotation[GIZMO_AXIS_COUNT];
+    AABB        aabbs[GIZMO_AXIS_COUNT];
     V3f         position;
 } Gizmo;
 

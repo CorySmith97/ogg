@@ -516,9 +516,11 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
 
                 size_t idx = PIXEL_INDEX(x, y);
                 if (idx < 0 || idx > GAME_WIDTH * GAME_HEIGHT) continue;
+                if (!FlagExists(tri.flags, TRIANGLE_WRITE_OVER_Z)) {
+                    if (z >= renderer.zbuffer[idx])
+                        continue;
+                }
 
-                if (z >= renderer.zbuffer[idx])
-                    continue;
 
                 // TODO Interpolate colors
                 Color s32_color;
@@ -932,7 +934,7 @@ void draw_text(Font *f, const char *str, V2i pos, f32 size, Color color)
     }
 }
 
-void draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color)
+void draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags)
 {
     Mat4 view = camera_matrix(renderer.camera);
 
@@ -951,17 +953,17 @@ void draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color)
             p3, // TL
             p4, // TR
             p2, // BR
-            colors, uvs, NULL, TRIANGLE_NO_CULLING);
+            colors, uvs, NULL, TRIANGLE_NO_CULLING | flags);
 
     // Tri 2: was BL, BR, TL (clockwise = back face) → flip to TL, BR, BL
     renderer_push_triangle(
             p3, // TL
             p2, // BR
             p1, // BL
-            colors, uvs, NULL, TRIANGLE_NO_CULLING);
+            colors, uvs, NULL, TRIANGLE_NO_CULLING | flags);
 }
 
-void draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color color)
+void draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags)
 {
     Mat4 view = camera_matrix(renderer.camera);
 
@@ -993,14 +995,29 @@ void draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color color)
             p3, // TL
             p4, // TR
             p2, // BR
-            colors, uvs1, tex, TRIANGLE_NO_CULLING);
+            colors, uvs1, tex, TRIANGLE_NO_CULLING | flags);
 
     // Tri 2: was BL, BR, TL (clockwise = back face) → flip to TL, BR, BL
     renderer_push_triangle(
             p3, // TL
             p2, // BR
             p1, // BL
-            colors, uvs2, tex, TRIANGLE_NO_CULLING);
+            colors, uvs2, tex, TRIANGLE_NO_CULLING | flags);
 }
 
+void draw_triangle3d(V3f v1, V3f v2, V3f v3, Color color, u32 flags)
+{
+    Mat4 view = camera_matrix(renderer.camera);
+    Color colors[3] = {color, color, color};
+    V3f p1 = v3f_translate_by_mat4(v1, view);
+    V3f p2 = v3f_translate_by_mat4(v2, view);
+    V3f p3 = v3f_translate_by_mat4(v3, view);
+    V3f uvs[3] = {0};
+
+    if (p1.z <= NEAR || p2.z <= NEAR || p3.z <= NEAR)
+        return;
+    renderer_push_triangle(
+            p1, p2, p3,
+            colors, uvs, NULL, TRIANGLE_NO_CULLING | flags);
+}
 
