@@ -25,12 +25,17 @@ typedef union Color {
 #define COLOR_WHITE  (Color){ 255, 255, 255, 255 }
 #define COLOR_GRAY   (Color){ 122, 122, 122, 255 }
 #define COLOR_BLACK  (Color){ 0, 0, 0, 255 }
-#define COLOR_RED    (Color){.r = 0x50, .a = 255}
+#define COLOR_RED    (Color){.r = 252, .g = 44, .a = 255}
 #define COLOR_BROWN  (Color){.r = 0x96, .g = 0x4B, .a = 0xFF }
-#define COLOR_BLUE   (Color){.b = 0x50, .a = 255}
-#define COLOR_GREEN  (Color){.g = 0x50, .a = 255}
+#define COLOR_BLUE   (Color){.g = 127, .b = 252, .a = 255}
+#define COLOR_GREEN  (Color){.r = 48, .g = 252, .a = 255}
 #define COLOR_PURPLE (Color){.r = 0x50, .b = 0x50, .a = 255}
 #define COLOR_YELLOW (Color){.r = 0x50, .g = 0x50, .a = 255}
+
+typedef enum {
+    TRIANGLE_TWO_D = 1 << 0,
+    TRIANGLE_NO_CULLING = 1 << 1,
+} TriangleFlags;
 
 typedef struct {
     V3f vertices[3];
@@ -38,7 +43,7 @@ typedef struct {
     V3f uvs[3];
     Color colors[3];
     Texture *texture;
-    b32 twod;
+    u32 flags;
 } Triangle;
 
 typedef struct TextVertex {
@@ -76,11 +81,21 @@ static struct {
         .distance = 10.0f,
         .fovy = 60.0f,
     },
+    .swap_camera = {
+        .target = {0, 0, 0},
+        .position = {0,2,-2},
+        .up = {0, 1, 0},
+        .pitch = 45.0f,
+        .yaw = 45.0f,
+        .distance = 10.0f,
+        .fovy = 60.0f,
+    },
 };
 
 void  render_init(void);
 void  clear_background(Color color);
 void  renderer_flush(void);
+void  change_camera(void);
 
 void  draw_model(Asset_Model *model, V3f position, Mat3 rotation);
 void  draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Light light);

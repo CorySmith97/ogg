@@ -55,7 +55,6 @@ Color get_color_from_texture(Texture *t, V2f uv);
 
 typedef struct {
     s32 tile_x, tile_y;
-    // TODO this has to be replaced with a struct dynamic array
     SizeArray tri_idx;
 } TileBin;
 
@@ -165,6 +164,15 @@ void render_shutdown(void)
 
     for (s32 i = 0; i < NUM_THREADS; i++)
         pthread_join(workers[i].thread, NULL);
+}
+
+
+void change_camera(void)
+{
+    Camera temp_camera;
+    temp_camera = renderer.swap_camera;
+    renderer.swap_camera = renderer.camera;
+    renderer.camera = temp_camera;
 }
 
 void renderer_flush(void)
@@ -353,12 +361,12 @@ void set_triangle_multicolor(V2i v1, V2i v2, V2i v3, Color c1, Color c2, Color c
     }
 }
 
-void renderer_push_triangle(V3f v1, V3f v2, V3f v3, Color color[3], V3f uvs[3], Texture *t, bool twod)
+void renderer_push_triangle(V3f v1, V3f v2, V3f v3, Color color[3], V3f uvs[3], Texture *t, u32 flags)
 {
     V2i pos1;
     V2i pos2;
     V2i pos3;
-    if (!twod)
+    if (!FlagExists(flags, TRIANGLE_TWO_D))
     {
         pos1 = to_screen(project(v1));
         pos2 = to_screen(project(v2));
@@ -388,8 +396,9 @@ void renderer_push_triangle(V3f v1, V3f v2, V3f v3, Color color[3], V3f uvs[3], 
         .uvs = {uvs[0], uvs[1], uvs[2]},
         .colors = {color[0], color[1], color[2]},
         .texture = t,
-        .twod = twod,
+        .flags = flags,
     };
+
     array_push(triangles, triangle);
     size_t idx = triangles->len - 1;
 
@@ -404,12 +413,12 @@ void renderer_push_triangle(V3f v1, V3f v2, V3f v3, Color color[3], V3f uvs[3], 
     }
 }
 
-void renderer_push_triangle_w_normals(V3f positions[3], V3f normals[3], Color color[3], bool twod)
+void renderer_push_triangle_w_normals(V3f positions[3], V3f normals[3], Color color[3], u32 flags)
 {
     V2i pos1;
     V2i pos2;
     V2i pos3;
-    if (!twod)
+    if (!FlagExists(flags, TRIANGLE_TWO_D))
     {
         pos1 = to_screen(project(positions[0]));
         pos2 = to_screen(project(positions[1]));
@@ -442,8 +451,9 @@ void renderer_push_triangle_w_normals(V3f positions[3], V3f normals[3], Color co
         .normals = {normals[0], normals[1], normals[2]},
         .colors = {color[0], color[1], color[2]},
         .texture = NULL,
-        .twod = twod,
+        .flags = flags,
     };
+
     array_push(triangles, triangle);
     size_t idx = triangles->len - 1;
 
@@ -461,17 +471,17 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
     V2i pos1;
     V2i pos2;
     V2i pos3;
-    if (!tri.twod)
-    {
-        pos1 = to_screen(project(tri.vertices[0]));
-        pos2 = to_screen(project(tri.vertices[1]));
-        pos3 = to_screen(project(tri.vertices[2]));
-    }
-    else
+    if (FlagExists(tri.flags, TRIANGLE_TWO_D))
     {
         pos1 = v2i((s32)tri.vertices[0].x, (s32)tri.vertices[0].y);
         pos2 = v2i((s32)tri.vertices[1].x, (s32)tri.vertices[1].y);
         pos3 = v2i((s32)tri.vertices[2].x, (s32)tri.vertices[2].y);
+    }
+    else
+    {
+        pos1 = to_screen(project(tri.vertices[0]));
+        pos2 = to_screen(project(tri.vertices[1]));
+        pos3 = to_screen(project(tri.vertices[2]));
     }
 
     AABBi rec = {
@@ -486,9 +496,12 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
 
     V3f bary;
 
-    double total_area = signed_area(pos1.x, pos1.y, pos2.x, pos2.y, pos3.x, pos3.y);
-    if (total_area >= 0)
-        return;
+    if (FlagExists(tri.flags, TRIANGLE_NO_CULLING)) {
+    } else {
+        double total_area = signed_area(pos1.x, pos1.y, pos2.x, pos2.y, pos3.x, pos3.y);
+        if (total_area >= 0)
+            return;
+    }
 
     for (s32 y = y0; y < y1; y++)
     {
@@ -678,7 +691,16 @@ void draw_model(Asset_Model *model, V3f position, Mat3 rotation)
                         colors,
                         uvs,
                         model->mtl->diffuse_texture,
-                        false);
+                        0);
+            else
+                renderer_push_triangle(
+                        p1,
+                        p2,
+                        p3,
+                        colors,
+                        uvs,
+                        NULL,
+                        0);
         }
     }
 }
@@ -734,7 +756,7 @@ void draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Ligh
                 colors,
                 uvs,
                 model->mtl->diffuse_texture,
-                false);
+                0);
         }
     }
 }
@@ -791,13 +813,13 @@ void draw_texture(Texture *tex, Recs32 rec)
         v3f(x1, y1, 1), // BR
         v3f(x1, y0, 1), // TR
         v3f(x0, y0, 1), // TL
-        colors, uvs1, tex, true);
+        colors, uvs1, tex, TRIANGLE_TWO_D);
 
     renderer_push_triangle(
         v3f(x0, y1, 1), // BL
         v3f(x1, y1, 1), // BR
         v3f(x0, y0, 1), // TL
-        colors, uvs2, tex, true);
+        colors, uvs2, tex, TRIANGLE_TWO_D);
 }
 
 void draw_texture_w_uvs(Texture *tex, Recs32 rec, V3f uvs[4], Color colors[4])
@@ -835,13 +857,13 @@ void draw_texture_w_uvs(Texture *tex, Recs32 rec, V3f uvs[4], Color colors[4])
         v3f(x1, y1, 1), // BR
         v3f(x1, y0, 1), // TR
         v3f(x0, y0, 1), // TL
-        c1, uvs1, tex, true);
+        c1, uvs1, tex, TRIANGLE_TWO_D);
 
     renderer_push_triangle(
         v3f(x0, y1, 1), // BL
         v3f(x1, y1, 1), // BR
         v3f(x0, y0, 1), // TL
-        c2, uvs2, tex, true);
+        c2, uvs2, tex, TRIANGLE_TWO_D);
 }
 
 void draw_recs32(Recs32 rec, f32 z, Color color)
@@ -858,13 +880,13 @@ void draw_recs32(Recs32 rec, f32 z, Color color)
         v3f(x1, y1, z), // BR
         v3f(x1, y0, z), // TR
         v3f(x0, y0, z), // TL
-        colors, uvs, NULL, true);
+        colors, uvs, NULL, TRIANGLE_TWO_D);
 
     renderer_push_triangle(
         v3f(x0, y1, z), // BL
         v3f(x1, y1, z), // BR
         v3f(x0, y0, z), // TL
-        colors, uvs, NULL, true);
+        colors, uvs, NULL, TRIANGLE_TWO_D);
 }
 
 // TODO AI GENERATED. REVISIT FOR FIXES
@@ -924,17 +946,19 @@ void draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color)
     if (p1.z <= NEAR || p2.z <= NEAR || p3.z <= NEAR || p4.z <= NEAR)
         return;
 
+    // Tri 1: was BR, TR, TL (clockwise = back face) → flip to TL, TR, BR
     renderer_push_triangle(
-        p2, // BR
-        p4, // TR
-        p3, // TL
-        colors, uvs, NULL, false);
+            p3, // TL
+            p4, // TR
+            p2, // BR
+            colors, uvs, NULL, TRIANGLE_NO_CULLING);
 
+    // Tri 2: was BL, BR, TL (clockwise = back face) → flip to TL, BR, BL
     renderer_push_triangle(
-        p1, // BL
-        p2, // BR
-        p3, // TL
-        colors, uvs, NULL, false);
+            p3, // TL
+            p2, // BR
+            p1, // BL
+            colors, uvs, NULL, TRIANGLE_NO_CULLING);
 }
 
 void draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color color)
@@ -950,31 +974,33 @@ void draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color color)
 
     // Tri 1: TL, BR, BL
     V3f uvs1[3] = {
-        {1.0f, 1.0f, 1.0f}, // BR
-        {1.0f, 0.0f, 1.0f}, // TR
         {0.0f, 0.0f, 1.0f}, // TL
+        {1.0f, 0.0f, 1.0f}, // TR
+        {1.0f, 1.0f, 1.0f}, // BR
     };
     // Tri 2: TL, TR, BR
     V3f uvs2[3] = {
-        {0.0f, 1.0f, 1.0f}, // BL
-        {1.0f, 1.0f, 1.0f}, // BR
         {0.0f, 0.0f, 1.0f}, // TL
+        {1.0f, 1.0f, 1.0f}, // BR
+        {0.0f, 1.0f, 1.0f}, // BL
     };
 
     if (p1.z <= NEAR || p2.z <= NEAR || p3.z <= NEAR || p4.z <= NEAR)
         return;
 
+    // Tri 1: was BR, TR, TL (clockwise = back face) → flip to TL, TR, BR
     renderer_push_triangle(
-        p2, // BR
-        p4, // TR
-        p3, // TL
-        colors, uvs1, tex, false);
+            p3, // TL
+            p4, // TR
+            p2, // BR
+            colors, uvs1, tex, TRIANGLE_NO_CULLING);
 
+    // Tri 2: was BL, BR, TL (clockwise = back face) → flip to TL, BR, BL
     renderer_push_triangle(
-        p1, // BL
-        p2, // BR
-        p3, // TL
-        colors, uvs2, tex, false);
+            p3, // TL
+            p2, // BR
+            p1, // BL
+            colors, uvs2, tex, TRIANGLE_NO_CULLING);
 }
 
 

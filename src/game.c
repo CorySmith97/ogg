@@ -56,6 +56,8 @@ void game_init(void)
     Texture *t = load_texture_from_file("data/target.png", false);
 
     shput(gs.assets, "shopkeeper", a);
+    a = load_model_from_file("data/lowpoly/OBJ/SM_Bld_Fence_01_Snow.obj");
+    shput(gs.assets, "fence", a);
     shput(gs.textures, "target", t);
     //shput(gs.assets, "cube", load_model_from_file("data/cube.obj"));
 
@@ -66,6 +68,8 @@ void game_init(void)
             .rotation = mat3_identity(),
             .update_fn = update_shopkeeper,
             };
+    e.aabb.min = v3f(e.position.x - 0.25, e.position.y - 0.5, e.position.z - 0.25);
+    e.aabb.max = v3f(e.position.x + 0.25, e.position.y + 0.5, e.position.z + 0.25);
 
     arrput(gs.dynamic_entities, e);
     gs.font = load_font("data/VGA8x16.png", 8, 16);
@@ -83,8 +87,9 @@ f32 z = 1.0f;
 void game_frame(void)
 {
     char buf[256];
-    //V2f mouse_pos = get_mouse_pos();
+    V2f mouse_pos = get_mouse_pos();
     V2f mouse_delta = get_mouse_delta();
+    Ray mouse_ray   = get_mouse_ray(renderer.camera, mouse_pos);
 
     if (is_key_down(KEY_M)) {
         gs.profiling_enabled = !gs.profiling_enabled;
@@ -93,10 +98,12 @@ void game_frame(void)
     if (is_key_pressed(KEY_T)) {
         console_write_log("Game state editor");
         gs.state = GAME_STATE_EDITOR;
+        change_camera();
     }
     if (is_key_pressed(KEY_Y)) {
         console_write_log("Game state gameplay");
         gs.state = GAME_STATE_GAMEPLAY;
+        change_camera();
     }
 
     set_mouse_toggle_key(KEY_P);
@@ -112,7 +119,21 @@ void game_frame(void)
 
     SectionStart("Entity Update");
     for (int i = 0; i < arrlen(gs.dynamic_entities); i++) {
-        entity_update(&gs.dynamic_entities[i]);
+        Entity *e = &gs.dynamic_entities[i];
+        RayCollision collision = { 0 };
+        if (is_mouse_button_down(MOUSEBUTTON_LEFT)) {
+            log_debug("Ray: position: %f %f %f\n\tdir: %f %f %f", 
+                    mouse_ray.position.x,
+                    mouse_ray.position.y,
+                    mouse_ray.position.z,
+                    mouse_ray.direction.x,
+                    mouse_ray.direction.y,
+                    mouse_ray.direction.z);
+            collision = get_raycollision_box(mouse_ray, e->aabb);
+        }
+        if (collision.hit)
+            e->hit = true;
+        entity_update(e);
     }
     SectionEnd("Entity Update");
 
@@ -125,12 +146,14 @@ void game_frame(void)
             v3f(renderer.camera.target.x - 0.3, renderer.camera.target.y, renderer.camera.target.z + 0.3), 
             v3f(renderer.camera.target.x + 0.3, renderer.camera.target.y, renderer.camera.target.z - 0.3), 
             v3f(renderer.camera.target.x + 0.3, renderer.camera.target.y, renderer.camera.target.z + 0.3), 
-            COLOR_WHITE
+            COLOR_RED
             );
 
     draw_model_with_light(shget(gs.assets, "shopkeeper"), v3f(1, 0,  2), mat3_identity(), gs.sun);
     
-    draw_model(shget(gs.assets, "shopkeeper"), v3f(-1, 0,  2), mat3_identity());
+    for (s32 i = 0; i < 10; i++) {
+        draw_model(shget(gs.assets, "fence"), v3f(i * 4, 0,  2), mat3_scale(0.01));
+    }
 
     SectionStart("UI Render");
 
@@ -159,8 +182,17 @@ void game_frame(void)
     }
 
     for (int i = 0; i < arrlen(gs.dynamic_entities); i++) {
-        entity_draw(&gs.dynamic_entities[i]);
+        Entity e = gs.dynamic_entities[i];
+        entity_draw(&e);
+        if (e.hit) {
+            Gizmo g = {
+                .axis = {GIZMO_AXIS_X,GIZMO_AXIS_Y,GIZMO_AXIS_Z},
+                .position = e.position,
+            };
+            gizmo_draw(&g);
+        }
     }
+
 
     console_draw(gs.font);
     SectionEnd("UI Render");

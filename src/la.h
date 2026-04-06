@@ -120,6 +120,7 @@ V4f v4f(f32 x, f32 y, f32 z, f32 w);
 V4f v4f_mul_mat4(V4f v, Mat4 m);
 
 Mat3 mat3_identity(void);
+Mat3 mat3_scale(f32 scalar);
 Mat3 mat3_mul(Mat3 m1, Mat3 m2);
 Mat3 rotation_x(f32 angle);
 Mat3 rotation_y(f32 angle);
@@ -129,5 +130,6 @@ Mat3 mat3_add(Mat3 m1, Mat3 m2);
 Mat4 mat4_identity(void);
 Mat4 mat4_mul(Mat4 m1, Mat4 m2);
 Mat4 perspective(f32 near, f32 far, f32 ar, f32 fov);
+Mat4 look_at(V3f position, V3f target, V3f up);
 
 #endif // LA_H

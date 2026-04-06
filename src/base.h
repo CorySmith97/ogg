@@ -35,7 +35,7 @@ typedef s64      b64;
 #define FlagSet(n, f)    ((n) |=(f))
 #define FlagClear(n, f)  ((n) &=-(f))
 #define FlagToggle(n, f) ((n) ^=(f))
-#define FlagExists(n, f) (((n) && (f)) == (f))
+#define FlagExists(n, f) (((n) & (f)) == (f))
 #define FlagEquals(n, f) (((n) == (f)))
 
 #define KB(n) (((u64)(n)) << 10)
