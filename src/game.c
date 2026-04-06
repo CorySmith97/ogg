@@ -121,7 +121,7 @@ void game_frame(void)
     for (int i = 0; i < arrlen(gs.dynamic_entities); i++) {
         Entity *e = &gs.dynamic_entities[i];
         RayCollision collision = { 0 };
-        if (is_mouse_button_down(MOUSEBUTTON_LEFT)) {
+        if (is_mouse_button_pressed(MOUSEBUTTON_LEFT)) {
             log_debug("Ray: position: %f %f %f\n\tdir: %f %f %f", 
                     mouse_ray.position.x,
                     mouse_ray.position.y,
@@ -132,7 +132,7 @@ void game_frame(void)
             collision = get_raycollision_box(mouse_ray, e->aabb);
         }
         if (collision.hit)
-            e->hit = true;
+            e->hit = !e->hit;
         entity_update(e);
     }
     SectionEnd("Entity Update");
@@ -191,6 +191,7 @@ void game_frame(void)
             };
             gizmo_draw(&g);
         }
+        draw_rectangle3d(e.aabb.min, e.aabb.max, e.aabb.min, e.aabb.max, COLOR_PURPLE);
     }
 
 

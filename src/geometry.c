@@ -84,27 +84,22 @@ static Ray get_mouse_ray(Camera camera, V2f mouse_position)
     float y = 1.0f - (2.0f*mouse_position.y)/(float)SCREEN_HEIGHT;
     float z = 1.0f;
 
-    // Store values in a vector
-    V3f deviceCoords = { x, y, z };
+    V3f f = v3f_normalize(v3f_sub(camera.target, camera.position));
+    V3f r = v3f_normalize(v3f_cross(camera.up, f));
+    V3f u = v3f_cross(f, r);
 
-    // Calculate view matrix from camera look at
-    Mat4 matView = look_at(camera.position, camera.target, camera.up);
+    float fov_rad = 1.0f;
+    float aspect = (float)SCREEN_WIDTH/(float)SCREEN_HEIGHT;
 
-    Mat4 matProj = mat4_identity();
-
-    // Calculate projection matrix from perspective
-    matProj = perspective(NEAR, FAR,  ((double)SCREEN_WIDTH/(double)SCREEN_HEIGHT), camera.fovy);
-
-    // Unproject far/near points
-    V3f nearPoint = v3f_unproject(v3f( deviceCoords.x, deviceCoords.y, 0.0f ), matProj, matView);
-    V3f farPoint = v3f_unproject(v3f( deviceCoords.x, deviceCoords.y, 1.0f ), matProj, matView);
-
-    V3f direction = v3f_normalize(v3f_sub(farPoint, nearPoint));
+    V3f direction = v3f_add(
+            v3f_add(v3f_scale(r, x * aspect / fov_rad),
+                v3f_scale(u, y / fov_rad)),
+                f);
 
     // Reverse direction - ray is pointing backwards
-    direction = v3f_scale(direction, -1.0f);
+    direction = v3f_normalize(direction);
 
-     ray.position = camera.position;
+    ray.position = camera.position;
 
     // Apply calculated vectors to ray
     ray.direction = direction;

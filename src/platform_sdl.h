@@ -56,6 +56,7 @@ typedef struct MouseState {
     f32 mouse_pos_dy;
     f32 scroll_delta;
     b32 mouse_button_state[MOUSEBUTTON_COUNT];
+    b32 prev_mouse_button_state[MOUSEBUTTON_COUNT];
 } MouseState;
 
 

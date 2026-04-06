@@ -105,6 +105,17 @@ bool is_mouse_button_down(s32 key) {
     return pressed;
 }
 
+b32 is_mouse_button_pressed(s32 key) {
+    bool pressed = false;
+    if ((key > 0) && (key < MOUSEBUTTON_COUNT)) {
+        if (mouse_state.mouse_button_state[key] 
+                && !mouse_state.prev_mouse_button_state[key]) {
+            pressed = true;
+        }
+    }
+    return pressed;
+}
+
 u64 get_time()
 {
     return SDL_GetPerformanceCounter();
@@ -185,6 +196,11 @@ f32 get_mouse_scroll()
 
 void platform_check_keystate(void)
 {
+
+    memcpy(mouse_state.prev_mouse_button_state,
+            mouse_state.mouse_button_state,
+            sizeof(mouse_state.mouse_button_state));
+
     if (platform_ctx.keystate != NULL)
         memcpy(platform_ctx.prev_keystate,
                 platform_ctx.keystate,
