@@ -103,6 +103,7 @@ void  draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Lig
 void  draw_model_textured(Asset_Model *model, V3f position, Mat3 rotation);
 Color simple_reflection(SimpleMtl *mtl, V3f light_pos, V3f v, V3f n, V3f light_color, Color object_color);
 void  draw_texture(Texture *tex, Recs32 rec);
+// There is a weird ordering bug with this. It drives me bonkers...
 void  draw_text(Font *f, const char *str, V2i pos, f32 size, Color color);
 void  draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags);
 void  draw_triangle3d(V3f v1, V3f v2, V3f v3, Color color, u32 flags);

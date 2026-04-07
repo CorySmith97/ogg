@@ -4,6 +4,11 @@
  * matrices for each frame. It would then move each model in correspondence with the matrix with
  * some light interpolation. I dont care for, at the moment, a super high fidelity animation system.
  * I just want to be able to have some simple, and low data, animations to add some life to the engine.
+ *
+ * TODO certain shapes should have static models that can simply be accessed. Then options should be added
+ * to those to create/add textures to them that can then be painted in the editor.
+ *  - CUBE
+ *  - CYLINDER
  */
 #ifndef ASSET_H
 #define ASSET_H

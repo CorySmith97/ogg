@@ -10,6 +10,8 @@ void gizmo_draw(Gizmo *gizmo)
 
     float len = 1.0f;
     float o   = 0.05f; // small offset along axis
+    float po   = 0.3f; // small offset along axis
+    float ps   = 0.10f; // small offset along axis
     float t   = 0.06f; // half-thickness
     float ah  = 0.12f; // arrowhead length
     float aw  = 0.06f; // arrowhead half-width
@@ -80,9 +82,39 @@ void gizmo_draw(Gizmo *gizmo)
                     color, TRIANGLE_WRITE_OVER_Z
                 );
                 break;
+
+                // Planar gizmos. 
+            case GIZMO_AXIS_XZ: 
+                draw_rectangle3d(
+                    v3f(x + po + ps,       y, z  + ps),
+                    v3f(x + po + ps,       y, z  + len - ps ),
+                    v3f(x + po + len - ps, y, z  + ps),
+                    v3f(x + po + len - ps, y, z  + len - ps),
+                    COLOR_YELLOW, 0);
+                break; 
+            case GIZMO_AXIS_XY: 
+                draw_rectangle3d(
+                    v3f(x + po + ps,       y + ps,       z + len),
+                    v3f(x + po + ps,       y + len - ps, z + len),
+                    v3f(x + po + len - ps, y + ps,       z + len),
+                    v3f(x + po + len - ps, y + len - ps, z + len),
+                    COLOR_PURPLE, 0);
+            break;
+            case GIZMO_AXIS_YZ: 
+                draw_rectangle3d(
+                    v3f(x + len + po, y + ps,       z + ps  ),
+                    v3f(x + len + po, y + ps,       z - ps + len ),
+                    v3f(x + len + po, y - ps + len, z + ps ),
+                    v3f(x + len + po, y - ps + len, z - ps + len ),
+                    COLOR_BROWN,0 
+                );
+                break;
         }
     }
 }
+
+void gizmo_update(Gizmo *gizmo);
+
 void gizmo_translation_modify(Gizmo *gizmo, Gizmo_Axis axis, V3f delta);
 void gizmo_rotation_modify(Gizmo *gizmo, Gizmo_Axis axis, f32 angle);
 Mat3 gizmo_get_rotation(Gizmo *gizmo);

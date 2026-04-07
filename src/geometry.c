@@ -171,3 +171,8 @@ RayCollision get_raycollision_box(Ray ray, AABB box)
     return collision;
 }
 
+// https://en.wikipedia.org/wiki/Möller–Trumbore_intersection_algorithm
+RayCollision get_ray_collision_triangle(Ray ray, V3f v1, V3f v2, V3f v3)
+{
+}
+

@@ -25,12 +25,18 @@ typedef struct {
     f32       strictness;
 } UI_Size;
 
+typedef enum {
+    UI_NODE_WINDOW,
+    UI_NODE_COUNT,
+} UI_Node_Tag;
+
 typedef struct UI_Node {
     const char *label;
     UI_Size     semantic_size[Axis2_count];
-    f32       computed_rel_pos[Axis2_count];
-    f32       computed_size[Axis2_count];
-    Recs32        rect;
+    f32         computed_rel_pos[Axis2_count];
+    f32         computed_size[Axis2_count];
+    Recs32      rec;
+    UI_Node_Tag tag;
 
     struct UI_Node *first;
     struct UI_Node *last;
@@ -39,6 +45,9 @@ typedef struct UI_Node {
     struct UI_Node *parent;
 } UI_Node;
 
+void ui_init(Font *ui_font);
+bool ui_window(const char *name, Recs32 rec);
+void ui_window_end(void);
 bool ui_button(const char *name);
 int  measure_text(Font *f, const char *text, int size);
 

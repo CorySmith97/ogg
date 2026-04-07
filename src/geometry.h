@@ -38,9 +38,6 @@ typedef union {
     struct {V2i min, max;};
 } Recs32;
 
-
-// todo:cs this needs to be visited for what happens when something is clipped behind the camera plane.
-// right now it results in a divide by zero that will fail an assert.
 static V2i          to_screen(V2f v);
 static V2f          project(V3f v);
 static inline AABBi calc_triangle_aabbi(V2i v1, V2i v2, V2i v3);
@@ -51,5 +48,7 @@ static V2i          world_coord_to_2d(Camera c, V3f v);
 static inline f32 deg_to_rad(f32 deg);
 static Ray        get_mouse_ray(Camera camera, V2f mouse_position);
 static RayCollision get_raycollision_box(Ray ray, AABB box);
+static RayCollision get_ray_collision_mesh(Ray ray, Asset_Model *box);
+RayCollision get_ray_collision_triangle(Ray ray, V3f v1, V3f v2, V3f v3);
 
 #endif // GEOMETRY_H

@@ -5,6 +5,9 @@ typedef enum {
     GIZMO_AXIS_X,
     GIZMO_AXIS_Y,
     GIZMO_AXIS_Z,
+    GIZMO_AXIS_XZ,
+    GIZMO_AXIS_XY,
+    GIZMO_AXIS_YZ,
     GIZMO_AXIS_COUNT,
 } Gizmo_Axis;
 

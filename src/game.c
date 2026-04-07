@@ -1,13 +1,13 @@
 #include "game.h"
 
-
 static struct {
     // Global Font (ASCII ONLY ATM)
     Font    *font;
     double  frame_time;
     // Global sun (do not overly lean on this. It slows things way down to do light calculations)
     Light   sun;
-    f32   camera_speed;
+    f32     camera_speed;
+    b32     camera_moving;
     bool    profiling_enabled;
     // Global texture storage
     Texture_KV     *textures;
@@ -16,14 +16,14 @@ static struct {
     // Gameplay
     Entity *dynamic_entities;
     Entity *static_entities;
-    Tile *tiles;
+    Tile   *tiles;
     GameState state;
 } gs = {
     .sun = {
         .position = {4, 0, 0},
         .color = {0, 0.5, 0.5},
     },
-    .camera_speed = 0.25,
+    .camera_speed = 0.05,
     .profiling_enabled = false,
     .assets = NULL,
     .dynamic_entities = NULL,
@@ -75,6 +75,7 @@ void game_init(void)
 
     arrput(gs.dynamic_entities, e);
     gs.font = load_font("data/VGA8x16.png", 8, 16);
+    ui_init(gs.font);
 
     SectionEnd("Intialization");
     profiler_report();
@@ -109,14 +110,24 @@ void game_frame(void)
     }
 
     set_mouse_toggle_key(KEY_P);
-    switch(gs.state) {
-        case GAME_STATE_GAMEPLAY:
-            handle_camera_gameplay(mouse_delta);
-            break;
-        default:
-            handle_camera_editor(mouse_delta);
-            break;
+
+    // If console is open, the key capture goes to the console instead of anything else
+    if (!console.open) {
+        switch(gs.state) {
+            case GAME_STATE_GAMEPLAY:
+                handle_camera_gameplay(mouse_delta);
+                break;
+            default:
+                handle_camera_editor(mouse_delta);
+                break;
+        }
     }
+
+    if (ui_window("test", (Recs32){.x = 10, .y = 10, .w = 200, .h = 200})) {
+        ui_window_end();
+    }
+
+    ui_process();
     console_update();
 
     SectionStart("Entity Update");
@@ -171,13 +182,18 @@ void game_frame(void)
                 .axis = {GIZMO_AXIS_X,GIZMO_AXIS_Z,GIZMO_AXIS_Y},
                 .position = e.position,
             };
-            gizmo_draw(&g);
+            if (!gs.camera_moving)
+                gizmo_draw(&g);
         }
     }
 
 
     console_draw(gs.font);
     SectionEnd("UI Render");
+
+    if (!console.open) {
+        ui_flush();
+    }
     renderer_flush();
 
     SectionEnd("Render");
@@ -192,8 +208,6 @@ void game_deinit(void)
     } */
 }
 
-// TODO there is a laggy feel and it does not respond well at all.
-// Specifically when turning.
 void handle_camera_editor(V2f mouse_delta)
 {
     if (is_key_down(KEY_W)) {
@@ -234,27 +248,31 @@ void handle_camera_editor(V2f mouse_delta)
     }
 }
 
-// TODO this is currently producing some real weird perspective things.
 void handle_camera_gameplay(V2f mouse_delta)
 {
+    gs.camera_moving = false;
 
     f32 mouse_scroll = get_mouse_scroll();
     V3f front_no_y = v3f(renderer.camera.front.x, 0, renderer.camera.front.z);
     if (is_key_down(KEY_W)) {
         renderer.camera.target = v3f_add(renderer.camera.target, v3f_scale(front_no_y, gs.camera_speed));
         renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(front_no_y, gs.camera_speed));
+        gs.camera_moving = true;
     }
     if (is_key_down(KEY_S)) {
         renderer.camera.target = v3f_add(renderer.camera.target, v3f_scale(front_no_y, -gs.camera_speed));
         renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(front_no_y, -gs.camera_speed));
+        gs.camera_moving = true;
     }
     if (is_key_down(KEY_A)) {
         renderer.camera.target = v3f_add(renderer.camera.target, v3f_scale(v3f_cross(front_no_y, renderer.camera.up), gs.camera_speed));
         renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(v3f_cross(front_no_y, renderer.camera.up), gs.camera_speed));
+        gs.camera_moving = true;
     }
     if (is_key_down(KEY_D)) {
         renderer.camera.target = v3f_sub(renderer.camera.target, v3f_scale(v3f_cross(front_no_y, renderer.camera.up), gs.camera_speed));
         renderer.camera.position = v3f_sub(renderer.camera.position, v3f_scale(v3f_cross(front_no_y, renderer.camera.up), gs.camera_speed));
+        gs.camera_moving = true;
     }
 
     if (mouse_scroll != 0) {
@@ -281,6 +299,7 @@ void handle_camera_gameplay(V2f mouse_delta)
     }
 
     if (is_mouse_button_down(MOUSEBUTTON_LEFT)) {
+        gs.camera_moving = true;
 
         renderer.camera.position = orbit_step(mouse_delta.x * 0.01, mouse_delta.y * 0.01, renderer.camera.position, renderer.camera.target);
 
