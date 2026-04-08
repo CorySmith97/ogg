@@ -174,5 +174,36 @@ RayCollision get_raycollision_box(Ray ray, AABB box)
 // https://en.wikipedia.org/wiki/Möller–Trumbore_intersection_algorithm
 RayCollision get_ray_collision_triangle(Ray ray, V3f v1, V3f v2, V3f v3)
 {
+    // TODO
+    return (RayCollision){};
 }
 
+static inline AABB aabb_from_points(const V3f *pts, s32 count)
+{
+    AABB aabb = {
+        .min = pts[0],
+        .max = pts[0],
+    };
+
+    for (s32 i = 1; i < count; i++) {
+        aabb.min = v3f_min(aabb.min, pts[i]);
+        aabb.max = v3f_max(aabb.max, pts[i]);
+    }
+
+    return aabb;
+}
+
+static inline AABB aabb_merge(AABB a, AABB b)
+{
+    AABB out;
+    out.min = v3f_min(a.min, b.min);
+    out.max = v3f_max(a.max, b.max);
+    return out;
+}
+
+static inline AABB aabb_expand(AABB a, f32 e)
+{
+    a.min.x -= e; a.min.y -= e; a.min.z -= e;
+    a.max.x += e; a.max.y += e; a.max.z += e;
+    return a;
+}

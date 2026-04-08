@@ -1,6 +1,8 @@
 #include "base.h"
 #include <stdarg.h>
 
+#define MAX_STR_LEN 255
+
 //log_handler *logger;
 
 void log_handler(Log_Level level, const char *msg, va_list args)
@@ -55,4 +57,10 @@ void arena_reset(Arena *arena)
 void *arena_push(Arena *arena)
 {
     return NULL;
+}
+
+
+s32 measure_text(const char *str)
+{
+    return strnlen(str, MAX_STR_LEN);
 }

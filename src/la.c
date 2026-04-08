@@ -538,3 +538,22 @@ V3f v3f_unproject(V3f source, Mat4 projection, Mat4 view)
 
     return v3f(t.x / t.w, t.y / t.w, t.z / t.w);
 }
+
+static inline V3f v3f_min(V3f a, V3f b)
+{
+    return v3f(
+        a.x < b.x ? a.x : b.x,
+        a.y < b.y ? a.y : b.y,
+        a.z < b.z ? a.z : b.z
+    );
+}
+
+static inline V3f v3f_max(V3f a, V3f b)
+{
+    return v3f(
+        a.x > b.x ? a.x : b.x,
+        a.y > b.y ? a.y : b.y,
+        a.z > b.z ? a.z : b.z
+    );
+}
+

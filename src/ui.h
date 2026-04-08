@@ -37,6 +37,7 @@ typedef struct UI_Node {
     f32         computed_size[Axis2_count];
     Recs32      rec;
     UI_Node_Tag tag;
+    b32         visible;
 
     struct UI_Node *first;
     struct UI_Node *last;
@@ -48,8 +49,8 @@ typedef struct UI_Node {
 void ui_init(Font *ui_font);
 bool ui_window(const char *name, Recs32 rec);
 void ui_window_end(void);
+void ui_label(const char *name);
 bool ui_button(const char *name);
-int  measure_text(Font *f, const char *text, int size);
 
 #endif // UI_H
 

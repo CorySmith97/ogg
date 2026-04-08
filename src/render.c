@@ -503,9 +503,9 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
             return;
     }
 
-    for (s32 y = y0; y < y1; y++)
+    for (s32 y = y0; y <= y1; y++)
     {
-        for (s32 x = x0; x < x1; x++)
+        for (s32 x = x0; x <= x1; x++)
         {
             if (barycentric(pos1, pos2, pos3, v2i(x, y), &bary))
             {
@@ -618,8 +618,8 @@ Color get_color_from_texture(Texture *t, V2f uv)
     uv.x = fmaxf(0.0f, fminf(1.0f, uv.x));
     uv.y = fmaxf(0.0f, fminf(1.0f, uv.y));
 
-    size_t x = (size_t)(uv.x * (t->width - 1));
-    size_t y = (size_t)(uv.y * (t->height - 1));
+    size_t x = (size_t)(uv.x * (t->width));
+    size_t y = (size_t)(uv.y * (t->height));
 
     size_t idx = (y * t->width + x) * t->stride;
 
@@ -910,10 +910,13 @@ void draw_text(Font *f, const char *str, V2i pos, f32 size, Color color)
         s32 col = tex_id % sprites_per_row;
         s32 row = tex_id / sprites_per_row;
 
-        f32 u_min = (f32)(col * GLYPH_W) / (f32)atlas_w;
-        f32 v_min = (f32)(row * GLYPH_H) / (f32)atlas_h;
-        f32 u_max = (f32)(col * GLYPH_W + GLYPH_W) / (f32)atlas_w;
-        f32 v_max = (f32)(row * GLYPH_H + GLYPH_H) / (f32)atlas_h;
+        f32 du = 0.5f / (f32)atlas_w;
+        f32 dv = 0.5f / (f32)atlas_h;
+
+        f32 u_min = ((f32)(col * GLYPH_W) + 0.5f) / (f32)atlas_w;
+        f32 v_min = ((f32)(row * GLYPH_H) + 0.5f) / (f32)atlas_h;
+        f32 u_max = ((f32)(col * GLYPH_W + GLYPH_W) - 0.5f) / (f32)atlas_w;
+        f32 v_max = ((f32)(row * GLYPH_H + GLYPH_H) - 0.5f) / (f32)atlas_h;
 
         V3f uvs[4] = {
             v3f(u_min, v_min, 0), /* top-left     */
@@ -931,6 +934,42 @@ void draw_text(Font *f, const char *str, V2i pos, f32 size, Color color)
 
         i++;
         c = str[i];
+    }
+}
+
+void draw_string8(Font *f, String8 str, V2i pos, f32 size, Color color)
+{
+    s32 atlas_w = f->texture->width;
+    s32 atlas_h = f->texture->height;
+    s32 sprites_per_row = atlas_w / GLYPH_W;
+
+    for (u32 i = 0; i < str.len; i++) {
+        char c = str.data[i];
+        s32 tex_id = (u8)c;
+        s32 col = tex_id % sprites_per_row;
+        s32 row = tex_id / sprites_per_row;
+
+        f32 du = 0.5f / (f32)atlas_w;
+        f32 dv = 0.5f / (f32)atlas_h;
+
+        f32 u_min = ((f32)(col * GLYPH_W) + 0.5f) / (f32)atlas_w;
+        f32 v_min = ((f32)(row * GLYPH_H) + 0.5f) / (f32)atlas_h;
+        f32 u_max = ((f32)(col * GLYPH_W + GLYPH_W) - 0.5f) / (f32)atlas_w;
+        f32 v_max = ((f32)(row * GLYPH_H + GLYPH_H) - 0.5f) / (f32)atlas_h;
+
+        V3f uvs[4] = {
+            v3f(u_min, v_min, 0), /* top-left     */
+            v3f(u_max, v_min, 0), /* top-right    */
+            v3f(u_max, v_max, 0), /* bottom-right */
+            v3f(u_min, v_max, 0), /* bottom-left  */
+        };
+        Color colors[4] = {color, color, color, color};
+        Recs32 rec = (Recs32){.x = pos.x + (i * (s32)size), .y = pos.y, .w = (s32)size, .h = (s32)size};
+        draw_texture_w_uvs(
+            f->texture,
+            rec,
+            uvs,
+            colors);
     }
 }
 

@@ -3,6 +3,9 @@
 #define ASSET_DIR "data/"
 #define BUFFER_SIZE 1024
 
+Texture_KV     *textures = NULL;
+Asset_Model_KV *assets = NULL;
+
 void deload_model(Asset_Model *model)
 {
     UNUSED(model);

@@ -14,10 +14,13 @@ static struct {
     Asset_Model_KV *assets;
     
     // Gameplay
-    Entity *dynamic_entities;
-    Entity *static_entities;
-    Tile   *tiles;
+    Entity   *dynamic_entities;
+    Entity   *static_entities;
+    Tile     *tiles;
     GameState state;
+    s32       selected_entity;
+    Gizmo_Axis selected_axis;
+    Gizmo     gizmo;
 } gs = {
     .sun = {
         .position = {4, 0, 0},
@@ -30,6 +33,20 @@ static struct {
     .static_entities = NULL,
     .tiles = NULL,
     .state = GAME_STATE_GAMEPLAY,
+
+    .selected_entity = -1,
+    .selected_axis   = -1,
+    .gizmo = {
+        .attached = false,
+        .axis = {
+            GIZMO_AXIS_X,
+            GIZMO_AXIS_Y,
+            GIZMO_AXIS_Z,
+            GIZMO_AXIS_XY,
+            GIZMO_AXIS_YZ,
+            GIZMO_AXIS_XZ
+        },
+    },
 };
 
 void handle_camera_editor(V2f mouse_delta);
@@ -46,6 +63,7 @@ void game_init(void)
     SectionStart("Intialization");
     render_init();
     console_init();
+    gizmo_init();
 
     sh_new_strdup(gs.assets);
 
@@ -83,6 +101,7 @@ void game_init(void)
 
 
     renderer.camera.front = v3f_normalize(v3f_sub(renderer.camera.target, renderer.camera.position));
+    renderer.swap_camera.front = v3f_normalize(v3f_sub(renderer.swap_camera.target, renderer.swap_camera.position));
 }
 
 f32 z = 1.0f;
@@ -99,14 +118,18 @@ void game_frame(void)
     }
 
     if (is_key_pressed(KEY_T)) {
-        console_write_log("Game state editor");
-        gs.state = GAME_STATE_EDITOR;
-        change_camera();
+        if (gs.state != GAME_STATE_EDITOR) {
+            console_write_log("Game state editor");
+            gs.state = GAME_STATE_EDITOR;
+            change_camera();
+        }
     }
     if (is_key_pressed(KEY_Y)) {
-        console_write_log("Game state gameplay");
-        gs.state = GAME_STATE_GAMEPLAY;
-        change_camera();
+        if (gs.state != GAME_STATE_GAMEPLAY) {
+            console_write_log("Game state gameplay");
+            gs.state = GAME_STATE_GAMEPLAY;
+            change_camera();
+        }
     }
 
     set_mouse_toggle_key(KEY_P);
@@ -130,21 +153,127 @@ void game_frame(void)
     ui_process();
     console_update();
 
-    SectionStart("Entity Update");
-    for (int i = 0; i < arrlen(gs.dynamic_entities); i++) {
-        Entity *e = &gs.dynamic_entities[i];
-        RayCollision collision = { 0 };
-        if (is_mouse_button_pressed(MOUSEBUTTON_LEFT)) {
-            collision = get_raycollision_box(mouse_ray, e->aabb);
+    // Suggested defaults somewhere during init/reset:
+
+    bool mouse_pressed  = is_mouse_button_pressed(MOUSEBUTTON_LEFT);
+    bool mouse_down     = is_mouse_button_down(MOUSEBUTTON_LEFT);
+    bool mouse_released = is_mouse_button_released(MOUSEBUTTON_LEFT);
+
+    if (gs.gizmo.attached) {
+        gizmo_update(&gs.gizmo);
+    }
+
+    bool clicked_gizmo  = false;
+    bool clicked_entity = false;
+
+    //
+    // 1) Handle click selection
+    //
+    if (mouse_pressed) {
+        gs.selected_axis = -1;
+
+        // Gizmo gets priority over entity selection.
+        if (gs.gizmo.attached) {
+            float closest = FLT_MAX;
+
+            for (s32 i = 0; i < GIZMO_AXIS_COUNT; i++) {
+                RayCollision collision = get_raycollision_box(mouse_ray, gs.gizmo.aabbs[i]);
+                if (collision.hit && collision.distance < closest) {
+                    closest = collision.distance;
+                    gs.selected_axis = i;
+                    clicked_gizmo = true;
+                }
+            }
+
+            if (clicked_gizmo) {
+                log_info("Gizmo axis %d hit", gs.selected_axis);
+            }
         }
-        if (collision.hit)
-            e->hit = !e->hit;
+
+        // Only try entity picking if we did not click the gizmo.
+        if (!clicked_gizmo) {
+            s32 hit_entity = -1;
+            float closest = FLT_MAX;
+
+            for (s32 i = 0; i < arrlen(gs.dynamic_entities); i++) {
+                Entity *e = &gs.dynamic_entities[i];
+                RayCollision collision = get_raycollision_box(mouse_ray, e->aabb);
+                if (collision.hit && collision.distance < closest) {
+                    closest = collision.distance;
+                    hit_entity = i;
+                }
+            }
+
+            if (hit_entity >= 0) {
+                clicked_entity = true;
+                gs.selected_entity = hit_entity;
+                gs.gizmo.attached = true;
+                gs.gizmo.position = gs.dynamic_entities[hit_entity].position;
+            } else {
+                // Clicked empty space: deselect everything.
+                gs.selected_entity = -1;
+                gs.selected_axis = -1;
+                gs.gizmo.attached = false;
+            }
+        }
+    }
+
+    //
+    // 2) Drag currently selected gizmo axis
+    //
+    if (gs.selected_axis >= 0 && mouse_down && gs.selected_entity >= 0) {
+        Entity *e = &gs.dynamic_entities[gs.selected_entity];
+
+        // TODO: project mouse delta into world / axis space more correctly.
+        V3f delta = gizmo_translation_modify(
+            &gs.gizmo,
+            gs.selected_axis,
+            v2f_scale(mouse_delta, 0.01f)
+        );
+
+        e->position = v3f_add(e->position, delta);
+        gs.gizmo.position = e->position;
+    }
+
+    //
+    // 3) Releasing mouse ends gizmo drag but keeps entity selected
+    //
+    if (mouse_released) {
+        Entity *e = &gs.dynamic_entities[gs.selected_entity];
+        e->position = v3f(floor(e->position.x), floor(e->position.y), floor(e->position.z));
+        gs.gizmo.position = e->position;
+        gs.selected_axis = -1;
+    }
+
+    //
+    // 4) Update entity state after selection logic is finalized
+    //
+    SectionStart("Entity Update");
+    for (s32 i = 0; i < arrlen(gs.dynamic_entities); i++) {
+        Entity *e = &gs.dynamic_entities[i];
+        e->hit = (i == gs.selected_entity);
         entity_update(e);
     }
+
     SectionEnd("Entity Update");
 
     SectionStart("Render");
     clear_background(COLOR_GRAY);
+
+    // Temp drawing of tile map
+    for (s32 i = 0; i < 10; i++) {
+        for (s32 j = 0; j < 10; j++) {
+            Color color = (i  + j) % 2 == 0 ? COLOR_BROWN : COLOR_YELLOW;
+            f32 x = i + 0.5;
+            f32 z = j + 0.5;
+            draw_rectangle3d(
+                    v3f(x,     -0.1, z),
+                    v3f(x + 1, -0.1, z),
+                    v3f(x,     -0.1, z + 1),
+                    v3f(x + 1, -0.1, z + 1),
+                    color, 0);
+        }
+    }
 
     draw_texture3d(
             shget(gs.textures, "target"),
@@ -163,6 +292,8 @@ void game_frame(void)
 
     SectionStart("UI Render");
 
+    draw_string8(gs.font, str8lit("Test string8 literal"), v2i(0, 10), 16, COLOR_BLACK);
+
     if (gs.state == GAME_STATE_EDITOR) {
         sprintf(buf, "fps: %.3f", 1/gs.frame_time);
         draw_text(gs.font, buf, v2i(0, 10), 16, COLOR_BLACK);
@@ -178,12 +309,8 @@ void game_frame(void)
         Entity e = gs.dynamic_entities[i];
         entity_draw(&e);
         if (e.hit) {
-            Gizmo g = {
-                .axis = {GIZMO_AXIS_X,GIZMO_AXIS_Z,GIZMO_AXIS_Y},
-                .position = e.position,
-            };
             if (!gs.camera_moving)
-                gizmo_draw(&g);
+                gizmo_draw(&gs.gizmo);
         }
     }
 
@@ -298,7 +425,7 @@ void handle_camera_gameplay(V2f mouse_delta)
 
     }
 
-    if (is_mouse_button_down(MOUSEBUTTON_LEFT)) {
+    if (is_mouse_button_down(MOUSEBUTTON_MIDDLE)) {
         gs.camera_moving = true;
 
         renderer.camera.position = orbit_step(mouse_delta.x * 0.01, mouse_delta.y * 0.01, renderer.camera.position, renderer.camera.target);

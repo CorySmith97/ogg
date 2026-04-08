@@ -116,6 +116,17 @@ b32 is_mouse_button_pressed(s32 key) {
     return pressed;
 }
 
+b32 is_mouse_button_released(s32 key) {
+    bool pressed = false;
+    if ((key > 0) && (key < MOUSEBUTTON_COUNT)) {
+        if (!mouse_state.mouse_button_state[key] 
+                && mouse_state.prev_mouse_button_state[key]) {
+            pressed = true;
+        }
+    }
+    return pressed;
+}
+
 u64 get_time()
 {
     return SDL_GetPerformanceCounter();

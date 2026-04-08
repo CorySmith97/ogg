@@ -50,5 +50,8 @@ static Ray        get_mouse_ray(Camera camera, V2f mouse_position);
 static RayCollision get_raycollision_box(Ray ray, AABB box);
 static RayCollision get_ray_collision_mesh(Ray ray, Asset_Model *box);
 RayCollision get_ray_collision_triangle(Ray ray, V3f v1, V3f v2, V3f v3);
+static inline AABB aabb_from_points(const V3f *pts, s32 count);
+static inline AABB aabb_merge(AABB a, AABB b);
+static inline AABB aabb_expand(AABB a, f32 e);
 
 #endif // GEOMETRY_H

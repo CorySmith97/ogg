@@ -95,4 +95,14 @@ void  *arena_push(Arena *arena);
 
 #define arena_alloc(...) _arena_alloc((Arena_Params){})
 
+typedef struct {
+    u8 *data;
+    u32 len;
+} String8;
+
+#define str8lit(String) (String8){(u8*)(String), sizeof(String) - 1}
+
+// TODO Implement String8
+s32 measure_text(const char *str);
+
 #endif // BASE_H

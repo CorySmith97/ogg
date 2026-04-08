@@ -25,6 +25,7 @@ bool ui_window(const char *name, Recs32 rec)
     node->label = name;
     selected_layout = node;
     shput(ui_tree, name, node);
+    return node->visible;
 }
 
 void ui_window_end(void)
@@ -40,13 +41,15 @@ bool ui_button(const char *name)
 
 void ui_draw_node(UI_Node *node)
 {
-    switch (node->tag) {
-        case UI_NODE_WINDOW:
-            draw_text(ui_font, node->label, v2i(node->rec.x + 8, node->rec.y + 8), 8, COLOR_BLACK);
-            draw_recs32(node->rec, 1.0, COLOR_WHITE);
-            break;
-        default:
-            break;
+    if (node->visible) {
+        switch (node->tag) {
+            case UI_NODE_WINDOW:
+                draw_text(ui_font, node->label, v2i(node->rec.x + 8, node->rec.y + 8), 8, COLOR_BLACK);
+                draw_recs32(node->rec, 1.0, COLOR_WHITE);
+                break;
+            default:
+                break;
+        }
     }
 }
 
