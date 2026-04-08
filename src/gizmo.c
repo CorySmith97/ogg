@@ -21,7 +21,7 @@ void gizmo_draw(Gizmo *gizmo)
     float ah  = 0.12f; // arrowhead length
     float aw  = 0.06f; // arrowhead half-width
 
-    for (size_t i = 0; i < GIZMO_AXIS_COUNT; i++) {
+    for (s32 i = GIZMO_AXIS_COUNT - 1; i >= 0; i--) {
         Color color;
 
         switch (i) {
@@ -96,7 +96,7 @@ void gizmo_draw(Gizmo *gizmo)
                     v3f(x + po + ps,       y, z  + len - ps ),
                     v3f(x + po + len - ps, y, z  + ps),
                     v3f(x + po + len - ps, y, z  + len - ps),
-                    COLOR_YELLOW, TRIANGLE_WRITE_OVER_Z);
+                    COLOR_WHITE, TRIANGLE_WRITE_OVER_Z);
                 break; 
             case GIZMO_AXIS_XY: 
                 draw_texture3d(

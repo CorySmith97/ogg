@@ -240,7 +240,7 @@ void game_frame(void)
     //
     if (mouse_released) {
         Entity *e = &gs.dynamic_entities[gs.selected_entity];
-        e->position = v3f(floor(e->position.x), floor(e->position.y), floor(e->position.z));
+        e->position = v3f(roundf(e->position.x), roundf(e->position.y), roundf(e->position.z));
         gs.gizmo.position = e->position;
         gs.selected_axis = -1;
     }
