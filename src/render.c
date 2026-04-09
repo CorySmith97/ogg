@@ -894,8 +894,8 @@ void draw_recs32(Recs32 rec, f32 z, Color color)
 
 // TODO AI GENERATED. REVISIT FOR FIXES
 
-#define GLYPH_W 32
-#define GLYPH_H 64
+#define GLYPH_W 32 
+#define GLYPH_H 32 
 
 void draw_text(Font *f, const char *str, V2i pos, f32 size, Color color)
 {

@@ -158,6 +158,6 @@ Font *load_font(const char *file, s32 cwidth, s32 cheight)
     Font *font = malloc(sizeof(Font));
     font->character_width = cwidth;
     font->character_height = cheight;
-    font->texture = load_texture_from_file(file, true);
+    font->texture = load_texture_from_file(file, false);
     return font;
 }

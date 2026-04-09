@@ -114,7 +114,7 @@ void game_init(void)
     arrput(gs.dynamic_entities, e);
     arrput(gs.dynamic_entities, e3);
     arrput(gs.dynamic_entities, e3);
-    gs.font = load_font("data/VGA8x16.png", 8, 16);
+    gs.font = load_font("data/ascii16x16.png", 16, 16);
     ui_init(gs.font);
 
     SectionEnd("Intialization");
@@ -391,13 +391,13 @@ void game_frame(void)
                                           }
                                           char icon_str[2] = {icon_char, '\0'};
                                           draw_text(gs.font, icon_str, v2i(cmd->icon.rect.x, cmd->icon.rect.y),
-                                                  12, mu_to_color(cmd->icon.color));
+                                                  8, mu_to_color(cmd->icon.color));
                                       }
                                       break;
                 case MU_COMMAND_TEXT:
                                       if ((unsigned char)cmd->text.str[0] >= 32)
                                           draw_text(gs.font, cmd->text.str, v2i(cmd->text.pos.x, cmd->text.pos.y),
-                                                  12, mu_to_color(cmd->text.color));
+                                                  8, mu_to_color(cmd->text.color));
                                       break;
                 case MU_COMMAND_RECT:
                                       draw_recs32(mu_to_rec(cmd->rect.rect), ui_z, mu_to_color(cmd->rect.color));
