@@ -49,6 +49,7 @@ static struct {
     },
 };
 
+static b32 show_demo = false;
 void handle_camera_editor(V2f mouse_delta);
 void handle_camera_gameplay(V2f mouse_delta);
 V3f orbit_step(f32 rx, f32 ry, V3f start_pos, V3f target);
@@ -60,10 +61,13 @@ Texture *entity_1;
 
 void game_init(void)
 {
+    char *str = NULL;
     SectionStart("Intialization");
     render_init();
     console_init();
     gizmo_init();
+    asprintf(&str, "[INFO] Game resolutions: %dx%d", GAME_WIDTH, GAME_HEIGHT);
+    console_write_log(str);
 
     sh_new_strdup(gs.assets);
 
@@ -76,6 +80,8 @@ void game_init(void)
     shput(gs.assets, "shopkeeper", a);
     a = load_model_from_file("data/lowpoly/OBJ/SM_Bld_Fence_01_Snow.obj");
     shput(gs.assets, "fence", a);
+    a = load_model_from_file("data/curve_cylinder.obj");
+    shput(gs.assets, "curve_cylinder", a);
     shput(gs.textures, "target", t);
     a = load_model_from_file("data/cube.obj");
     shput(gs.assets, "cube", a);
@@ -88,10 +94,26 @@ void game_init(void)
             .rotation = mat3_identity(),
             .update_fn = update_shopkeeper,
             };
+    Entity e2 = (Entity){
+            .model = shget(gs.assets, "shopkeeper"),
+            .model_tag = "shopkeeper",
+            .position = v3f(2,0,4),
+            .rotation = mat3_identity(),
+            .update_fn = update_shopkeeper,
+            };
+    Entity e3 = (Entity){
+            .model = shget(gs.assets, "shopkeeper"),
+            .model_tag = "shopkeeper",
+            .position = v3f(8,0,4),
+            .rotation = mat3_identity(),
+            .update_fn = update_shopkeeper,
+            };
     e.aabb.min = v3f(e.position.x - 0.25, e.position.y - 0.5, e.position.z - 0.25);
     e.aabb.max = v3f(e.position.x + 0.25, e.position.y + 0.5, e.position.z + 0.25);
 
     arrput(gs.dynamic_entities, e);
+    arrput(gs.dynamic_entities, e3);
+    arrput(gs.dynamic_entities, e3);
     gs.font = load_font("data/VGA8x16.png", 8, 16);
     ui_init(gs.font);
 
@@ -113,7 +135,7 @@ void game_frame(void)
     V2f mouse_delta = get_mouse_delta();
     Ray mouse_ray   = get_mouse_ray(renderer.camera, mouse_pos);
 
-    if (is_key_down(KEY_M)) {
+    if (is_key_pressed(KEY_M)) {
         gs.profiling_enabled = !gs.profiling_enabled;
     }
 
@@ -132,6 +154,7 @@ void game_frame(void)
         }
     }
 
+
     set_mouse_toggle_key(KEY_P);
 
     // If console is open, the key capture goes to the console instead of anything else
@@ -146,12 +169,8 @@ void game_frame(void)
         }
     }
 
-    if (ui_window("test", (Recs32){.x = 10, .y = 10, .w = 200, .h = 200})) {
-        ui_window_end();
-    }
-
-    ui_process();
     console_update();
+
 
     // Suggested defaults somewhere during init/reset:
 
@@ -165,6 +184,7 @@ void game_frame(void)
 
     bool clicked_gizmo  = false;
     bool clicked_entity = false;
+    UNUSED(clicked_entity);
 
     //
     // 1) Handle click selection
@@ -257,9 +277,9 @@ void game_frame(void)
 
     SectionEnd("Entity Update");
 
-    SectionStart("Render");
     clear_background(COLOR_GRAY);
 
+    SectionStart("Draw Entities");
     // Temp drawing of tile map
     for (s32 i = 0; i < 10; i++) {
         for (s32 j = 0; j < 10; j++) {
@@ -275,6 +295,8 @@ void game_frame(void)
         }
     }
 
+    draw_model(shget(gs.assets, "curve_cylinder"), v3f(0, 0, 0), mat3_scale(0.1));
+
     draw_texture3d(
             shget(gs.textures, "target"),
             v3f(renderer.camera.target.x - 0.3, renderer.camera.target.y, renderer.camera.target.z - 0.3), 
@@ -284,15 +306,24 @@ void game_frame(void)
             COLOR_RED, 0
             );
 
-    draw_model_with_light(shget(gs.assets, "shopkeeper"), v3f(1, 0,  2), mat3_identity(), gs.sun);
+    //draw_model_with_light(shget(gs.assets, "shopkeeper"), v3f(1, 0,  2), mat3_identity(), gs.sun);
     
-    for (s32 i = 0; i < 10; i++) {
-        draw_model_with_light(shget(gs.assets, "cube"), v3f(i * 4, 0,  2), mat3_scale(0.5), gs.sun);
+    for (int i = 0; i < arrlen(gs.dynamic_entities); i++) {
+        Entity e = gs.dynamic_entities[i];
+        entity_draw(&e);
+        if (e.hit) {
+            if (!gs.camera_moving) {
+                gizmo_draw(&gs.gizmo);
+                show_demo = true;
+            }
+        }
     }
+    SectionEnd("Draw Entities");
+
 
     SectionStart("UI Render");
 
-    draw_string8(gs.font, str8lit("Test string8 literal"), v2i(0, 10), 16, COLOR_BLACK);
+    //draw_string8(gs.font, str8lit("Test string8 literal"), v2i(0, 10), 16, COLOR_BLACK);
 
     if (gs.state == GAME_STATE_EDITOR) {
         sprintf(buf, "fps: %.3f", 1/gs.frame_time);
@@ -305,24 +336,79 @@ void game_frame(void)
         draw_text(gs.font, buf, v2i(0, 58), 16, COLOR_BLACK);
     }
 
-    for (int i = 0; i < arrlen(gs.dynamic_entities); i++) {
-        Entity e = gs.dynamic_entities[i];
-        entity_draw(&e);
-        if (e.hit) {
-            if (!gs.camera_moving)
-                gizmo_draw(&gs.gizmo);
-        }
-    }
-
 
     console_draw(gs.font);
     SectionEnd("UI Render");
+    renderer_flush();
+
+    // On F1, get the container and toggle its open flag
+    if (is_key_pressed(KEY_F1)) {
+        mu_Container *cnt = mu_get_container(platform_ctx.ui, "Entity");
+        cnt->open = !cnt->open;
+    }
+
+    mu_begin(platform_ctx.ui);
+    if (show_demo) {
+    if (mu_begin_window(platform_ctx.ui, "Entity", mu_rect(0, 0, 300, 450))) {
+        mu_Container *win = mu_get_current_container(platform_ctx.ui);
+        win->rect.w = mu_max(win->rect.w, 240);
+        win->rect.h = mu_max(win->rect.h, 300);
+        if (gs.selected_entity >= 0) {
+            Entity *e = &gs.dynamic_entities[gs.selected_entity];
+            mu_label(platform_ctx.ui, "model: ");
+            mu_label(platform_ctx.ui, e->model_tag);
+            snprintf(buf, 256, "Entity ID: %d", gs.selected_entity);
+            mu_label(platform_ctx.ui, buf);
+            snprintf(buf, 256, "pos: %.1f, %.1f, %.1f", e->position.x, e->position.y, e->position.z);
+            mu_label(platform_ctx.ui, buf);
+        } else {
+            snprintf(buf, 256, "No selected Entity");
+            mu_label(platform_ctx.ui, buf);
+        }
+
+
+        mu_end_window(platform_ctx.ui);
+    }
+    }
+    mu_end(platform_ctx.ui);
+
 
     if (!console.open) {
         ui_flush();
-    }
-    renderer_flush();
 
+        mu_Command *cmd = NULL;
+        float ui_z = 0.2f;  // Start just behind text (z=1.0)
+        while (mu_next_command(platform_ctx.ui, &cmd)) {
+            switch (cmd->type) {
+                case MU_COMMAND_ICON: {
+                                          char icon_char;
+                                          switch (cmd->icon.id) {
+                                              case 1: icon_char = 'X'; break;        // MU_ICON_CLOSE
+                                              case 2: icon_char = 'V'; break;        // MU_ICON_CHECK
+                                              case 3: icon_char = '>'; break;        // MU_ICON_COLLAPSED
+                                              case 4: icon_char = 'v'; break;        // MU_ICON_EXPANDED
+                                              default: icon_char = '?'; break;
+                                          }
+                                          char icon_str[2] = {icon_char, '\0'};
+                                          draw_text(gs.font, icon_str, v2i(cmd->icon.rect.x, cmd->icon.rect.y),
+                                                  12, mu_to_color(cmd->icon.color));
+                                      }
+                                      break;
+                case MU_COMMAND_TEXT:
+                                      if ((unsigned char)cmd->text.str[0] >= 32)
+                                          draw_text(gs.font, cmd->text.str, v2i(cmd->text.pos.x, cmd->text.pos.y),
+                                                  12, mu_to_color(cmd->text.color));
+                                      break;
+                case MU_COMMAND_RECT:
+                                      draw_recs32(mu_to_rec(cmd->rect.rect), ui_z, mu_to_color(cmd->rect.color));
+                                      ui_z -= 0.001f;  // Increment z to preserve draw order
+                                      break;
+            }
+        }
+    }
+
+    SectionStart("Render");
+    renderer_flush();
     SectionEnd("Render");
 
     gs.sun.position = renderer.camera.position;

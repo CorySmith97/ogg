@@ -13,6 +13,32 @@ void platform_check_keystate(void);
 static KeyboardState keyboard_state;
 static MouseState mouse_state;
 
+static const char button_map[256] = {
+  [ SDL_BUTTON_LEFT   & 0xff ] =  MU_MOUSE_LEFT,
+  [ SDL_BUTTON_RIGHT  & 0xff ] =  MU_MOUSE_RIGHT,
+  [ SDL_BUTTON_MIDDLE & 0xff ] =  MU_MOUSE_MIDDLE,
+};
+
+static const char key_map[256] = {
+  [ SDLK_LSHIFT       & 0xff ] = MU_KEY_SHIFT,
+  [ SDLK_RSHIFT       & 0xff ] = MU_KEY_SHIFT,
+  [ SDLK_LCTRL        & 0xff ] = MU_KEY_CTRL,
+  [ SDLK_RCTRL        & 0xff ] = MU_KEY_CTRL,
+  [ SDLK_LALT         & 0xff ] = MU_KEY_ALT,
+  [ SDLK_RALT         & 0xff ] = MU_KEY_ALT,
+  [ SDLK_RETURN       & 0xff ] = MU_KEY_RETURN,
+  [ SDLK_BACKSPACE    & 0xff ] = MU_KEY_BACKSPACE,
+};
+
+static int text_width(mu_Font font, const char *text, int len) {
+  if (len == -1) { len = strlen(text); }
+  return len * 8;
+}
+
+static int text_height(mu_Font font) {
+  return 8;
+}
+
 void platform_init(const char *name, u32 width, u32 height)
 {
     SDL_SetMainReady();
@@ -22,6 +48,8 @@ void platform_init(const char *name, u32 width, u32 height)
         exit(EXIT_FAILURE);
     }
 
+    platform_ctx.width = width;
+    platform_ctx.height = height;
     platform_ctx.window = SDL_CreateWindow(name,
                                            SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                            width, height,
@@ -32,6 +60,13 @@ void platform_init(const char *name, u32 width, u32 height)
                                              SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING,
                                              GAME_WIDTH, GAME_HEIGHT);
 
+    platform_ctx.ui = malloc(sizeof(mu_Context));
+    mu_init(platform_ctx.ui);
+
+
+    // TODO these functions need to be implemented
+    platform_ctx.ui->text_width  = text_width;
+    platform_ctx.ui->text_height = text_height;
 }
 
 void platform_handle_events(bool *quit)
@@ -53,24 +88,41 @@ void platform_handle_events(bool *quit)
                 *quit = true;
                 break;
             case SDL_KEYDOWN:
+                c = key_map[event.key.keysym.sym & 0xff];
+                if (c && event.type == SDL_KEYDOWN) { mu_input_keydown(platform_ctx.ui, c); }
                 //on_key_down(event.key.keysym.scancode);
                 break;
             case SDL_KEYUP:
+                c = key_map[event.key.keysym.sym & 0xff];
+                if (c && event.type ==   SDL_KEYUP) { mu_input_keyup(platform_ctx.ui, c);   }
                 //on_key_up(event.key.keysym.scancode);
                 break;
             case SDL_MOUSEBUTTONDOWN:
                 on_mouse_down(event.button.button);
+                b = button_map[event.button.button & 0xff];
+                if (b && event.type == SDL_MOUSEBUTTONDOWN) { mu_input_mousedown(platform_ctx.ui, event.button.x, event.button.y, b); }
                 break;
             case SDL_MOUSEBUTTONUP:
+                b = button_map[event.button.button & 0xff];
+                if (b && event.type ==   SDL_MOUSEBUTTONUP) { mu_input_mouseup(platform_ctx.ui, event.button.x, event.button.y, b);   }
                 on_mouse_up(event.button.button);
                 break;
             case SDL_MOUSEWHEEL:
                 on_mouse_scroll(event.wheel.y);
+                mu_input_scroll(platform_ctx.ui, 0, event.wheel.y * -30); 
+                                 break;
+            case SDL_TEXTINPUT: mu_input_text(platform_ctx.ui, event.text.text); break;
+            case SDL_MOUSEMOTION: {
+                                      f32 sx = (f32)GAME_WIDTH  / (f32)platform_ctx.width;
+                                      f32 sy = (f32)GAME_HEIGHT / (f32)platform_ctx.height;
+
+                                      int ui_mouse_x = (int)(event.motion.x * sx);
+                                      int ui_mouse_y = (int)(event.motion.y * sy);
+                                      mu_input_mousemove(platform_ctx.ui, ui_mouse_x, ui_mouse_y);
+                                      on_mouse_moved(event.motion.x, event.motion.y, event.motion.xrel, event.motion.yrel);
+                                  } break;
+            default:
                 break;
-            case SDL_MOUSEMOTION:
-                on_mouse_moved(event.motion.x, event.motion.y, event.motion.xrel, event.motion.yrel);
-                break;
-        default:
         }
     }
 }

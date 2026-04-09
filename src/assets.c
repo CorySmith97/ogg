@@ -6,6 +6,16 @@
 Texture_KV     *textures = NULL;
 Asset_Model_KV *assets = NULL;
 
+Texture *get_texture(const char *name)
+{
+    Texture *val;
+
+    val = shget(textures, name);
+    if (val) return val;
+    // Append 
+    // /data/%name%.png
+}
+
 void deload_model(Asset_Model *model)
 {
     UNUSED(model);

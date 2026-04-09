@@ -1,13 +1,14 @@
 /*
  * This is the Software Rasterizer backend. There is a plan to add either an OpenGL or Vulkan backend in the 
  * future. However, for the meantime, this is more than fast enough on my macbook to do testing and development.
+ *
  */
 #include "render.h"
 #include <pthread.h>
 #include <semaphore.h>
 #include <float.h>
 
-#define NUM_THREADS 12
+#define NUM_THREADS 14
 #define TILE_W 64
 #define TILE_H 64
 #define COL_GAME_WIDTH (GAME_WIDTH / TILE_W)
@@ -503,9 +504,9 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
             return;
     }
 
-    for (s32 y = y0; y <= y1; y++)
+    for (s32 y = y0; y < y1; y++)
     {
-        for (s32 x = x0; x <= x1; x++)
+        for (s32 x = x0; x < x1; x++)
         {
             if (barycentric(pos1, pos2, pos3, v2i(x, y), &bary))
             {
@@ -856,15 +857,15 @@ void draw_texture_w_uvs(Texture *tex, Recs32 rec, V3f uvs[4], Color colors[4])
     };
 
     renderer_push_triangle(
-        v3f(x1, y1, 1), // BR
-        v3f(x1, y0, 1), // TR
-        v3f(x0, y0, 1), // TL
+        v3f(x1, y1, 0.1), // BR
+        v3f(x1, y0, 0.1), // TR
+        v3f(x0, y0, 0.1), // TL
         c1, uvs1, tex, TRIANGLE_TWO_D);
 
     renderer_push_triangle(
-        v3f(x0, y1, 1), // BL
-        v3f(x1, y1, 1), // BR
-        v3f(x0, y0, 1), // TL
+        v3f(x0, y1, 0.1), // BL
+        v3f(x1, y1, 0.1), // BR
+        v3f(x0, y0, 0.1), // TL
         c2, uvs2, tex, TRIANGLE_TWO_D);
 }
 
@@ -893,8 +894,8 @@ void draw_recs32(Recs32 rec, f32 z, Color color)
 
 // TODO AI GENERATED. REVISIT FOR FIXES
 
-#define GLYPH_W 8
-#define GLYPH_H 16
+#define GLYPH_W 32
+#define GLYPH_H 64
 
 void draw_text(Font *f, const char *str, V2i pos, f32 size, Color color)
 {

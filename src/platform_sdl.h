@@ -77,6 +77,7 @@ static struct {
     u8              prev_keystate[SDL_NUM_SCANCODES];
     MouseState      mouse_state;
     bool            mouse_enabled;
+    mu_Context     *ui;
 } platform_ctx = {
     .prev_keystate = {0},
 };

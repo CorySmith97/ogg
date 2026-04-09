@@ -263,6 +263,7 @@ V3f gizmo_translation_modify(Gizmo *gizmo, Gizmo_Axis axis, V2f delta)
             ret.y -= delta.y;
             ret.z -= delta.x;
             break;
+        default: break;
     }
     return ret;
 }
