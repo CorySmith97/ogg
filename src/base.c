@@ -64,3 +64,56 @@ s32 measure_text(const char *str)
 {
     return strnlen(str, MAX_STR_LEN);
 }
+
+Color color_scale(Color c, double value)
+{
+    return (Color){
+        c.r * value,
+        c.g * value,
+        c.b * value,
+        c.a,
+    };
+}
+
+Color color_add(Color c1, Color c2)
+{
+    return (Color){
+        c1.r + c2.r,
+        c1.g + c2.g,
+        c1.b + c2.b,
+        c1.a + c2.a,
+    };
+}
+
+Color color_mul(Color c1, Color c2)
+{
+    return (Color){
+        c1.r * c2.r,
+        c1.g * c2.g,
+        c1.b * c2.b,
+        c1.a * c2.a,
+    };
+}
+
+Color color_modulate(Color a, Color b)
+{
+    return (Color){
+        (u8)(a.r * b.r / 255),
+        (u8)(a.g * b.g / 255),
+        (u8)(a.b * b.b / 255),
+        (u8)(a.a * b.a / 255),
+    };
+}
+
+Color alpha_blend(Color src, Color dst)
+{
+    u32 a = src.a;
+    u32 ia = 255 - a;
+
+    return (Color){
+        .r = (u8)((src.r * a + dst.r * ia) / 255),
+        .g = (u8)((src.g * a + dst.g * ia) / 255),
+        .b = (u8)((src.b * a + dst.b * ia) / 255),
+        .a = 255,
+    };
+}

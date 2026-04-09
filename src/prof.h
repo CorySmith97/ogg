@@ -1,8 +1,6 @@
 #ifndef PROF_H
 #define PROF_H
 
-#include <time.h>
-
 typedef struct {
     const char *name;
     uint64_t start_ns;

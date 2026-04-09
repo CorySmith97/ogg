@@ -4,9 +4,6 @@
  *
  */
 #include "render.h"
-#include <pthread.h>
-#include <semaphore.h>
-#include <float.h>
 
 #define NUM_THREADS 14
 #define TILE_W 64
@@ -201,58 +198,6 @@ void renderer_flush(void)
     triangles->len = 0;
 }
 
-Color color_scale(Color c, double value)
-{
-    return (Color){
-        c.r * value,
-        c.g * value,
-        c.b * value,
-        c.a,
-    };
-}
-
-Color color_add(Color c1, Color c2)
-{
-    return (Color){
-        c1.r + c2.r,
-        c1.g + c2.g,
-        c1.b + c2.b,
-        c1.a + c2.a,
-    };
-}
-
-Color color_mul(Color c1, Color c2)
-{
-    return (Color){
-        c1.r * c2.r,
-        c1.g * c2.g,
-        c1.b * c2.b,
-        c1.a * c2.a,
-    };
-}
-
-Color color_modulate(Color a, Color b)
-{
-    return (Color){
-        (u8)(a.r * b.r / 255),
-        (u8)(a.g * b.g / 255),
-        (u8)(a.b * b.b / 255),
-        (u8)(a.a * b.a / 255),
-    };
-}
-
-Color alpha_blend(Color src, Color dst)
-{
-    u32 a = src.a;
-    u32 ia = 255 - a;
-
-    return (Color){
-        .r = (u8)((src.r * a + dst.r * ia) / 255),
-        .g = (u8)((src.g * a + dst.g * ia) / 255),
-        .b = (u8)((src.b * a + dst.b * ia) / 255),
-        .a = 255,
-    };
-}
 
 #define PIXEL_INDEX(x, y) ((size_t)(x) + (size_t)(y) * (size_t)renderer.width)
 
@@ -414,7 +359,7 @@ void renderer_push_triangle(V3f v1, V3f v2, V3f v3, Color color[3], V3f uvs[3], 
     }
 }
 
-void renderer_push_triangle_w_normals(V3f positions[3], V3f normals[3], Color color[3], u32 flags)
+void renderer_push_triangle_w_normals(V3f positions[3], V3f normals[3], Color color[3], V3f uvs[3], Texture *t, SimpleMtl *material, u32 flags)
 {
     V2i pos1;
     V2i pos2;
@@ -431,8 +376,6 @@ void renderer_push_triangle_w_normals(V3f positions[3], V3f normals[3], Color co
         pos2 = v2i(positions[1].x, positions[1].y);
         pos3 = v2i(positions[2].x, positions[2].y);
     }
-    if (!check_bounds(pos1, pos2, pos3))
-        return;
 
     AABBi rec = {
         v2i(min(pos1.x, min(pos2.x, pos3.x)), min(pos1.y, min(pos2.y, pos3.y))),
@@ -440,18 +383,17 @@ void renderer_push_triangle_w_normals(V3f positions[3], V3f normals[3], Color co
     };
 
     size_t t_minx = max(0, floor(rec.min.x / TILE_W));
-    size_t t_maxx = min((GAME_WIDTH / TILE_W) - 1, floor(rec.max.x / TILE_W));
+    size_t t_maxx = min((GAME_WIDTH / TILE_W) - 1, floor(rec.max.x > 0 ? rec.max.x : 0 / TILE_W));
     size_t t_miny = max(0, floor(rec.min.y / TILE_H));
-    size_t t_maxy = min((GAME_HEIGHT / TILE_H) - 1, floor(rec.max.y / TILE_H));
-
-    if (t_minx > t_maxx || t_miny > t_maxy)
-        return;
+    size_t t_maxy = min((GAME_HEIGHT / TILE_H) - 1, floor(rec.max.y > 0 ? rec.max.y : 0 / TILE_H));
 
     Triangle triangle = {
         .vertices = {positions[0], positions[1], positions[2]},
         .normals = {normals[0], normals[1], normals[2]},
         .colors = {color[0], color[1], color[2]},
-        .texture = NULL,
+		.uvs = {uvs[0], uvs[1], uvs[2]},
+		.material = material,
+        .texture = t,
         .flags = flags,
     };
 
@@ -462,7 +404,9 @@ void renderer_push_triangle_w_normals(V3f positions[3], V3f normals[3], Color co
     {
         for (size_t i = t_minx; i <= t_maxx; i++)
         {
-            array_push(&triangle_bins[i + j * COL_GAME_WIDTH].tri_idx, idx);
+            size_t index = i + j * COL_GAME_WIDTH;
+            if (index < TILE_COUNT)
+                array_push(&triangle_bins[index].tri_idx, idx);
         }
     }
 }
@@ -472,17 +416,33 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
     V2i pos1;
     V2i pos2;
     V2i pos3;
+	Color c1;
+	Color c2;
+	Color c3;
     if (FlagExists(tri.flags, TRIANGLE_TWO_D))
     {
         pos1 = v2i((s32)tri.vertices[0].x, (s32)tri.vertices[0].y);
         pos2 = v2i((s32)tri.vertices[1].x, (s32)tri.vertices[1].y);
         pos3 = v2i((s32)tri.vertices[2].x, (s32)tri.vertices[2].y);
+		c1 = tri.colors[0];
+		c2 = tri.colors[1];
+		c3 = tri.colors[2];
     }
     else
     {
         pos1 = to_screen(project(tri.vertices[0]));
         pos2 = to_screen(project(tri.vertices[1]));
         pos3 = to_screen(project(tri.vertices[2]));
+		if (tri.material) {
+
+			c1 = simple_reflection(tri.material, renderer.sun.position, tri.vertices[0], tri.normals[0], renderer.sun.color, COLOR_WHITE);
+			c2 = simple_reflection(tri.material, renderer.sun.position, tri.vertices[1], tri.normals[1], renderer.sun.color, COLOR_WHITE);
+			c3 = simple_reflection(tri.material, renderer.sun.position, tri.vertices[2], tri.normals[2], renderer.sun.color, COLOR_WHITE);
+		} else {
+			c1 = tri.colors[0];
+			c2 = tri.colors[1];
+			c3 = tri.colors[2];
+		}
     }
 
     AABBi rec = {
@@ -541,9 +501,9 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
 
                     Color vert_color = color_add(
                         color_add(
-                            color_scale(tri.colors[0], bary.x),
-                            color_scale(tri.colors[1], bary.y)),
-                        color_scale(tri.colors[2], bary.z));
+                            color_scale(c1, bary.x),
+                            color_scale(c2, bary.y)),
+                        color_scale(c3, bary.z));
 
                     s32_color = color_modulate(tex_color, vert_color);
                     if (s32_color.a == 0)
@@ -683,17 +643,19 @@ void draw_model(Asset_Model *model, V3f position, Mat3 rotation)
             t2 = COLOR_WHITE;
             t3 = COLOR_WHITE;
 
+			V3f positions[3] = {p1, p2, p3};
+			V3f normals[3] = {n1, n2, n3};
             Color colors[3] = {t1, t2, t3};
             V3f uvs[3] = {v1.uv, v2.uv, v3.uv};
 
             if (model->mtl != NULL)
-                renderer_push_triangle(
-                        p1,
-                        p2,
-                        p3,
+                renderer_push_triangle_w_normals(
+						positions,
+						normals,
                         colors,
                         uvs,
                         model->mtl->diffuse_texture,
+						model->mtl,
                         0);
             else
                 renderer_push_triangle(
@@ -769,7 +731,7 @@ Color simple_reflection(SimpleMtl *mtl, V3f light_pos, V3f v, V3f n, V3f light_c
     if (mtl == NULL)
         return object_color;
     V3f norm = v3f_normalize(n);
-    V3f light_dir = v3f_normalize(v3f_sub(light_pos, v));
+    V3f light_dir = v3f_normalize(v3f_sub(v, light_pos));
 
     f32 diff = fmaxf(v3f_dot(norm, light_dir), 0.0f);
 

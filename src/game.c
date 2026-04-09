@@ -49,6 +49,8 @@ static struct {
     },
 };
 
+#define M_TAU 2*M_PI
+
 static b32 show_demo = false;
 void handle_camera_editor(V2f mouse_delta);
 void handle_camera_gameplay(V2f mouse_delta);
@@ -130,6 +132,7 @@ f32 z = 1.0f;
 
 void game_frame(void)
 {
+	renderer.sun = gs.sun;
     char buf[256];
     V2f mouse_pos = get_mouse_pos();
     V2f mouse_delta = get_mouse_delta();
@@ -164,7 +167,7 @@ void game_frame(void)
                 handle_camera_gameplay(mouse_delta);
                 break;
             default:
-                handle_camera_editor(mouse_delta);
+                editor_camera_update();
                 break;
         }
     }
@@ -229,14 +232,16 @@ void game_frame(void)
                 gs.selected_entity = hit_entity;
                 gs.gizmo.attached = true;
                 gs.gizmo.position = gs.dynamic_entities[hit_entity].position;
-            } else {
-                // Clicked empty space: deselect everything.
-                gs.selected_entity = -1;
-                gs.selected_axis = -1;
-                gs.gizmo.attached = false;
-            }
+            } 
         }
     }
+
+	if (is_key_pressed(KEY_Q)) {
+		// Clicked empty space: deselect everything.
+		gs.selected_entity = -1;
+		gs.selected_axis = -1;
+		gs.gizmo.attached = false;
+	}
 
     //
     // 2) Drag currently selected gizmo axis
@@ -325,18 +330,6 @@ void game_frame(void)
 
     //draw_string8(gs.font, str8lit("Test string8 literal"), v2i(0, 10), 16, COLOR_BLACK);
 
-    if (gs.state == GAME_STATE_EDITOR) {
-        sprintf(buf, "fps: %.3f", 1/gs.frame_time);
-        draw_text(gs.font, buf, v2i(0, 10), 16, COLOR_BLACK);
-        sprintf(buf, "position: %.3f %.3f %.3f", renderer.camera.position.x, renderer.camera.position.y, renderer.camera.position.z);
-        draw_text(gs.font, buf, v2i(0, 26), 16, COLOR_BLACK);
-        sprintf(buf, "target:   %.3f %.3f %.3f", renderer.camera.target.x, renderer.camera.target.y, renderer.camera.target.z);
-        draw_text(gs.font, buf, v2i(0, 42), 16, COLOR_BLACK);
-        sprintf(buf, "front:    %.3f %.3f %.3f", renderer.camera.front.x, renderer.camera.front.y, renderer.camera.front.z);
-        draw_text(gs.font, buf, v2i(0, 58), 16, COLOR_BLACK);
-    }
-
-
     console_draw(gs.font);
     SectionEnd("UI Render");
     renderer_flush();
@@ -349,7 +342,7 @@ void game_frame(void)
 
     mu_begin(platform_ctx.ui);
     if (show_demo) {
-    if (mu_begin_window(platform_ctx.ui, "Entity", mu_rect(0, 0, 300, 450))) {
+    if (mu_begin_window(platform_ctx.ui, "Entity", mu_rect(0, 0, SCREEN_WIDTH/4, SCREEN_HEIGHT/2))) {
         mu_Container *win = mu_get_current_container(platform_ctx.ui);
         win->rect.w = mu_max(win->rect.w, 240);
         win->rect.h = mu_max(win->rect.h, 300);
@@ -358,6 +351,9 @@ void game_frame(void)
             mu_label(platform_ctx.ui, "model: ");
             mu_label(platform_ctx.ui, e->model_tag);
             snprintf(buf, 256, "Entity ID: %d", gs.selected_entity);
+			static f32 rotation = 0;
+			mu_slider(platform_ctx.ui, &rotation, 0, M_TAU);
+			e->rotation = rotation_y(rotation);
             mu_label(platform_ctx.ui, buf);
             snprintf(buf, 256, "pos: %.1f, %.1f, %.1f", e->position.x, e->position.y, e->position.z);
             mu_label(platform_ctx.ui, buf);
@@ -376,33 +372,33 @@ void game_frame(void)
     if (!console.open) {
         ui_flush();
 
-        mu_Command *cmd = NULL;
-        float ui_z = 0.2f;  // Start just behind text (z=1.0)
-        while (mu_next_command(platform_ctx.ui, &cmd)) {
-            switch (cmd->type) {
-                case MU_COMMAND_ICON: {
-                                          char icon_char;
-                                          switch (cmd->icon.id) {
-                                              case 1: icon_char = 'X'; break;        // MU_ICON_CLOSE
-                                              case 2: icon_char = 'V'; break;        // MU_ICON_CHECK
-                                              case 3: icon_char = '>'; break;        // MU_ICON_COLLAPSED
-                                              case 4: icon_char = 'v'; break;        // MU_ICON_EXPANDED
-                                              default: icon_char = '?'; break;
-                                          }
-                                          char icon_str[2] = {icon_char, '\0'};
-                                          draw_text(gs.font, icon_str, v2i(cmd->icon.rect.x, cmd->icon.rect.y),
-                                                  8, mu_to_color(cmd->icon.color));
-                                      }
-                                      break;
-                case MU_COMMAND_TEXT:
-                                      if ((unsigned char)cmd->text.str[0] >= 32)
-                                          draw_text(gs.font, cmd->text.str, v2i(cmd->text.pos.x, cmd->text.pos.y),
-                                                  8, mu_to_color(cmd->text.color));
-                                      break;
-                case MU_COMMAND_RECT:
-                                      draw_recs32(mu_to_rec(cmd->rect.rect), ui_z, mu_to_color(cmd->rect.color));
-                                      ui_z -= 0.001f;  // Increment z to preserve draw order
-                                      break;
+		mu_Command *cmd = NULL;
+		float ui_z = 0.2f;  // Start just behind text (z=1.0)
+		while (mu_next_command(platform_ctx.ui, &cmd)) {
+			switch (cmd->type) {
+				case MU_COMMAND_ICON: {
+				     char icon_char;
+				     switch (cmd->icon.id) {
+				   	  case 1: icon_char = 'X'; break;        // MU_ICON_CLOSE
+				   	  case 2: icon_char = 'V'; break;        // MU_ICON_CHECK
+				   	  case 3: icon_char = '>'; break;        // MU_ICON_COLLAPSED
+				   	  case 4: icon_char = 'v'; break;        // MU_ICON_EXPANDED
+				   	  default: icon_char = '?'; break;
+				     }
+				     char icon_str[2] = {icon_char, '\0'};
+				     draw_text(gs.font, icon_str, v2i(cmd->icon.rect.x, cmd->icon.rect.y),
+				   		  8, mu_to_color(cmd->icon.color));
+				 }
+				 break;
+				case MU_COMMAND_TEXT:
+				  if ((unsigned char)cmd->text.str[0] >= 32)
+					  draw_text(gs.font, cmd->text.str, v2i(cmd->text.pos.x, cmd->text.pos.y),
+							  8, mu_to_color(cmd->text.color));
+				  break;
+				case MU_COMMAND_RECT:
+				   draw_recs32(mu_to_rec(cmd->rect.rect), ui_z, mu_to_color(cmd->rect.color));
+				   ui_z -= 0.001f;  // Increment z to preserve draw order
+				   break;
             }
         }
     }
@@ -419,46 +415,6 @@ void game_deinit(void)
     /* for (int i = 0; i < arrlen(gs.assets); i++) {
         deload_model(&gs.assets[i]);
     } */
-}
-
-void handle_camera_editor(V2f mouse_delta)
-{
-    if (is_key_down(KEY_W)) {
-        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(renderer.camera.front, gs.camera_speed));
-    }
-    if (is_key_down(KEY_S)) {
-        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(renderer.camera.front, -gs.camera_speed));
-    }
-    if (is_key_down(KEY_A)) {
-        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(v3f_cross(renderer.camera.front, renderer.camera.up), gs.camera_speed));
-    }
-    if (is_key_down(KEY_D)) {
-        renderer.camera.position = v3f_sub(renderer.camera.position, v3f_scale(v3f_cross(renderer.camera.front, renderer.camera.up), gs.camera_speed));
-    }
-
-    if (is_mouse_button_down(MOUSEBUTTON_MIDDLE)) {
-        f32 x_offset = mouse_delta.x;
-        f32 y_offset = -mouse_delta.y;
-
-        f32 sensitivity = 0.3f;
-        x_offset *= sensitivity;
-        y_offset *= sensitivity;
-
-        renderer.camera.yaw   += x_offset;
-        renderer.camera.pitch += y_offset;
-
-        if (renderer.camera.pitch > 89.0f)
-            renderer.camera.pitch = 89.0f;
-        if (renderer.camera.pitch < -89.0f)
-            renderer.camera.pitch = -89.0f;
-
-        V3f direction;
-        direction.x = cos(deg_to_rad(renderer.camera.yaw)) * cos(deg_to_rad(renderer.camera.pitch));
-        direction.y = sin(deg_to_rad(renderer.camera.pitch));
-        direction.z = -sin(deg_to_rad(renderer.camera.yaw)) * cos(deg_to_rad(renderer.camera.pitch));
-        renderer.camera.front = v3f_normalize(direction);
-
-    }
 }
 
 void handle_camera_gameplay(V2f mouse_delta)

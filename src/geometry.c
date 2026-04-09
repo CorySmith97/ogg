@@ -84,7 +84,7 @@ static Ray get_mouse_ray(Camera camera, V2f mouse_position)
     float y = 1.0f - (2.0f*mouse_position.y)/(float)SCREEN_HEIGHT;
     float z = 1.0f;
 
-    V3f f = v3f_normalize(v3f_sub(camera.target, camera.position));
+    V3f f = camera.front;
     V3f r = v3f_normalize(v3f_cross(camera.up, f));
     V3f u = v3f_cross(f, r);
 

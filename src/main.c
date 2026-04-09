@@ -13,6 +13,7 @@
 #include "scene.h"
 #include "gizmo.h"
 #include "console.h"
+#include "editor.h"
 
 #include "base.c"
 #include "third_party.c"
@@ -28,6 +29,7 @@
 #include "gizmo.c"
 #include "console.c"
 #include "game.c"
+#include "editor.c"
 
 // TODO https://www.dgtlgrove.com/p/multi-core-by-default
 // By nature of this project, it is primed for a multithread by default

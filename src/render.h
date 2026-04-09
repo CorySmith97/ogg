@@ -14,24 +14,6 @@
 #include "la.h"
 #include "assets.h"
 
-typedef union Color {
-    struct {
-        u8 r, g, b, a;
-    };
-    u32 rgba;
-} Color;
-
-
-#define COLOR_WHITE  (Color){ 255, 255, 255, 255 }
-#define COLOR_GRAY   (Color){ 122, 122, 122, 255 }
-#define COLOR_BLACK  (Color){ 0, 0, 0, 255 }
-#define COLOR_RED    (Color){.r = 252, .g = 44, .a = 255}
-#define COLOR_BROWN  (Color){.r = 0x96, .g = 0x4B, .a = 0xFF }
-#define COLOR_BLUE   (Color){.g = 127, .b = 252, .a = 255}
-#define COLOR_GREEN  (Color){.r = 48, .g = 252, .a = 255}
-#define COLOR_PURPLE (Color){.r = 0x50, .b = 0x50, .a = 255}
-#define COLOR_YELLOW (Color){.r = 0x50, .g = 0x50, .a = 255}
-
 typedef enum {
     TRIANGLE_TWO_D = 1 << 0,
     TRIANGLE_NO_CULLING = 1 << 1,
@@ -44,6 +26,7 @@ typedef struct {
     V3f uvs[3];
     Color colors[3];
     Texture *texture;
+	SimpleMtl *material;
     u32 flags;
 } Triangle;
 
@@ -67,6 +50,7 @@ static struct {
     // TODO remove this from here
     Camera camera;
     Camera swap_camera; // spare camera to hold a different camera in
+	Light sun;
 } renderer = {
     .quit = false,
     .width = GAME_WIDTH,

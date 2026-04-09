@@ -2,6 +2,9 @@
 
 static void update_shopkeeper(Entity *e)
 {
+	//static f32 angle = 0;
+	//e->rotation = rotation_y(angle);
+	//angle += 0.01;
 }
 
 void entity_init(void)
@@ -13,8 +16,8 @@ void entity_init(void)
 
 void entity_update(Entity *e)
 {
-    e->aabb.min = v3f(e->position.x - 0.25, e->position.y - 0.5, e->position.z - 0.25);
-    e->aabb.max = v3f(e->position.x + 0.25, e->position.y + 0.5, e->position.z + 0.25);
+    e->aabb.min = v3f(e->position.x - 0.25, e->position.y, e->position.z - 0.25);
+    e->aabb.max = v3f(e->position.x + 0.25, e->position.y + 1, e->position.z + 0.25);
     e->update_fn(e);
 }
 

@@ -10,6 +10,7 @@ static struct {
     Keys toggle_key;
     const char **lines;
     b32 open;
+	f32 scroll_offset;
 } console = {
     .file = "data/console.txt",
     .toggle_key = KEY_F2,
