@@ -1,7 +1,20 @@
-#include "assets.h"
-
 #define ASSET_DIR "data/"
 #define BUFFER_SIZE 1024
+
+Texture_KV     *textures = NULL;
+Asset_Model_KV *assets = NULL;
+
+Texture *get_texture(const char *name)
+{
+    Texture *val;
+
+    val = shget(textures, name);
+    if (val) return val;
+    // Append 
+    // /data/%name%.png
+
+    return NULL;
+}
 
 void deload_model(Asset_Model *model)
 {
@@ -37,6 +50,8 @@ SimpleMtl *load_material_file(const char *file)
         }
     }
 
+    log_info("Loaded material %s", file);
+
 ret:
     fclose(f);
     return mtl;
@@ -47,11 +62,12 @@ Texture *load_texture_from_file(const char *file, bool flip)
     Texture *tex = malloc(sizeof(Texture));
 
     stbi_set_flip_vertically_on_load(flip);
-    unsigned char *data = stbi_load(file, &tex->width, &tex->height, &tex->stride, 0);
-    int size = tex->width * tex->height * tex->stride;
+    u8 *data = stbi_load(file, &tex->width, &tex->height, &tex->stride, 0);
+    s32 size = tex->width * tex->height * tex->stride;
     tex->data = malloc(size);
     memcpy(tex->data, data, size);
 
+    log_info("Loaded texture  %s", file);
     stbi_image_free(data);
     return tex;
 }
@@ -90,21 +106,21 @@ Asset_Model *load_model_from_file(const char *file)
             FaceVertex fv[4] = {0};
 
             // try quad first
-            int result = sscanf(line, "f %d/%d/%d %d/%d/%d %d/%d/%d %d/%d/%d", 
+            s32 result = sscanf(line, "f %d/%d/%d %d/%d/%d %d/%d/%d %d/%d/%d", 
                     &fv[0].vertex_idx, &fv[0].tex_idx, &fv[0].normal_idx,
                     &fv[1].vertex_idx, &fv[1].tex_idx, &fv[1].normal_idx,
                     &fv[2].vertex_idx, &fv[2].tex_idx, &fv[2].normal_idx,
                     &fv[3].vertex_idx, &fv[3].tex_idx, &fv[3].normal_idx);
 
-            int face_count = (result == 12) ? 4 : 3;  // quad or tri
+            s32 face_count = (result == 12) ? 4 : 3;  // quad or tri
 
             // always push first triangle (0, 1, 2)
-            int indices[6] = {0, 1, 2, 0, 2, 3};
-            int tri_count = (face_count == 4) ? 2 : 1;
+            s32 indices[6] = {0, 1, 2, 0, 2, 3};
+            s32 tri_count = (face_count == 4) ? 2 : 1;
 
-            for (int t = 0; t < tri_count; t++) {
-                for (int v = 0; v < 3; v++) {
-                    int fi = indices[t * 3 + v];
+            for (s32 t = 0; t < tri_count; t++) {
+                for (s32 v = 0; v < 3; v++) {
+                    s32 fi = indices[t * 3 + v];
                     Vertex vert = {0};
                     vert.position = position[fv[fi].vertex_idx - 1];
                     vert.normal   = normals[fv[fi].normal_idx - 1];
@@ -126,8 +142,8 @@ Asset_Model *load_model_from_file(const char *file)
             if (strncmp(line, "usemtl", 6) == 1){}
         }
     }
-    log_info("MODEL LOADED: %s", file);
-    log_info("Vertices loaded: %td", arrlen(model->vertices));
+    log_info("Model loaded    %s", file);
+    log_info("Vertices loaded %td", arrlen(model->vertices));
     goto ret;
 
 
@@ -137,11 +153,11 @@ ret:
 }
 
 
-Font *load_font(const char *file, int cwidth, int cheight)
+Font *load_font(const char *file, s32 cwidth, s32 cheight)
 {
     Font *font = malloc(sizeof(Font));
     font->character_width = cwidth;
     font->character_height = cheight;
-    font->texture = load_texture_from_file(file, true);
+    font->texture = load_texture_from_file(file, false);
     return font;
 }

@@ -11,40 +11,34 @@
 #ifndef RENDER_H
 #define RENDER_H
 
-#include "la.h"
-#include "assets.h"
-
-typedef union Color {
-    struct {
-        uint8_t r, g, b, a;
-    };
-    uint32_t rgba;
-} Color;
-
-#define COLOR_WHITE  (Color){ 255, 255, 255, 255 }
-#define COLOR_GRAY   (Color){ 122, 122, 122, 255 }
-#define COLOR_BLACK  (Color){ 0, 0, 0, 255 }
-#define COLOR_RED    (Color){.r = 0x50, .a = 255}
-#define COLOR_BROWN  (Color){.r = 0x96, .g = 0x4B, .a = 0xFF }
-#define COLOR_BLUE   (Color){.b = 0x50, .a = 255}
-#define COLOR_GREEN  (Color){.g = 0x50, .a = 255}
-#define COLOR_PURPLE (Color){.r = 0x50, .b = 0x50, .a = 255}
-#define COLOR_YELLOW (Color){.r = 0x50, .g = 0x50, .a = 255}
-
-typedef union {
-    struct {int x, y, w, h;};
-    struct {V2i min, max;};
-} Reci;
+typedef enum {
+    TRIANGLE_TWO_D = 1 << 0,
+    TRIANGLE_NO_CULLING = 1 << 1,
+    TRIANGLE_WRITE_OVER_Z = 1 << 2,
+} TriangleFlags;
 
 typedef struct {
     V3f vertices[3];
     V3f normals[3];
     V3f uvs[3];
+    u32 flags;
     Color colors[3];
     Texture *texture;
-    Reci clip;
-    bool twod;
+	SimpleMtl *material;
 } Triangle;
+
+typedef struct {
+    u32 len;
+    u32 capacity;
+    Triangle *data;
+} TriangleArray;
+
+typedef struct {
+    u32 len;
+    u32 capacity;
+    size_t *data;
+} SizeArray;
+
 
 typedef struct TextVertex {
     V2i pos;
@@ -59,12 +53,14 @@ typedef struct {
 
 static struct {
     Vertex *vertices;
-    uint32_t pixels[GAME_HEIGHT * GAME_WIDTH];
-    float zbuffer[GAME_HEIGHT * GAME_WIDTH];
-    bool quit;
-    int width, height;
+    u32 pixels[GAME_HEIGHT * GAME_WIDTH];
+    f32 zbuffer[GAME_HEIGHT * GAME_WIDTH];
+    b32 quit;
+    s32 width, height;
     // TODO remove this from here
     Camera camera;
+    Camera swap_camera; // spare camera to hold a different camera in
+	Light sun;
 } renderer = {
     .quit = false,
     .width = GAME_WIDTH,
@@ -72,27 +68,39 @@ static struct {
     .pixels = {0},
     .zbuffer = {0},
     .camera = {
-        .position = {4,4,-3},
+        .target = {0, 0, 0},
+        .position = {0,2,-2},
         .up = {0, 1, 0},
-        .front = {0, -0.75, 1},
-        .pitch = 0.0f,
-        .yaw = -90.0f,
+        .pitch = 45.0f,
+        .yaw = 45.0f,
+        .distance = 10.0f,
+        .fovy = 60.0f,
+    },
+    .swap_camera = {
+        .target = {0, 0, 0},
+        .position = {0,2,-2},
+        .up = {0, 1, 0},
+        .pitch = 45.0f,
+        .yaw = 45.0f,
+        .distance = 10.0f,
+        .fovy = 60.0f,
     },
 };
 
 void  render_init(void);
 void  clear_background(Color color);
 void  renderer_flush(void);
+void  change_camera(void);
 
 void  draw_model(Asset_Model *model, V3f position, Mat3 rotation);
 void  draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Light light);
 void  draw_model_textured(Asset_Model *model, V3f position, Mat3 rotation);
 Color simple_reflection(SimpleMtl *mtl, V3f light_pos, V3f v, V3f n, V3f light_color, Color object_color);
-void  draw_texture(Texture *tex, Reci rec);
-void  draw_text(Font *f, char *str, V2i pos, float size, Color color);
-void  draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color);
-void  draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color color);
-Color  mu_to_color(mu_Color c);
-Reci   mu_to_rect(mu_Rect rec);
+void  draw_texture(Texture *tex, Recs32 rec);
+// There is a weird ordering bug with this. It drives me bonkers...
+void  draw_text(Font *f, const char *str, V2i pos, f32 size, Color color);
+void  draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags);
+void  draw_triangle3d(V3f v1, V3f v2, V3f v3, Color color, u32 flags);
+void  draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags);
 
 #endif /* RENDER_H */

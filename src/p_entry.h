@@ -2,7 +2,7 @@
 #define PLATFORM_H
 
 #if PLATFORM_SDL
-#include "platform_sdl.h"
+#include "p_sdl.h"
 #endif
 
 #endif // PLATFORM_H

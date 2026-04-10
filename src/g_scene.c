@@ -1,7 +1,7 @@
-#include "scene.h"
 
 Scene *scene_load(const char *name)
 {
+    return NULL;
 }
 
 void scene_unload(Scene *s, const char *name)

@@ -1,13 +1,11 @@
 #ifndef PROF_H
 #define PROF_H
 
-#include <time.h>
-
 typedef struct {
     const char *name;
-    uint64_t start_ns;
-    uint64_t end_ns;
-    uint64_t delta_ns;
+    u64 start_ns;
+    u64 end_ns;
+    u64 delta_ns;
 } Section;
 
 typedef struct Profiler {

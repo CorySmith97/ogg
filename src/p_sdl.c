@@ -1,20 +1,12 @@
-#include "platform_sdl.h"
-
-bool is_key_down(int key);
-bool is_key_released(int key);
-void on_key_down(int key);
-void on_key_up(int key);
-void on_mouse_moved(float x, float y, float dx, float dy);
-void on_mouse_down(int button); 
-void on_mouse_up(int button);
-
-#define MAX_KEYS 512
-
-typedef struct KeyboardState {
-    bool key_curr_state[MAX_KEYS];
-    bool key_previous_state[MAX_KEYS];
-    bool key_pressed[MAX_KEYS];
-} KeyboardState;
+bool is_key_down(s32 key);
+bool is_key_released(s32 key);
+void on_key_down(s32 key);
+void on_key_up(s32 key);
+void on_mouse_moved(f32 x, f32 y, f32 dx, f32 dy);
+void on_mouse_down(s32 button); 
+void on_mouse_up(s32 button);
+void on_mouse_scroll(f32 y);
+void platform_check_keystate(void);
 
 static KeyboardState keyboard_state;
 static MouseState mouse_state;
@@ -38,22 +30,24 @@ static const char key_map[256] = {
 
 static int text_width(mu_Font font, const char *text, int len) {
   if (len == -1) { len = strlen(text); }
-  return len * 16;
+  return len * 14;
 }
 
 static int text_height(mu_Font font) {
-  return 16;
+  return 14;
 }
 
-void platform_init(const char *name, uint32_t width, uint32_t height)
+void platform_init(const char *name, u32 width, u32 height)
 {
     SDL_SetMainReady();
     if (SDL_Init(SDL_INIT_VIDEO) != SDL_FALSE)
     {
-        printf("Failed to initial Video\n");
+        log_error("Failed to initial Video\n");
         exit(EXIT_FAILURE);
     }
 
+    platform_ctx.width = width;
+    platform_ctx.height = height;
     platform_ctx.window = SDL_CreateWindow(name,
                                            SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                            width, height,
@@ -81,7 +75,9 @@ void platform_handle_events(bool *quit)
         // TODO add a way to lock mouse to screen.
         SDL_SetRelativeMouseMode(SDL_FALSE);
     }
-    int b, c;
+
+    platform_check_keystate();
+    s32 b, c;
     SDL_Event event;
     while (SDL_PollEvent(&event))
     {
@@ -109,16 +105,24 @@ void platform_handle_events(bool *quit)
                 if (b && event.type ==   SDL_MOUSEBUTTONUP) { mu_input_mouseup(platform_ctx.ui, event.button.x, event.button.y, b);   }
                 on_mouse_up(event.button.button);
                 break;
-            case SDL_MOUSEWHEEL: mu_input_scroll(platform_ctx.ui, 0, event.wheel.y * -30); break;
-            //case SDL_TEXTINPUT: mu_input_text(platform_ctx.ui, event.text.text); break;
-            case SDL_MOUSEMOTION:
-                mu_input_mousemove(platform_ctx.ui, event.motion.x, event.motion.y);
-                on_mouse_moved(event.motion.x, event.motion.y, event.motion.xrel, event.motion.yrel);
+            case SDL_MOUSEWHEEL:
+                on_mouse_scroll(event.wheel.y);
+                mu_input_scroll(platform_ctx.ui, 0, event.wheel.y * -30); 
+                                 break;
+            case SDL_TEXTINPUT: mu_input_text(platform_ctx.ui, event.text.text); break;
+            case SDL_MOUSEMOTION: {
+                                      f32 sx = (f32)GAME_WIDTH  / (f32)platform_ctx.width;
+                                      f32 sy = (f32)GAME_HEIGHT / (f32)platform_ctx.height;
+
+                                      int ui_mouse_x = (int)(event.motion.x * sx);
+                                      int ui_mouse_y = (int)(event.motion.y * sy);
+                                      mu_input_mousemove(platform_ctx.ui, ui_mouse_x, ui_mouse_y);
+                                      on_mouse_moved(event.motion.x, event.motion.y, event.motion.xrel, event.motion.yrel);
+                                  } break;
+            default:
                 break;
-        default:
         }
     }
-    platform_ctx.keystate = SDL_GetKeyboardState(NULL);
 }
 
 void platform_deinit(void)
@@ -130,9 +134,9 @@ void platform_deinit(void)
 void platform_present()
 {
     void *texpixels;
-    int pitch;
+    s32 pitch;
     SDL_LockTexture(platform_ctx.texture, NULL, &texpixels, &pitch);
-    memcpy(texpixels, renderer.pixels, renderer.width * renderer.height * sizeof(uint32_t));
+    memcpy(texpixels, renderer.pixels, renderer.width * renderer.height * sizeof(u32));
     SDL_UnlockTexture(platform_ctx.texture);
 
     SDL_RenderClear(platform_ctx.renderer);
@@ -140,49 +144,8 @@ void platform_present()
     SDL_RenderPresent(platform_ctx.renderer);
 }
 
-typedef enum {
-    KEY_A = SDL_SCANCODE_A,
-    KEY_B = SDL_SCANCODE_B,
-    KEY_C = SDL_SCANCODE_C,
-    KEY_D = SDL_SCANCODE_D,
-    KEY_E = SDL_SCANCODE_E,
-    KEY_F = SDL_SCANCODE_F,
-    KEY_G = SDL_SCANCODE_G,
-    KEY_H = SDL_SCANCODE_H,
-    KEY_I = SDL_SCANCODE_I,
-    KEY_J = SDL_SCANCODE_J,
-    KEY_K = SDL_SCANCODE_K,
-    KEY_L = SDL_SCANCODE_L,
-    KEY_M = SDL_SCANCODE_M,
-    KEY_N = SDL_SCANCODE_N,
-    KEY_O = SDL_SCANCODE_O,
-    KEY_P = SDL_SCANCODE_P,
-    KEY_Q = SDL_SCANCODE_Q,
-    KEY_R = SDL_SCANCODE_R,
-    KEY_S = SDL_SCANCODE_S,
-    KEY_T = SDL_SCANCODE_T,
-    KEY_U = SDL_SCANCODE_U,
-    KEY_V = SDL_SCANCODE_V,
-    KEY_W = SDL_SCANCODE_W,
-    KEY_X = SDL_SCANCODE_X,
-    KEY_Y = SDL_SCANCODE_Y,
-    KEY_Z = SDL_SCANCODE_Z,
 
-    KEY_ENTER = SDLK_RETURN,
-    KEY_ESCAPE = SDL_SCANCODE_ESCAPE,
-    KEY_SPACE = SDLK_SPACE
-} Keys;
-
-bool is_key_down(int key) {
-    bool pressed = false;
-    if ((key > 0) && (key < MAX_KEYS)) {
-        if (platform_ctx.keystate[key])
-        pressed = true;
-    }
-    return pressed;
-}
-
-bool is_mouse_button_down(int key) {
+bool is_mouse_button_down(s32 key) {
     bool pressed = false;
     if ((key > 0) && (key < MOUSEBUTTON_COUNT)) {
         if (mouse_state.mouse_button_state[key]) {
@@ -192,39 +155,52 @@ bool is_mouse_button_down(int key) {
     return pressed;
 }
 
-uint64_t get_time()
-{
-    return SDL_GetPerformanceCounter();
-}
-
-bool is_key_released(int key) 
-{
+b32 is_mouse_button_pressed(s32 key) {
     bool pressed = false;
-    if ((key > 0) && (key < MAX_KEYS)) {
-        if ((keyboard_state.key_previous_state[key] == true) && (keyboard_state.key_curr_state[key] == false))
-        pressed = true;
+    if ((key > 0) && (key < MOUSEBUTTON_COUNT)) {
+        if (mouse_state.mouse_button_state[key] 
+                && !mouse_state.prev_mouse_button_state[key]) {
+            pressed = true;
+        }
     }
     return pressed;
 }
 
-void on_key_down(int key) 
+b32 is_mouse_button_released(s32 key) {
+    bool pressed = false;
+    if ((key > 0) && (key < MOUSEBUTTON_COUNT)) {
+        if (!mouse_state.mouse_button_state[key] 
+                && mouse_state.prev_mouse_button_state[key]) {
+            pressed = true;
+        }
+    }
+    return pressed;
+}
+
+u64 get_time()
+{
+    return SDL_GetPerformanceCounter();
+}
+
+void on_key_down(s32 key) 
 {
     if (keyboard_state.key_curr_state[key] == true) {
         keyboard_state.key_previous_state[key] = true;
     }
     keyboard_state.key_curr_state[key] = true;
 }
-void on_key_up(int key) 
+
+void on_key_up(s32 key) 
 { 
     keyboard_state.key_curr_state[key] = false;
 }
 
-void on_mouse_down(int button) 
+void on_mouse_down(s32 button) 
 {
     mouse_state.mouse_button_state[button] = true;
 }
 
-void on_mouse_up(int button) 
+void on_mouse_up(s32 button) 
 { 
     mouse_state.mouse_button_state[button] = false;
 }
@@ -243,7 +219,7 @@ V2f get_mouse_delta()
             platform_ctx.mouse_state.mouse_pos_dy);
 }
 
-void on_mouse_moved(float x, float y, float dx, float dy) 
+void on_mouse_moved(f32 x, f32 y, f32 dx, f32 dy) 
 { 
     platform_ctx.mouse_state.mouse_pos_x = x;
     platform_ctx.mouse_state.mouse_pos_y = y;
@@ -259,10 +235,53 @@ void set_escape_quit(bool *quit)
     }
 }
 
-void set_mouse_toggle_key(int key)
+void set_mouse_toggle_key(s32 key)
 {
     if (is_key_down(key)) {
         platform_ctx.mouse_enabled = !platform_ctx.mouse_enabled;
     }
 }
         
+void on_mouse_scroll(f32 y)
+{
+    platform_ctx.mouse_state.scroll_delta = y;
+}
+
+f32 get_mouse_scroll()
+{
+    f32 ret = platform_ctx.mouse_state.scroll_delta;
+    platform_ctx.mouse_state.scroll_delta = 0;
+    return ret;
+
+}
+
+void platform_check_keystate(void)
+{
+
+    memcpy(mouse_state.prev_mouse_button_state,
+            mouse_state.mouse_button_state,
+            sizeof(mouse_state.mouse_button_state));
+
+    if (platform_ctx.keystate != NULL)
+        memcpy(platform_ctx.prev_keystate,
+                platform_ctx.keystate,
+                SDL_NUM_SCANCODES);
+    SDL_PumpEvents();
+
+    platform_ctx.keystate = SDL_GetKeyboardState(NULL);
+}
+
+bool is_key_down(s32 key)
+{
+    return platform_ctx.keystate[key];
+}
+
+bool is_key_pressed(s32 key)
+{
+    return platform_ctx.keystate[key] && !platform_ctx.prev_keystate[key];
+}
+
+bool is_key_released(s32 key)
+{
+    return !platform_ctx.keystate[key] && platform_ctx.prev_keystate[key];
+}
