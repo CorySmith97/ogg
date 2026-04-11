@@ -97,12 +97,11 @@ void render_init(void)
     triangles = malloc(sizeof(TriangleArray));
     s32 initial = 1000;
     triangles->capacity = initial;
-    log_debug("Triangle data pointer %p", triangles->data);
     triangles->data = malloc(sizeof(Triangle) * initial);
     triangles->len = 0;
-    log_debug("Triangle data pointer %p", triangles->data);
     renderer.width = GAME_WIDTH;
     renderer.height = GAME_HEIGHT;
+
     for (size_t i = 0; i < TILE_COUNT; i++)
     {
         s32 x = i % (GAME_WIDTH / TILE_W);
@@ -116,6 +115,9 @@ void render_init(void)
     for (s32 i = 0; i < NUM_THREADS; i++)
         pthread_create(&workers[i].thread, NULL, worker_thread, NULL);
 
+    console_write_log_alloc("Renderer Initialized:");
+    console_write_log_alloc("    Display info: %dx%d", renderer.width, renderer.height);
+    console_write_log_alloc("    Thread count: %d", NUM_THREADS);
 }
 
 void render_shutdown(void)
@@ -140,7 +142,7 @@ void change_camera(void)
 
 void renderer_flush(void)
 {
-    log_info("Triangles pushed %zd", triangles->len);
+    //log_info("Triangles pushed %zd", triangles->len);
     // enqueue all non-empty bins
     pthread_mutex_lock(&queue_mutex);
     for (s32 i = 0; i < TILE_COUNT; i++)

@@ -16,6 +16,7 @@ static struct {
     Entity   *dynamic_entities;
     Entity   *static_entities;
     Tile     *tiles;
+    s32       player_index;
     GameState state;
     s32       selected_entity;
     Gizmo_Axis selected_axis;
@@ -33,6 +34,7 @@ static struct {
     .tiles = NULL,
     .state = GAME_STATE_EDITOR,
 
+    // This is all editor stuff that should be moved
     .selected_entity = -1,
     .selected_axis   = -1,
     .gizmo = {
@@ -54,6 +56,7 @@ void handle_camera_gameplay(V2f mouse_delta);
 V3f orbit_step(f32 rx, f32 ry, V3f start_pos, V3f target);
 V3f spherical_to_cartesian(f32 lon, f32 lat, f32 radius);
 V2f cartesian_to_spherical(V3f v);
+void game_ui(void);
 
 f32 angle = 0;
 Texture *entity_1;
@@ -62,10 +65,9 @@ void game_init(void)
 {
     SectionStart("Intialization");
     render_init();
+
     console_init();
     gizmo_init();
-    String8 str = str8_fmt_alloc("[INFO] Game resolutions: %dx%d", GAME_WIDTH, GAME_HEIGHT);
-    console_write_log(str);
 
     sh_new_strdup(gs.assets);
 
@@ -117,11 +119,13 @@ void game_init(void)
 
     SectionEnd("Intialization");
     profiler_report();
-    profiler_reset();
 
 
     renderer.camera.front = v3f_normalize(v3f_sub(renderer.camera.target, renderer.camera.position));
     renderer.swap_camera.front = v3f_normalize(v3f_sub(renderer.swap_camera.target, renderer.swap_camera.position));
+
+    console_write_log_alloc("[Initialization Time] (%.3fms)", profiler.sections[0].delta_ns / 1000000.0);
+    profiler_reset();
 }
 
 f32 z = 1.0f;
@@ -165,6 +169,13 @@ void game_frame(void)
                 gs.selected_entity = -1;
                 show_demo = false;
                 handle_camera_gameplay(mouse_delta);
+                game_ui();
+                if (is_mouse_button_pressed(MOUSEBUTTON_LEFT)) {
+                    //RayCollision tile_collision = tile_mouse_ray_collision(mouse_ray);
+                    //if (tile_collision.hit) {
+                    //    gs.dynamic_entities[gs.player_index].target = tile_collision.point;
+                    //}
+                }
                 break;
             default:
                 editor_camera_update();
@@ -214,7 +225,7 @@ void game_frame(void)
 
                         for (s32 i = 0; i < arrlen(gs.dynamic_entities); i++) {
                             Entity *e = &gs.dynamic_entities[i];
-                            RayCollision collision = get_raycollision_box(mouse_ray, e->aabb);
+                            RayCollision collision = entity_mouse_ray_collision(e, mouse_ray);
                             if (collision.hit && collision.distance < closest) {
                                 closest = collision.distance;
                                 hit_entity = i;
@@ -342,30 +353,43 @@ void game_frame(void)
 
     mu_begin(platform_ctx.ui);
     if (show_demo) {
-    if (mu_begin_window(platform_ctx.ui, "Entity", mu_rect(0, 0, SCREEN_WIDTH/4, SCREEN_HEIGHT/2))) {
-        mu_Container *win = mu_get_current_container(platform_ctx.ui);
-        win->rect.w = mu_max(win->rect.w, 240);
-        win->rect.h = mu_max(win->rect.h, 300);
-        if (gs.selected_entity >= 0) {
-            Entity *e = &gs.dynamic_entities[gs.selected_entity];
-            mu_label(platform_ctx.ui, "model: ");
-            mu_label(platform_ctx.ui, e->model_tag);
-            snprintf(buf, 256, "Entity ID: %d", gs.selected_entity);
-			static f32 rotation = 0;
-			mu_slider(platform_ctx.ui, &rotation, 0, M_TAU);
-			e->rotation = rotation_y(rotation);
-            mu_label(platform_ctx.ui, buf);
-            snprintf(buf, 256, "pos: %.1f, %.1f, %.1f", e->position.x, e->position.y, e->position.z);
-            mu_label(platform_ctx.ui, buf);
-        } else {
-            snprintf(buf, 256, "No selected Entity");
-            mu_label(platform_ctx.ui, buf);
+        if (mu_begin_window(platform_ctx.ui, "Entity", mu_rect(0, 0, SCREEN_WIDTH/6, SCREEN_HEIGHT/2))) {
+            mu_Container *win = mu_get_current_container(platform_ctx.ui);
+            win->rect.w = mu_max(win->rect.w, 240);
+            win->rect.h = mu_max(win->rect.h, 300);
+            if (gs.selected_entity >= 0) {
+                Entity *e = &gs.dynamic_entities[gs.selected_entity];
+                if (mu_header(platform_ctx.ui, "Entity Info")) {
+
+                    mu_label(platform_ctx.ui, "model: ");
+                    mu_label(platform_ctx.ui, e->model_tag);
+                    snprintf(buf, 256, "Entity ID: %d", gs.selected_entity);
+                    static f32 rotation = 0;
+                    mu_slider(platform_ctx.ui, &rotation, 0, M_TAU);
+                    e->rotation = rotation_y(rotation);
+                    mu_label(platform_ctx.ui, buf);
+                    snprintf(buf, 256, "pos: %.1f, %.1f, %.1f", e->position.x, e->position.y, e->position.z);
+                    mu_label(platform_ctx.ui, buf);
+                }
+                if (mu_header(platform_ctx.ui, "Game Info:")) {
+                    mu_label(platform_ctx.ui, "Race: ");   
+                    mu_label(platform_ctx.ui, "Base Class: ");   
+                    if (mu_header(platform_ctx.ui, "Attributes:")) {
+                        mu_label(platform_ctx.ui, "Strength: ");   
+                        mu_number(platform_ctx.ui, &e->attributes.strength, 1);
+                        mu_label(platform_ctx.ui, "Base Class: ");   
+                    }
+                }
+            } else {
+                snprintf(buf, 256, "No selected Entity");
+                mu_label(platform_ctx.ui, buf);
+            }
+
+
+            mu_end_window(platform_ctx.ui);
         }
-
-
-        mu_end_window(platform_ctx.ui);
     }
-    }
+
     mu_end(platform_ctx.ui);
 
 
@@ -549,4 +573,14 @@ V2f cartesian_to_spherical(V3f v)
     return v2f(
             atan2f(v.x, v.z) * (180/M_PI),
             atan2f(v.y, len) * (180/M_PI));
+
+}
+
+void game_ui(void) 
+{
+    Recs32 bottom_view_outline = {.x = 0, .y = GAME_HEIGHT - 75 - 5, .w = GAME_WIDTH, .h = 80};
+    draw_recs32(bottom_view_outline, 0.11, COLOR_BLACK);
+    Recs32 bottom_view = {.x = 0, .y = GAME_HEIGHT - 75, .w = GAME_WIDTH, .h = 75};
+    draw_recs32(bottom_view, 0.1, COLOR_WHITE);
+
 }

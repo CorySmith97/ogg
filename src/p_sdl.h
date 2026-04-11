@@ -77,9 +77,13 @@ static struct {
     u8              prev_keystate[SDL_NUM_SCANCODES];
     MouseState      mouse_state;
     bool            mouse_enabled;
+    char            text_input_buffer[2048];
+    b32             text_input_enabled;
     mu_Context     *ui;
 } platform_ctx = {
     .prev_keystate = {0},
+    .text_input_enabled = false,
+    .text_input_buffer = {0},
 };
 
 

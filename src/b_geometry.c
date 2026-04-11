@@ -171,8 +171,38 @@ RayCollision get_raycollision_box(Ray ray, AABB box)
 // https://en.wikipedia.org/wiki/Möller–Trumbore_intersection_algorithm
 RayCollision get_ray_collision_triangle(Ray ray, V3f v1, V3f v2, V3f v3)
 {
-    // TODO
-    return (RayCollision){};
+    float epsilon = 1e-6f;
+    RayCollision collision = {0};
+    V3f edge1 = v3f_sub(v2, v1);
+    V3f edge2 = v3f_sub(v3, v1);
+    V3f normal = v3f_cross(edge1, edge2);
+    if (v3f_dot(normal, ray.direction) > 0) return collision;
+
+    V3f ray_cross_e2 = v3f_cross(ray.direction, edge2);
+    f32 det = v3f_dot(edge1, ray_cross_e2);
+    if (fabsf(det) < epsilon) return collision;
+
+    f32 inv_det = 1 / det;
+    V3f s = v3f_sub(ray.position, v1);
+    f32 u = inv_det * v3f_dot(s, ray_cross_e2);
+
+    if ((u < 0.0) || (u > 1.0f)) return collision;
+
+    V3f s_cross_e1 = v3f_cross(s, edge1);
+    float v = inv_det * v3f_dot(ray.direction, s_cross_e1);
+
+    if (v < -0.0f || (v + u) > 1.0f) return collision;
+
+    f32 t = inv_det * v3f_dot(edge2, s_cross_e1);
+
+    if (t > epsilon) {
+        collision.hit = true;
+        collision.point = v3f_add(ray.position, v3f_scale(ray.direction, t));
+        collision.distance = t;
+        return collision;
+    }
+
+    return collision;
 }
 
 static inline AABB aabb_from_points(const V3f *pts, s32 count)

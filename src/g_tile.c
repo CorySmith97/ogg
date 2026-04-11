@@ -11,3 +11,12 @@ void tiles_init(void)
 void tile_draw(Tile *t)
 {
 }
+
+
+RayCollision tile_mouse_ray_collision(Tile *t, Ray mouse_ray)
+{
+    RayCollision collision = {0};
+    
+
+    return collision;
+}

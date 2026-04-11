@@ -109,7 +109,11 @@ void platform_handle_events(bool *quit)
                 on_mouse_scroll(event.wheel.y);
                 mu_input_scroll(platform_ctx.ui, 0, event.wheel.y * -30); 
                                  break;
-            case SDL_TEXTINPUT: mu_input_text(platform_ctx.ui, event.text.text); break;
+            case SDL_TEXTINPUT: 
+                if (platform_ctx.text_input_enabled) {
+                    mu_input_text(platform_ctx.ui, event.text.text); 
+                }
+                break;
             case SDL_MOUSEMOTION: {
                                       f32 sx = (f32)GAME_WIDTH  / (f32)platform_ctx.width;
                                       f32 sy = (f32)GAME_HEIGHT / (f32)platform_ctx.height;

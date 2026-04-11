@@ -24,6 +24,8 @@ typedef struct Entity{
     AABB         aabb;
     b32          hit;
 
+    b32          selected_player;
+
     AncestoryHeritage race;
     BaseClass base_class;
     Attributes attributes;
@@ -44,6 +46,9 @@ void entity_draw(Entity *e);
 // SERDE
 void entity_serde_write(Entity *e);
 Entity *entity_serde_read(const char *bytes, size_t size);
+// Pathfind to target tile. If not able to pathfind, return false
+b32 entity_set_target_tile(Entity *e, s32 tile_index);
+RayCollision entity_mouse_ray_collision(Entity *e, Ray mouse_ray);
 
 
 #endif // ENTITY_H

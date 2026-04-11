@@ -29,8 +29,11 @@ SimpleMtl *load_material_file(const char *file)
     SimpleMtl *mtl = malloc(sizeof(SimpleMtl));
 
     FILE *f = fopen(file, "r");
-    if (f == NULL) 
+    if (f == NULL) {
+        console_write_log_alloc("Failed to load material %s", file);
         goto ret;
+    }
+
 
     while((read = getline(&line, &len, f)) != -1) {
         if (line[0] == 'K') {
@@ -51,6 +54,7 @@ SimpleMtl *load_material_file(const char *file)
     }
 
     log_info("Loaded material %s", file);
+    console_write_log_alloc("[Loaded material] %s", file);
 
 ret:
     fclose(f);
@@ -68,6 +72,7 @@ Texture *load_texture_from_file(const char *file, bool flip)
     memcpy(tex->data, data, size);
 
     log_info("Loaded texture  %s", file);
+    console_write_log_alloc("[Loaded texture] %s", file);
     stbi_image_free(data);
     return tex;
 }
@@ -144,6 +149,7 @@ Asset_Model *load_model_from_file(const char *file)
     }
     log_info("Model loaded    %s", file);
     log_info("Vertices loaded %td", arrlen(model->vertices));
+    console_write_log_alloc("Loaded model %s", file);
     goto ret;
 
 
