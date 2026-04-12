@@ -8,7 +8,7 @@ typedef struct {
     Tile *tiles;
 } Scene;
 
-Scene *scene_load(const char *name);
+Scene *scene_load(Arena *arena, const char *name);
 void   scene_unload(Scene *s, const char *name);
 void   scene_save(Scene *s, const char *name);
 void   scene_update(Scene *s);

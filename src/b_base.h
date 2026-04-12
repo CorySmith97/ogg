@@ -45,6 +45,8 @@ typedef s64      b64;
 #define FlagExists(n, f) (((n) & (f)) == (f))
 #define FlagEquals(n, f) (((n) == (f)))
 
+#define Defer(n, f) for ((n);;(f))
+
 #define KB(n) (((u64)(n)) << 10)
 #define MB(n) (((u64)(n)) << 20)
 #define GB(n) (((u64)(n)) << 30)

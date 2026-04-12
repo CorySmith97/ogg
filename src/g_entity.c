@@ -64,3 +64,72 @@ RayCollision entity_mouse_ray_collision(Entity *e, Ray mouse_ray)
 
     return collision;
 }
+
+
+// ----------------------------------------------------------------
+// Serializer
+// ----------------------------------------------------------------
+
+bool entity_serialize(FILE *f, const Entity *e) {
+    bool ok = true;
+
+    // POD fields
+    ok &= write_bytes(f, &e->tag,              sizeof(e->tag));
+    // model            -- SKIPPED
+    ok &= write_string(f,  e->model_tag);           // const char *
+    ok &= write_bytes(f, &e->position,         sizeof(e->position));
+    ok &= write_bytes(f, &e->target,           sizeof(e->target));
+    ok &= write_bytes(f, &e->rotation,         sizeof(e->rotation));
+    ok &= write_bytes(f, &e->aabb,             sizeof(e->aabb));
+    ok &= write_bytes(f, &e->hit,              sizeof(e->hit));
+    ok &= write_bytes(f, &e->yaw,              sizeof(e->yaw));
+    ok &= write_bytes(f, &e->update_disabled,  sizeof(e->update_disabled));
+    ok &= write_bytes(f, &e->selected_player,  sizeof(e->selected_player));
+    ok &= write_bytes(f, &e->race,             sizeof(e->race));
+    ok &= write_bytes(f, &e->base_class,       sizeof(e->base_class));
+    ok &= write_bytes(f, &e->attributes,       sizeof(e->attributes));
+    ok &= write_bytes(f, &e->level,            sizeof(e->level));
+    ok &= write_bytes(f, &e->movement_speed,   sizeof(e->movement_speed));
+    ok &= write_bytes(f, &e->spellcaster_lvl,  sizeof(e->spellcaster_lvl));
+    // update_fn        -- SKIPPED
+
+    fclose(f);
+    return ok;
+}
+
+// ----------------------------------------------------------------
+// Deserializer
+// ----------------------------------------------------------------
+
+// model_tag_buf / buf_size: caller-owned buffer for the model_tag string.
+// After loading, e->model and e->update_fn are set to NULL.
+bool entity_deserialize(Entity *e, const char *path,
+                        char *model_tag_buf, size_t model_tag_buf_size) {
+    FILE *f = fopen(path, "rb");
+    if (!f) return false;
+
+    bool ok = true;
+
+    ok &= read_bytes(f, &e->tag,             sizeof(e->tag));
+    e->model = NULL;                                         // not serialized
+    ok &= read_string(f, model_tag_buf, model_tag_buf_size);
+    e->model_tag = ok ? model_tag_buf : NULL;
+    ok &= read_bytes(f, &e->position,        sizeof(e->position));
+    ok &= read_bytes(f, &e->target,          sizeof(e->target));
+    ok &= read_bytes(f, &e->rotation,        sizeof(e->rotation));
+    ok &= read_bytes(f, &e->aabb,            sizeof(e->aabb));
+    ok &= read_bytes(f, &e->hit,             sizeof(e->hit));
+    ok &= read_bytes(f, &e->yaw,             sizeof(e->yaw));
+    ok &= read_bytes(f, &e->update_disabled, sizeof(e->update_disabled));
+    ok &= read_bytes(f, &e->selected_player, sizeof(e->selected_player));
+    ok &= read_bytes(f, &e->race,            sizeof(e->race));
+    ok &= read_bytes(f, &e->base_class,      sizeof(e->base_class));
+    ok &= read_bytes(f, &e->attributes,      sizeof(e->attributes));
+    ok &= read_bytes(f, &e->level,           sizeof(e->level));
+    ok &= read_bytes(f, &e->movement_speed,  sizeof(e->movement_speed));
+    ok &= read_bytes(f, &e->spellcaster_lvl, sizeof(e->spellcaster_lvl));
+    e->update_fn = NULL;                                     // not serialized
+
+    fclose(f);
+    return ok;
+}

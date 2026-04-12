@@ -124,3 +124,30 @@ Color alpha_blend(Color src, Color dst)
         .a = 255,
     };
 }
+
+static bool write_bytes(FILE *f, const void *data, size_t size) {
+    return fwrite(data, 1, size, f) == size;
+}
+
+static bool read_bytes(FILE *f, void *data, size_t size) {
+    return fread(data, 1, size, f) == size;
+}
+
+// Writes a null-terminated string as [u32 length | chars (no null)]
+static bool write_string(FILE *f, const char *str) {
+    uint32_t len = str ? (uint32_t)strlen(str) : 0;
+    if (!write_bytes(f, &len, sizeof(len))) return false;
+    if (len > 0 && !write_bytes(f, str, len))  return false;
+    return true;
+}
+
+// Reads back a string into a caller-supplied buffer.
+// Returns false on error or overflow.
+static bool read_string(FILE *f, char *buf, size_t buf_size) {
+    uint32_t len;
+    if (!read_bytes(f, &len, sizeof(len))) return false;
+    if (len >= buf_size)                   return false; // won't fit
+    if (len > 0 && !read_bytes(f, buf, len)) return false;
+    buf[len] = '\0';
+    return true;
+}
