@@ -12,10 +12,27 @@ void entity_init(void)
     };
 }
 
+f32 angle_diff(f32 a, f32 b) {
+    f32 d = b - a;
+    while (d >  M_PI) d -= 2.0f * M_PI;
+    while (d < -M_PI) d += 2.0f * M_PI;
+    return d;
+}
+
 void entity_update(Entity *e)
 {
-    e->aabb.min = v3f(e->position.x - 0.25, e->position.y, e->position.z - 0.25);
-    e->aabb.max = v3f(e->position.x + 0.25, e->position.y + 1, e->position.z + 0.25);
+    e->position = v3f_add(e->position, v3f_scale(v3f_sub(e->target, e->position), 0.1));
+    // TODO is the angle is too wide then it doesnt rotate properly
+    V3f dir = v3f_sub(e->target, e->position);
+
+    if (!v3f_equal(dir, v3f(0,0,0))) {
+        dir = v3f_normalize(dir);
+
+        // assuming forward is +Z
+        f32 yaw = atan2f(dir.x, -dir.z);
+
+        e->rotation = rotation_y(yaw);
+    }
     e->update_fn(e);
 }
 

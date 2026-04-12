@@ -5,6 +5,7 @@ static struct {
     // Write console items and read from an open file.
     const char *file;
     FILE *file_handle;
+    Arena *arena;
     char buffer[1024];
     Recs32 rec;
     Recs32 draw_rec;

@@ -23,6 +23,8 @@ typedef struct Entity{
     Mat3         rotation;
     AABB         aabb;
     b32          hit;
+    f32          yaw;
+    b32          update_disabled;
 
     b32          selected_player;
 

@@ -23,6 +23,7 @@ typedef struct {
     b32         attached;
 } Gizmo;
 
+
 void gizmo_draw(Gizmo *gizmo);
 V3f  gizmo_translation_modify(Gizmo *gizmo, Gizmo_Axis axis, V2f delta);
 void gizmo_rotation_modify(Gizmo *gizmo, Gizmo_Axis axis, f32 angle);

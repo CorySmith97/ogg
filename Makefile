@@ -4,6 +4,7 @@ M_FILES=src/main.m
 C_FLAGS=-std=c99 -Wall -g -Wno-missing-braces 
 C_FLAGS+= -Wextra -Wno-unused-function
 C_FLAGS+= -Wno-unused-variable -Wno-unused-parameter
+C_FLAGS+= -Wno-incompatible-pointer-types -Wno-initializer-overrides
 C_FLAGS+= -DPLATFORM_SDL
 C_FLAGS+= -DDEBUG
 BUILD_DIR=bin

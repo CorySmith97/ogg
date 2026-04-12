@@ -237,6 +237,11 @@ V3f v3f_cross(V3f v, V3f u)
     };
 }
 
+b32 v3f_equal(V3f v, V3f u)
+{
+    return (v.x == u.x && v.y == u.y && v.z == u.z);
+}
+
 inline V4f v4f(f32 x, f32 y, f32 z, f32 w)
 {
     return (V4f){

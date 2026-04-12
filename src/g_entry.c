@@ -37,6 +37,7 @@ static struct {
     // This is all editor stuff that should be moved
     .selected_entity = -1,
     .selected_axis   = -1,
+    .player_index = 0,
     .gizmo = {
         .attached = false,
         .axis = {
@@ -91,6 +92,7 @@ void game_init(void)
             .model = shget(gs.assets, "shopkeeper"),
             .model_tag = "shopkeeper",
             .position = v3f(0,0,0),
+            .target = v3f(0,0,0),
             .rotation = mat3_identity(),
             .update_fn = update_shopkeeper,
             };
@@ -98,6 +100,7 @@ void game_init(void)
             .model = shget(gs.assets, "shopkeeper"),
             .model_tag = "shopkeeper",
             .position = v3f(2,0,4),
+            .target = v3f(2,0,4),
             .rotation = mat3_identity(),
             .update_fn = update_shopkeeper,
             };
@@ -105,6 +108,7 @@ void game_init(void)
             .model = shget(gs.assets, "shopkeeper"),
             .model_tag = "shopkeeper",
             .position = v3f(8,0,4),
+            .target = v3f(8,0,4),
             .rotation = mat3_identity(),
             .update_fn = update_shopkeeper,
             };
@@ -116,6 +120,14 @@ void game_init(void)
     arrput(gs.dynamic_entities, e3);
     gs.font = load_font("data/atlas.png", 128, 128);
     ui_init(gs.font);
+
+    for (s32 i = 0; i < 10; i++) {
+        for (s32 j = 0; j < 10; j++) {
+            f32 x = i + 0.5;
+            f32 z = j + 0.5;
+            arrput(gs.tiles, (Tile){.position = v3f(x, 0, z)});
+        }
+    }
 
     SectionEnd("Intialization");
     profiler_report();
@@ -171,10 +183,17 @@ void game_frame(void)
                 handle_camera_gameplay(mouse_delta);
                 game_ui();
                 if (is_mouse_button_pressed(MOUSEBUTTON_LEFT)) {
-                    //RayCollision tile_collision = tile_mouse_ray_collision(mouse_ray);
-                    //if (tile_collision.hit) {
-                    //    gs.dynamic_entities[gs.player_index].target = tile_collision.point;
-                    //}
+                    for (s32 i = 0; i < arrlen(gs.tiles); i++) {
+                        RayCollision collision = tile_mouse_ray_collision(&gs.tiles[i], mouse_ray);
+                        if (collision.hit) {
+                            Entity *e = &gs.dynamic_entities[gs.player_index];
+                            e->target = gs.tiles[i].position;
+                        }
+                    }
+                }
+                for (s32 i = 0; i < arrlen(gs.dynamic_entities); i++) {
+                    Entity *e = &gs.dynamic_entities[i];
+                    e->update_disabled = false;
                 }
                 break;
             default:
@@ -225,6 +244,7 @@ void game_frame(void)
 
                         for (s32 i = 0; i < arrlen(gs.dynamic_entities); i++) {
                             Entity *e = &gs.dynamic_entities[i];
+                            e->update_disabled = true;
                             RayCollision collision = entity_mouse_ray_collision(e, mouse_ray);
                             if (collision.hit && collision.distance < closest) {
                                 closest = collision.distance;
@@ -262,6 +282,7 @@ void game_frame(void)
                     );
 
                     e->position = v3f_add(e->position, delta);
+                    e->target = e->position;
                     gs.gizmo.position = e->position;
                 }
 
@@ -288,7 +309,8 @@ void game_frame(void)
     for (s32 i = 0; i < arrlen(gs.dynamic_entities); i++) {
         Entity *e = &gs.dynamic_entities[i];
         e->hit = (i == gs.selected_entity);
-        entity_update(e);
+        if (!e->update_disabled)
+            entity_update(e);
     }
 
     SectionEnd("Entity Update");
@@ -297,18 +319,8 @@ void game_frame(void)
 
     SectionStart("Draw Entities");
     // Temp drawing of tile map
-    for (s32 i = 0; i < 10; i++) {
-        for (s32 j = 0; j < 10; j++) {
-            Color color = (i  + j) % 2 == 0 ? COLOR_BROWN : COLOR_YELLOW;
-            f32 x = i + 0.5;
-            f32 z = j + 0.5;
-            draw_rectangle3d(
-                    v3f(x,     -0.1, z),
-                    v3f(x + 1, -0.1, z),
-                    v3f(x,     -0.1, z + 1),
-                    v3f(x + 1, -0.1, z + 1),
-                    color, 0);
-        }
+    for (s32 i = 0; i < arrlen(gs.tiles); i++) {
+        tile_draw(&gs.tiles[i]);
     }
 
     draw_model(shget(gs.assets, "curve_cylinder"), v3f(0, 0, 0), mat3_scale(0.1));
@@ -417,7 +429,7 @@ void game_frame(void)
 				case MU_COMMAND_TEXT:
 				  if ((unsigned char)cmd->text.str[0] >= 32)
 					  draw_text(gs.font, cmd->text.str, v2i(cmd->text.pos.x, cmd->text.pos.y),
-							  14, mu_to_color(cmd->text.color));
+							  16, mu_to_color(cmd->text.color));
 				  break;
 				case MU_COMMAND_RECT:
 				   draw_recs32(mu_to_rec(cmd->rect.rect), ui_z, mu_to_color(cmd->rect.color));

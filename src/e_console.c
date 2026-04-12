@@ -10,6 +10,7 @@
 
 void console_init(void)
 {
+    console.arena = arena_alloc();
     console.file_handle = fopen(console.file, "w+");
     console.rec = (Recs32){.x = 0, .y = 0, .w = renderer.width, .h = 0};
 }
@@ -46,7 +47,7 @@ void console_draw(Font *font)
         return;
     }
 
-    f32 text_size = 20.0f;
+    f32 text_size = 16.0f;
     s32 total_lines = (s32)arrlen(console.lines);
 
     // reserve one row for input
@@ -101,7 +102,7 @@ void console_write_log_alloc(const char *fmt, ...)
         return;
     }
 
-    char *buf = malloc((size_t)n + 1);
+    char *buf = arena_push(console.arena, n + 1, 8, 0);
     if (!buf) {
         va_end(args2);
         return;

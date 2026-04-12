@@ -110,6 +110,7 @@ V3f v3f_normalize(V3f v);
 V3f v3f_translate_by_mat4(V3f v, Mat4 m);
 static inline V3f v3f_min(V3f a, V3f b);
 static inline V3f v3f_max(V3f a, V3f b);
+b32 v3f_equal(V3f v, V3f u);
 
 V3i v3i(s32 x, s32 y, s32 z);
 V3i v3i_add(V3i v, V3i u);

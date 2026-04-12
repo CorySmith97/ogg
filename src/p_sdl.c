@@ -7,6 +7,7 @@ void on_mouse_down(s32 button);
 void on_mouse_up(s32 button);
 void on_mouse_scroll(f32 y);
 void platform_check_keystate(void);
+void begin_input_frame(void);
 
 static KeyboardState keyboard_state;
 static MouseState mouse_state;
@@ -30,11 +31,11 @@ static const char key_map[256] = {
 
 static int text_width(mu_Font font, const char *text, int len) {
   if (len == -1) { len = strlen(text); }
-  return len * 14;
+  return len * 16;
 }
 
 static int text_height(mu_Font font) {
-  return 14;
+  return 16;
 }
 
 void platform_init(const char *name, u32 width, u32 height)
@@ -77,6 +78,7 @@ void platform_handle_events(bool *quit)
     }
 
     platform_check_keystate();
+    begin_input_frame();
     s32 b, c;
     SDL_Event event;
     while (SDL_PollEvent(&event))
@@ -245,20 +247,21 @@ void set_mouse_toggle_key(s32 key)
         platform_ctx.mouse_enabled = !platform_ctx.mouse_enabled;
     }
 }
-        
+void begin_input_frame(void)
+{
+    platform_ctx.mouse_state.scroll_delta = 0;
+}
+
 void on_mouse_scroll(f32 y)
 {
-    platform_ctx.mouse_state.scroll_delta = y;
+    platform_ctx.mouse_state.scroll_delta += y;
 }
 
-f32 get_mouse_scroll()
+f32 get_mouse_scroll(void)
 {
-    f32 ret = platform_ctx.mouse_state.scroll_delta;
-    platform_ctx.mouse_state.scroll_delta = 0;
-    return ret;
-
+    return platform_ctx.mouse_state.scroll_delta;
 }
-
+        
 void platform_check_keystate(void)
 {
 

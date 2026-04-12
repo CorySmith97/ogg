@@ -2,17 +2,18 @@
 #define TILE_HEAD
 
 typedef enum {
-    Tile_Dirt,
-    Tile_Count,
+    TILE_DIRT,
+    TILE_COUNT,
 } Tile_Tag;
 
 typedef struct {
+    Recs32 rec;
     V3f position;
     Color color;
     Texture *texture;
 } Tile;
 
-Tile tiles_types[Tile_Count];
+Tile tiles_types[TILE_COUNT];
 
 void tiles_init(void);
 void tile_draw(Tile *t);

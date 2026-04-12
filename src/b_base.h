@@ -16,6 +16,7 @@
 
 #include <string.h>
 #include <sys/types.h>
+#include <sys/mman.h>
 
 typedef int8_t   s8;
 typedef int16_t  s16;
@@ -76,6 +77,66 @@ typedef s64      b64;
 #define internal static
 #define global   static
 
+#define AlignPow2(x,b)     (((x) + (b) - 1)&(~((b) - 1)))
+
+// ARENAS AND THESE DS MACROS ARE TAKEN FROM RADDEBUGGER
+
+//- rjf: doubly-linked-lists
+#define DLLInsert_NPZ(nil,f,l,p,n,next,prev) (CheckNil(nil,f) ? \
+((f) = (l) = (n), SetNil(nil,(n)->next), SetNil(nil,(n)->prev)) :\
+CheckNil(nil,p) ? \
+((n)->next = (f), (f)->prev = (n), (f) = (n), SetNil(nil,(n)->prev)) :\
+((p)==(l)) ? \
+((l)->next = (n), (n)->prev = (l), (l) = (n), SetNil(nil, (n)->next)) :\
+(((!CheckNil(nil,p) && CheckNil(nil,(p)->next)) ? (0) : ((p)->next->prev = (n))), ((n)->next = (p)->next), ((p)->next = (n)), ((n)->prev = (p))))
+#define DLLPushBack_NPZ(nil,f,l,n,next,prev) DLLInsert_NPZ(nil,f,l,l,n,next,prev)
+#define DLLPushFront_NPZ(nil,f,l,n,next,prev) DLLInsert_NPZ(nil,l,f,f,n,prev,next)
+#define DLLRemove_NPZ(nil,f,l,n,next,prev) (((n) == (f) ? (f) = (n)->next : (0)),\
+((n) == (l) ? (l) = (l)->prev : (0)),\
+(CheckNil(nil,(n)->prev) ? (0) :\
+((n)->prev->next = (n)->next)),\
+(CheckNil(nil,(n)->next) ? (0) :\
+((n)->next->prev = (n)->prev)))
+
+//- rjf: singly-linked, doubly-headed lists (queues)
+#define SLLQueuePush_NZ(nil,f,l,n,next) (CheckNil(nil,f)?\
+((f)=(l)=(n),SetNil(nil,(n)->next)):\
+((l)->next=(n),(l)=(n),SetNil(nil,(n)->next)))
+#define SLLQueuePushFront_NZ(nil,f,l,n,next) (CheckNil(nil,f)?\
+((f)=(l)=(n),SetNil(nil,(n)->next)):\
+((n)->next=(f),(f)=(n)))
+#define SLLQueuePop_NZ(nil,f,l,next) ((f)==(l)?\
+(SetNil(nil,f),SetNil(nil,l)):\
+((f)=(f)->next))
+
+//- rjf: singly-linked, singly-headed lists (stacks)
+#define SLLStackPush_N(f,n,next) ((n)->next=(f), (f)=(n))
+#define SLLStackPop_N(f,next) ((f)=(f)->next)
+
+//- rjf: doubly-linked-list helpers
+#define DLLInsert_NP(f,l,p,n,next,prev) DLLInsert_NPZ(0,f,l,p,n,next,prev)
+#define DLLPushBack_NP(f,l,n,next,prev) DLLPushBack_NPZ(0,f,l,n,next,prev)
+#define DLLPushFront_NP(f,l,n,next,prev) DLLPushFront_NPZ(0,f,l,n,next,prev)
+#define DLLRemove_NP(f,l,n,next,prev) DLLRemove_NPZ(0,f,l,n,next,prev)
+#define DLLInsert(f,l,p,n) DLLInsert_NPZ(0,f,l,p,n,next,prev)
+#define DLLPushBack(f,l,n) DLLPushBack_NPZ(0,f,l,n,next,prev)
+#define DLLPushFront(f,l,n) DLLPushFront_NPZ(0,f,l,n,next,prev)
+#define DLLRemove(f,l,n) DLLRemove_NPZ(0,f,l,n,next,prev)
+
+//- rjf: singly-linked, doubly-headed list helpers
+#define SLLQueuePush_N(f,l,n,next) SLLQueuePush_NZ(0,f,l,n,next)
+#define SLLQueuePushFront_N(f,l,n,next) SLLQueuePushFront_NZ(0,f,l,n,next)
+#define SLLQueuePop_N(f,l,next) SLLQueuePop_NZ(0,f,l,next)
+#define SLLQueuePush(f,l,n) SLLQueuePush_NZ(0,f,l,n,next)
+#define SLLQueuePushFront(f,l,n) SLLQueuePushFront_NZ(0,f,l,n,next)
+#define SLLQueuePop(f,l) SLLQueuePop_NZ(0,f,l,next)
+
+//- rjf: singly-linked, singly-headed list helpers
+#define SLLStackPush(f,n) SLLStackPush_N(f,n,next)
+#define SLLStackPop(f) SLLStackPop_N(f,next)
+
+#define MemoryZero(s,z)       memset((s),0,(z))
+
 typedef uint32_t Log_Level;
 enum
 {
@@ -95,6 +156,13 @@ void logger(Log_Level level, const char *msg, ...);
 #define log_error(msg, ...) logger(LOG_ERROR, (msg), ##__VA_ARGS__)
 #define log_debug(msg, ...) logger(LOG_DEBUG, (msg), ##__VA_ARGS__)
 #define log_warn(msg, ...)  logger(LOG_WARN,  (msg), ##__VA_ARGS__)
+
+#ifdef DARWIN
+#   define PAGE_SIZE 16384
+#else
+#   define PAGE_SIZE 4096
+#endif
+#define ARENA_HEADER_SIZE 128
 
 typedef enum {
   ARENAFLAG_NOCHAIN    = (1<<0),
@@ -129,13 +197,39 @@ typedef struct {
 #endif
 } Arena;
 
-Arena *_arena_alloc(ArenaParams params);
-void   arena_checkpoint(Arena *arena);
-void   arena_reset_to_checkpoint(Arena *arena);
-void   arena_reset(Arena *arena);
-void  *arena_push(Arena *arena);
+typedef struct {
+  Arena *arena;
+  u64 pos;
+} Temp;
 
-#define arena_alloc(...) _arena_alloc((Arena_Params){})
+u64 arena_default_reserve_size = MB(64);
+u64 arena_default_commit_size  = KB(64);
+ArenaFlags arena_default_flags = 0;
+
+//- rjf: arena creation/destruction
+Arena *arena_alloc_(ArenaParams *params);
+#define arena_alloc(...) arena_alloc_(&(ArenaParams){.reserve_size = arena_default_reserve_size, .commit_size = arena_default_commit_size, .flags = arena_default_flags, .allocation_site_file = __FILE__, .allocation_site_line = __LINE__, __VA_ARGS__})
+void arena_release(Arena *arena);
+
+//- rjf: arena push/pop/pos core functions
+void *arena_push(Arena *arena, u64 size, u64 align, b32 zero);
+u64   arena_pos(Arena *arena);
+void  arena_pop_to(Arena *arena, u64 pos);
+
+//- rjf: arena push/pop helpers
+void arena_clear(Arena *arena);
+void arena_pop(Arena *arena, u64 amt);
+
+//- rjf: temporary arena scopes
+Temp temp_begin(Arena *arena);
+static void temp_end(Temp temp);
+
+//- rjf: push helper macros
+#define push_array_no_zero_aligned(a, T, c, align) (T *)arena_push((a), sizeof(T)*(c), (align), (0))
+#define push_array_aligned(a, T, c, align) (T *)arena_push((a), sizeof(T)*(c), (align), (1))
+#define push_array_no_zero(a, T, c) push_array_no_zero_aligned(a, T, c, max(8, AlignOf(T)))
+#define push_array(a, T, c) push_array_aligned(a, T, c, max(8, AlignOf(T)))
+
 
 typedef struct {
     u8 *data;

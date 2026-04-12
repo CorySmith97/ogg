@@ -1,6 +1,7 @@
 #include "g_entry.h"
 #include "tp_entry.h"
 #include "b_base.h"
+#include "b_os.h"
 #include "b_la.h"
 #include "s_assets.h"
 #include "b_geometry.h"
@@ -17,6 +18,8 @@
 #include "e_entry.h"
 
 #include "b_base.c"
+#include "b_os.c"
+#include "b_arena.c"
 #include "tp_entry.c"
 #include "b_la.c"
 #include "p_entry.c"

@@ -115,9 +115,9 @@ void render_init(void)
     for (s32 i = 0; i < NUM_THREADS; i++)
         pthread_create(&workers[i].thread, NULL, worker_thread, NULL);
 
-    console_write_log_alloc("Renderer Initialized:");
-    console_write_log_alloc("    Display info: %dx%d", renderer.width, renderer.height);
-    console_write_log_alloc("    Thread count: %d", NUM_THREADS);
+    //console_write_log_alloc("Renderer Initialized:");
+    //console_write_log_alloc("    Display info: %dx%d", renderer.width, renderer.height);
+    //console_write_log_alloc("    Thread count: %d", NUM_THREADS);
 }
 
 void render_shutdown(void)
