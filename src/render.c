@@ -320,6 +320,15 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
         double total_area = signed_area(pos1.x, pos1.y, pos2.x, pos2.y, pos3.x, pos3.y);
         if (total_area >= 0)
             return;
+        if (FlagExists(tri.flags, TRIANGLE_WIRE_FRAME)) {
+            float t = (sinf(renderer.time) + 1.0f) * 0.5f;
+            float pulse =  0.7f * (t * t);  // eases in, snappy falloff
+
+            Color c = color_scale(COLOR_PURPLE, pulse);
+            set_line(pos1, pos2, c);
+            set_line(pos2, pos3, c);
+            set_line(pos1, pos3, c);
+        }
     }
 
     for (s32 y = y0; y < y1; y++)
@@ -381,13 +390,6 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
             }
         }
     }
-    if (FlagExists(tri.flags, TRIANGLE_WIRE_FRAME)) {
-        Color c = color_scale(COLOR_PURPLE, sinf(renderer.dt));
-        set_line(pos1, pos2, c);
-        set_line(pos2, pos3, c);
-        set_line(pos1, pos3, c);
-    }
-
 }
 
 void draw_point(V3f p, Color color)

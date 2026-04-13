@@ -266,7 +266,7 @@ typedef union Color {
 #define COLOR_BROWN  (Color){.r = 0x96, .g = 0x4B, .a = 0xFF }
 #define COLOR_BLUE   (Color){.g = 127, .b = 252, .a = 255}
 #define COLOR_GREEN  (Color){.r = 48, .g = 252, .a = 255}
-#define COLOR_PURPLE (Color){.r = 0x50, .b = 0x50, .a = 255}
+#define COLOR_PURPLE (Color){.r = 245, .g = 39, .b = 245, .a = 255}
 #define COLOR_YELLOW (Color){.r = 0x50, .g = 0x50, .a = 255}
 
 

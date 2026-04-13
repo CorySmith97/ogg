@@ -131,7 +131,8 @@ f32 z = 1.0f;
 void game_frame(void)
 {
     SectionStart("Frame");
-    renderer.dt = get_time();
+    renderer.time = get_time();
+    renderer.dt = get_time() - renderer.time;
 	renderer.sun = gs.sun;
     f32 mouse_scroll = get_mouse_scroll();
     V2f mouse_pos = get_mouse_pos();

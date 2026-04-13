@@ -59,6 +59,7 @@ static struct {
     b32 quit;
     s32 width, height;
     f32 dt;
+    u64 time;
     // TODO remove this from here
     Camera camera;
     Camera swap_camera; // spare camera to hold a different camera in
