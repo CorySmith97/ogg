@@ -58,6 +58,7 @@ void game_ui(void);
 
 f32 angle = 0;
 Texture *entity_1;
+u64 last_time;
 
 void game_init(void)
 {
@@ -123,6 +124,7 @@ void game_init(void)
     renderer.swap_camera.front = v3f_normalize(v3f_sub(renderer.swap_camera.target, renderer.swap_camera.position));
 
     console_write_log_alloc("[Initialization Time] (%.3fms)", profiler.sections[0].delta_ns / 1000000.0);
+    last_time = SDL_GetPerformanceCounter();
     profiler_reset();
 }
 
@@ -130,9 +132,16 @@ f32 z = 1.0f;
 
 void game_frame(void)
 {
+    platform_ctx.text_input_enabled = console.open;
     SectionStart("Frame");
-    renderer.time = get_time();
-    renderer.dt = get_time() - renderer.time;
+
+
+    // in your game loop:
+    u64 now       = SDL_GetPerformanceCounter();
+    renderer.dt   = (float)(now - last_time) / (float)SDL_GetPerformanceFrequency();
+    last_time      = now;
+    renderer.time += renderer.dt;
+
 	renderer.sun = gs.sun;
     f32 mouse_scroll = get_mouse_scroll();
     V2f mouse_pos = get_mouse_pos();
@@ -152,6 +161,7 @@ void game_frame(void)
     }
     if (is_key_pressed(KEY_Y)) {
         if (gs.state != GAME_STATE_GAMEPLAY) {
+            notifications_push((Notification){ .msg = str8_lit("Gameplay State"), .lifetime = 3.0f });
             console_write_log(str8_lit("Game state gameplay"));
             gs.state = GAME_STATE_GAMEPLAY;
             change_camera();
@@ -161,8 +171,6 @@ void game_frame(void)
 
     set_mouse_toggle_key(KEY_P);
     clear_background(COLOR_GRAY);
-
-    platform_ctx.text_input_enabled = !console.open;
 
     // If console is open, the key capture goes to the console instead of anything else
     if (!console.open) {
@@ -219,7 +227,7 @@ void game_frame(void)
     console_draw(gs.font);
 
     notifications_update();
-    notifications_flush();
+    notifications_flush(gs.font);
 
     SectionStart("Flush");
     renderer_flush();

@@ -10,7 +10,7 @@ typedef enum {
 
 typedef struct {
     NotificationTag tag;
-    s32     time_in_ms;
+    f32     lifetime;
     String8 msg;
 } Notification;
 
@@ -24,6 +24,6 @@ static struct {
 
 void notifications_push(Notification notification);
 void notifications_update(void);
-void notifications_flush(void);
+void notifications_flush(Font *font);
 
 #endif // NOTIFICATION_H
