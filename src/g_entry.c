@@ -130,6 +130,8 @@ f32 z = 1.0f;
 
 void game_frame(void)
 {
+    SectionStart("Frame");
+    renderer.dt = get_time();
 	renderer.sun = gs.sun;
     f32 mouse_scroll = get_mouse_scroll();
     V2f mouse_pos = get_mouse_pos();
@@ -158,6 +160,8 @@ void game_frame(void)
 
     set_mouse_toggle_key(KEY_P);
     clear_background(COLOR_GRAY);
+
+    platform_ctx.text_input_enabled = !console.open;
 
     // If console is open, the key capture goes to the console instead of anything else
     if (!console.open) {
@@ -216,13 +220,16 @@ void game_frame(void)
     notifications_update();
     notifications_flush();
 
+    SectionStart("Flush");
     renderer_flush();
+    SectionEnd("Flush");
 
     if (!console.open) {
         ui_flush();
     }
 
     gs.sun.position = renderer.camera.position;
+    SectionEnd("Frame");
 }
 
 void game_deinit(void)

@@ -203,7 +203,12 @@ void editor_draw(void)
                 break;
         }
     }
+    SectionStart("Editor Flush");
+    if (is_key_pressed(KEY_N)) {
+        log_debug("Triangled rendered %zu", triangles->len);
+    }
     renderer_flush();
+    SectionEnd("Editor Flush");
 
 }
 

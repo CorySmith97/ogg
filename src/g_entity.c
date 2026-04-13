@@ -38,7 +38,7 @@ void entity_update(Entity *e)
 
 void entity_draw(Entity *e)
 {
-    draw_model(e->model, e->position, e->rotation);
+    draw_model(e->model, e->position, e->rotation, e->hit);
 }
 
 RayCollision entity_mouse_ray_collision(Entity *e, Ray mouse_ray)

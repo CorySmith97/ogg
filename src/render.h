@@ -15,6 +15,7 @@ typedef enum {
     TRIANGLE_TWO_D = 1 << 0,
     TRIANGLE_NO_CULLING = 1 << 1,
     TRIANGLE_WRITE_OVER_Z = 1 << 2,
+    TRIANGLE_WIRE_FRAME = 1 << 3,
 } TriangleFlags;
 
 typedef struct {
@@ -57,6 +58,7 @@ static struct {
     f32 zbuffer[GAME_HEIGHT * GAME_WIDTH];
     b32 quit;
     s32 width, height;
+    f32 dt;
     // TODO remove this from here
     Camera camera;
     Camera swap_camera; // spare camera to hold a different camera in
@@ -67,6 +69,7 @@ static struct {
     .height = GAME_HEIGHT,
     .pixels = {0},
     .zbuffer = {0},
+    .dt = 0,
     .camera = {
         .target = {0, 0, 0},
         .position = {0,2,-2},
@@ -92,7 +95,7 @@ void  clear_background(Color color);
 void  renderer_flush(void);
 void  change_camera(void);
 
-void  draw_model(Asset_Model *model, V3f position, Mat3 rotation);
+void  draw_model(Asset_Model *model, V3f position, Mat3 rotation, b32 selected);
 void  draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Light light);
 void  draw_model_textured(Asset_Model *model, V3f position, Mat3 rotation);
 Color simple_reflection(SimpleMtl *mtl, V3f light_pos, V3f v, V3f n, V3f light_color, Color object_color);

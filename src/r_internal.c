@@ -42,29 +42,37 @@ void set_verline(u32 x, u32 start, u32 end, Color color)
 
 void set_line(V2i v, V2i u, Color color)
 {
-    bool steep = false;
-    if (abs(v.x - v.y) < abs(u.x - u.y))
-    {
-        V2i temp;
-        temp = v;
-        v = u;
-        u = temp;
-        steep = true;
+    bool steep = abs(u.y - v.y) > abs(u.x - v.x);
+
+    if (steep) {
+        // Swap x and y within each point
+        s32 tmp;
+        tmp = v.x; v.x = v.y; v.y = tmp;
+        tmp = u.x; u.x = u.y; u.y = tmp;
     }
 
-    s32 y = v.y;
+    // Ensure left-to-right traversal
+    if (v.x > u.x) {
+        V2i tmp = v; v = u; u = tmp;
+    }
+
+    s32 dx = u.x - v.x;
+    s32 dy = abs(u.y - v.y);
+    s32 ystep = (v.y < u.y) ? 1 : -1;
     s32 ierror = 0;
-    for (s32 x = v.x; x < u.x; x++)
+    s32 y = v.y;
+
+    for (s32 x = v.x; x <= u.x; x++)
     {
         if (steep)
             set_pixel(y, x, color);
         else
             set_pixel(x, y, color);
-        ierror += abs(u.y - v.y);
-        if (ierror > u.x - v.x)
-        {
-            y += u.y > v.y ? 1 : -1;
-            ierror -= 2 * (u.x - v.x);
+
+        ierror += dy;
+        if (2 * ierror >= dx) {
+            y += ystep;
+            ierror -= dx;
         }
     }
 }

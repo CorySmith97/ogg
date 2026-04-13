@@ -381,6 +381,13 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
             }
         }
     }
+    if (FlagExists(tri.flags, TRIANGLE_WIRE_FRAME)) {
+        Color c = color_scale(COLOR_PURPLE, sinf(renderer.dt));
+        set_line(pos1, pos2, c);
+        set_line(pos2, pos3, c);
+        set_line(pos1, pos3, c);
+    }
+
 }
 
 void draw_point(V3f p, Color color)
@@ -403,7 +410,7 @@ void clear_background(Color color)
     }
 }
 
-void draw_model(Asset_Model *model, V3f position, Mat3 rotation)
+void draw_model(Asset_Model *model, V3f position, Mat3 rotation, b32 selected)
 {
     Mat4 view = camera_matrix(renderer.camera);
     for (s32 i = 0; i < arrlen(model->vertices); i += 3)
@@ -453,7 +460,7 @@ void draw_model(Asset_Model *model, V3f position, Mat3 rotation)
                         uvs,
                         model->mtl->diffuse_texture,
 						model->mtl,
-                        0);
+                        selected ? TRIANGLE_WIRE_FRAME : 0);
             else
                 renderer_push_triangle(
                         p1,
