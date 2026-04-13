@@ -14,6 +14,16 @@ typedef struct {
     String8 msg;
 } Notification;
 
+static struct {
+    f32 delta_time;
+    Notification *list;
+} notification_queue = {
+    .delta_time = 0,
+    .list = NULL,
+};
+
+void notifications_push(Notification notification);
+void notifications_update(void);
 void notifications_flush(void);
 
 #endif // NOTIFICATION_H

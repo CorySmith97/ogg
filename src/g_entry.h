@@ -14,6 +14,7 @@ typedef enum {
     GAME_STATE_MENU,
     GAME_STATE_GAMEPLAY,
     GAME_STATE_PAUSE,
+    GAME_STATE_MODEL_EDITOR,
     GAME_STATE_COUNT,
 } GameState;
 

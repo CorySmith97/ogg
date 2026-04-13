@@ -103,7 +103,7 @@ bool entity_serialize(FILE *f, const Entity *e) {
 
 // model_tag_buf / buf_size: caller-owned buffer for the model_tag string.
 // After loading, e->model and e->update_fn are set to NULL.
-bool entity_deserialize(Entity *e, const char *path,
+bool entity_deserialize(Arena *arena, Entity *e, const char *path,
                         char *model_tag_buf, size_t model_tag_buf_size) {
     FILE *f = fopen(path, "rb");
     if (!f) return false;

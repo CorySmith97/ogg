@@ -4,16 +4,46 @@
 Texture_KV     *textures = NULL;
 Asset_Model_KV *assets = NULL;
 
+b32 load_and_store_texture(const char *name, const char *file_name)
+{
+    Texture *val;
+
+    val = shget(textures, name);
+    if (val) return true;
+    val = load_texture_from_file(file_name, false);
+    shput(textures, name, val);
+
+    return false;
+}
+
+b32 load_and_store_model(const char *name, const char *file_name)
+{
+    Asset_Model *val;
+
+    val = shget(assets, name);
+    if (val) return true;
+    val = load_model_from_file(file_name);
+    shput(assets, name, val);
+
+    return false;
+}
+
 Texture *get_texture(const char *name)
 {
     Texture *val;
 
     val = shget(textures, name);
     if (val) return val;
-    // Append 
-    // /data/%name%.png
+    else return NULL;
+}
 
-    return NULL;
+Asset_Model *get_model(const char *name)
+{
+    Asset_Model *val;
+
+    val = shget(assets, name);
+    if (val) return val;
+    else return NULL;
 }
 
 void deload_model(Asset_Model *model)
