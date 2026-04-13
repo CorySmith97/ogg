@@ -151,3 +151,27 @@ static bool read_string(FILE *f, char *buf, size_t buf_size) {
     buf[len] = '\0';
     return true;
 }
+
+String8 str8_split(String8 str, char delimeter)
+{
+    u32 index = 0;
+    char c = str.data[index];
+    while (c != delimeter) {
+        index++;
+        if (index >= str.len) return (String8){.data = NULL};
+        c = str.data[index];
+    }
+
+    return (String8){
+        .data = str.data,
+        .len = index,
+    };
+}
+
+char *str8_to_cstring(Arena *arena, String8 str)
+{
+    char *ret = arena_push(arena, str.len + 1, 1, 0);
+    memcpy(ret, str.data, str.len);
+    ret[str.len + 1] = '\0';
+    return ret;
+}

@@ -37,7 +37,8 @@ typedef enum {
     KEY_F4 = SDL_SCANCODE_F4,
     KEY_F5 = SDL_SCANCODE_F5,
 
-    KEY_ENTER = SDLK_RETURN,
+    KEY_BACKSPACE = SDL_SCANCODE_BACKSPACE,
+    KEY_ENTER = SDL_SCANCODE_RETURN,
     KEY_ESCAPE = SDL_SCANCODE_ESCAPE,
     KEY_SPACE = SDL_SCANCODE_SPACE
 } Keys;
@@ -80,10 +81,13 @@ static struct {
     char            text_input_buffer[2048];
     b32             text_input_enabled;
     mu_Context     *ui;
+    char            input[1024];
+    s32             input_index;
 } platform_ctx = {
     .prev_keystate = {0},
     .text_input_enabled = false,
     .text_input_buffer = {0},
+    .input = {0},
 };
 
 
@@ -93,6 +97,7 @@ void platform_handle_events(bool *quit);
 void platform_deinit(void);
 void platform_present(void);
 bool is_key_down(int key);
+bool is_key_pressed(int key);
 bool is_key_released(int key);
 void set_escape_quit(bool *quit);
 uint64_t get_time(void);

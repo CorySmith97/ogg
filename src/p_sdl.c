@@ -6,6 +6,7 @@ void on_mouse_moved(f32 x, f32 y, f32 dx, f32 dy);
 void on_mouse_down(s32 button); 
 void on_mouse_up(s32 button);
 void on_mouse_scroll(f32 y);
+void on_text_input(char *text);
 void platform_check_keystate(void);
 void begin_input_frame(void);
 
@@ -113,7 +114,8 @@ void platform_handle_events(bool *quit)
                                  break;
             case SDL_TEXTINPUT: 
                 if (platform_ctx.text_input_enabled) {
-                    mu_input_text(platform_ctx.ui, event.text.text); 
+                    on_text_input(event.text.text);
+                    //mu_input_text(platform_ctx.ui, event.text.text); 
                 }
                 break;
             case SDL_MOUSEMOTION: {
@@ -127,6 +129,13 @@ void platform_handle_events(bool *quit)
                                   } break;
             default:
                 break;
+        }
+    }
+
+    if (is_key_pressed(KEY_BACKSPACE)) {
+        if (platform_ctx.input_index > 0) {
+            platform_ctx.input_index -= 1;
+            platform_ctx.input[platform_ctx.input_index] = '\0';
         }
     }
 }
@@ -148,6 +157,23 @@ void platform_present()
     SDL_RenderClear(platform_ctx.renderer);
     SDL_RenderCopy(platform_ctx.renderer, platform_ctx.texture, NULL, NULL);
     SDL_RenderPresent(platform_ctx.renderer);
+}
+
+void on_text_input(char *text)
+{
+    s32 text_len = strlen(text);
+    s32 buf_size = sizeof(platform_ctx.input); // or whatever your buffer size is
+
+    // Bounds check before writing
+    if (platform_ctx.input_index + text_len >= buf_size - 1) return;
+
+    memcpy(platform_ctx.input + platform_ctx.input_index, text, text_len);
+    platform_ctx.input_index += text_len;
+    platform_ctx.input[platform_ctx.input_index] = '\0'; // keep it null-terminated
+}
+char *get_input_text(void)
+{
+    return platform_ctx.input;
 }
 
 

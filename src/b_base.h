@@ -166,6 +166,9 @@ void logger(Log_Level level, const char *msg, ...);
 #endif
 #define ARENA_HEADER_SIZE 128
 
+// TAKEN FROM RADDEBUGGER
+// ty Ryan
+
 typedef enum {
   ARENAFLAG_NOCHAIN    = (1<<0),
   ARENAFLAG_LARGEPAGES = (1<<1),
@@ -242,6 +245,7 @@ typedef struct {
 
 // TODO Implement with arenas
 String8 str8_fmt_alloc(const char *fmt, ...);
+String8 str8_split(String8 str, char delimeter);
 
 // TODO Implement String8
 s32 measure_text(const char *str);

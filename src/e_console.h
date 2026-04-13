@@ -1,6 +1,13 @@
 #ifndef CONSOLE_H
 #define CONSOLE_H
 
+typedef void (*console_command_fn)(String8 params);
+
+typedef struct {
+    char *key;
+    console_command_fn *value;
+} Command_KV;
+
 static struct {
     // Write console items and read from an open file.
     const char *file;
@@ -14,12 +21,14 @@ static struct {
     b32 open;
     b32 open_max;
 	f32 scroll_offset;
+    Command_KV *commands;
 } console = {
     .file = "data/console.txt",
     .toggle_key = KEY_F2,
     .scroll_offset = 0,
     .open = false,
     .open_max = false,
+    .commands = NULL,
 };
 
 void console_init(void);
@@ -28,5 +37,6 @@ void console_update(f32 mouse_scroll);
 void console_draw(Font *font);
 void console_write_log(String8 log);
 void console_write_log_alloc(const char *str, ...);
+void console_register_command(const char *command, console_command_fn *fn);
 
 #endif // CONSOLE_H

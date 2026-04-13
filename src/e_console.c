@@ -2,27 +2,60 @@
 #define COLOR_CONSOLE  (Color){ 0, 0, 0, 240 }
 #define COLOR_CONSOLE_TEXT  (Color){ 185, 185, 185, 255 }
 #define COLOR_CONSOLE_INPUT  (Color){ 15, 185, 185, 240 }
+#define COLOR_CONSOLE_INPUT_TEXT  (Color){ 0, 0, 0, 255 }
 
 #define MAX_CONSOLE_HEIGHT 500
 #define MIN_CONSOLE_HEIGHT 200
 // THIS NEEDS TO BE A DIVISOR OF THE MAX_CONSOLE_HEIGHT
 #define CONSOLE_OPEN_SPEED 50
 
+void test(String8 params)
+{
+    console_write_log(params);
+}
+
+void console_register_command(const char *command, console_command_fn *fn)
+{
+    shput(console.commands, command, fn);
+}
+
 void console_init(void)
 {
     console.arena = arena_alloc();
     console.file_handle = fopen(console.file, "w+");
     console.rec = (Recs32){.x = 0, .y = 0, .w = renderer.width, .h = 0};
+    console_register_command("test", test);
 }
 
 void console_deinit(void)
 {
+    arena_release(console.arena);
 }
 
 void console_update(f32 mouse_scroll)
 {
     if (console.open && console.rec.h != MIN_CONSOLE_HEIGHT) {
         console.rec.h += CONSOLE_OPEN_SPEED;
+    }
+    if (console.open && console.rec.h == MIN_CONSOLE_HEIGHT) {
+        platform_ctx.text_input_enabled = true;
+        if (is_key_pressed(KEY_ENTER)) {
+            String8 str;
+            u32 len = strlen(platform_ctx.input);
+            str.data = arena_push(console.arena, len, 1, 0);
+            str.data = memcpy(str.data, platform_ctx.input, len);
+            str.len = len;
+            if (str.len > 0) {
+                String8 command_str = str8_split(str, ' ');
+                if (command_str.data != NULL) {
+
+                    console_command_fn fn = shget(console.commands,str8_to_cstring(console.arena, command_str));
+                    fn((String8){.data = &str.data[command_str.len+1], .len = str.len-command_str.len-1});
+                    platform_ctx.input_index = 0;
+                    memset(platform_ctx.input, 0, 1024);
+                }
+            }
+        }
     }
     if (!console.open && console.rec.h != 0) {
         console.rec.h -= CONSOLE_OPEN_SPEED;
@@ -82,6 +115,9 @@ void console_draw(Font *font)
         .w = console.rec.w,
         .h = text_size,
     }, 1.09f, COLOR_CONSOLE_INPUT);
+
+    char *p = get_input_text();
+    draw_text(font, p, v2i(3, console.rec.h), text_size, COLOR_CONSOLE_INPUT_TEXT);
 }
 
 void console_write_log_alloc(const char *fmt, ...)
