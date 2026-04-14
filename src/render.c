@@ -15,6 +15,7 @@
 #define to_ndc_y(py) (1.0f - (f32)(py) / GAME_HEIGHT * 2.0f)
 
 void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri);
+Color simple_reflection(SimpleMtl *mtl, V3f light_pos, V3f v, V3f n, V3f light_color, Color object_color);
 
 typedef struct {
     s32 tile_x, tile_y;
@@ -322,7 +323,7 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
             return;
         if (FlagExists(tri.flags, TRIANGLE_WIRE_FRAME)) {
             float t = (sinf(renderer.time) + 1.0f) * 0.5f;
-            float pulse =  0.7f * (t * t);  // eases in, snappy falloff
+            float pulse =  0.4f + 0.7f * (t * t);  // eases in, snappy falloff
 
             Color c = color_scale(COLOR_PURPLE, pulse);
             set_line(pos1, pos2, c);

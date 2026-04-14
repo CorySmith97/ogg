@@ -17,6 +17,7 @@
 #include "e_console.h"
 #include "e_entry.h"
 #include "e_notification.h"
+#include "m_model.h"
 
 #include "b_base.c"
 #include "b_os.c"
@@ -37,6 +38,7 @@
 #include "g_entry.c"
 #include "e_entry.c"
 #include "e_notification.c"
+#include "m_model.c"
 
 // TODO https://www.dgtlgrove.com/p/multi-core-by-default
 // By nature of this project, it is primed for a multithread by default

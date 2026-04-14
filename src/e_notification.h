@@ -23,7 +23,7 @@ static struct {
 };
 
 void notifications_push(Notification notification);
-void notifications_update(void);
+void notifications_update(f32 delta_time);
 void notifications_flush(Font *font);
 
 #endif // NOTIFICATION_H

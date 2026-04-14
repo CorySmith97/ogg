@@ -65,9 +65,8 @@ void game_init(void)
     SectionStart("Intialization");
     console_init();
     render_init();
-
     gizmo_init();
-
+    model_editor_init();
     entity_init();
     tiles_init();
 
@@ -152,19 +151,28 @@ void game_frame(void)
         gs.profiling_enabled = !gs.profiling_enabled;
     }
 
-    if (is_key_pressed(KEY_T)) {
+    if (is_key_pressed(KEY_1)) {
         if (gs.state != GAME_STATE_EDITOR) {
             console_write_log(str8_lit("Game state editor"));
             gs.state = GAME_STATE_EDITOR;
+            notifications_push((Notification){ .msg = str8_lit("Editor State"), .lifetime = 2.0f });
             change_camera();
         }
     }
-    if (is_key_pressed(KEY_Y)) {
+    if (is_key_pressed(KEY_2)) {
         if (gs.state != GAME_STATE_GAMEPLAY) {
-            notifications_push((Notification){ .msg = str8_lit("Gameplay State"), .lifetime = 3.0f });
+            notifications_push((Notification){ .msg = str8_lit("Gameplay State"), .lifetime = 2.0f });
             console_write_log(str8_lit("Game state gameplay"));
             gs.state = GAME_STATE_GAMEPLAY;
             change_camera();
+        }
+    }
+
+    if (is_key_pressed(KEY_3)) {
+        if (gs.state != GAME_STATE_MODEL_EDITOR) {
+            notifications_push((Notification){ .msg = str8_lit("Model State"), .lifetime = 2.0f });
+            console_write_log(str8_lit("Game state model editor"));
+            gs.state = GAME_STATE_MODEL_EDITOR;
         }
     }
 
@@ -173,12 +181,12 @@ void game_frame(void)
     clear_background(COLOR_GRAY);
 
     // If console is open, the key capture goes to the console instead of anything else
-    if (!console.open) {
-        switch(gs.state) {
-            case GAME_STATE_GAMEPLAY:
-                gs.selected_axis = -1;
-                gs.selected_entity = -1;
-                show_demo = false;
+    switch(gs.state) {
+        case GAME_STATE_GAMEPLAY:
+            gs.selected_axis = -1;
+            gs.selected_entity = -1;
+            show_demo = false;
+            if (!console.open) {
                 handle_camera_gameplay(mouse_delta);
                 game_ui();
 
@@ -191,42 +199,44 @@ void game_frame(void)
                         }
                     }
                 }
-                for (s32 i = 0; i < arrlen(gs.dynamic_entities); i++) {
-                    Entity *e = &gs.dynamic_entities[i];
-                    e->update_disabled = false;
-                    entity_update(e);
-                }
-                for (s32 i = 0; i < arrlen(gs.tiles); i++) {
-                    tile_draw(&gs.tiles[i]);
-                }
+            }
+            for (s32 i = 0; i < arrlen(gs.dynamic_entities); i++) {
+                Entity *e = &gs.dynamic_entities[i];
+                e->update_disabled = false;
+                entity_update(e);
+            }
+            for (s32 i = 0; i < arrlen(gs.tiles); i++) {
+                tile_draw(&gs.tiles[i]);
+            }
 
-                for (int i = 0; i < arrlen(gs.dynamic_entities); i++) {
-                    Entity e = gs.dynamic_entities[i];
-                    entity_draw(&e);
-                }
-                break;
-            case GAME_STATE_MENU:
-                //menu_update();
-                //menu_draw();
-                break;
-            case GAME_STATE_EDITOR:
-                editor_camera_update();
-                editor_draw();
-                break;
-            case GAME_STATE_PAUSE:
-                break;
-            case GAME_STATE_MODEL_EDITOR:
-                //model_editor_frame();
-                break;
-            default:
-                break;
-        }
+            for (int i = 0; i < arrlen(gs.dynamic_entities); i++) {
+                Entity e = gs.dynamic_entities[i];
+                entity_draw(&e);
+            }
+            break;
+        case GAME_STATE_MENU:
+            //menu_update();
+            //menu_draw();
+            break;
+        case GAME_STATE_EDITOR:
+            editor_camera_update();
+            editor_draw();
+            break;
+        case GAME_STATE_PAUSE:
+            break;
+        case GAME_STATE_MODEL_EDITOR:
+            if (!console.open) {
+            }
+            model_editor_frame();
+            break;
+        default:
+            break;
     }
 
     console_update(mouse_scroll);
     console_draw(gs.font);
 
-    notifications_update();
+    notifications_update(renderer.dt);
     notifications_flush(gs.font);
 
     SectionStart("Flush");

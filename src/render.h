@@ -12,10 +12,10 @@
 #define RENDER_H
 
 typedef enum {
-    TRIANGLE_TWO_D = 1 << 0,
-    TRIANGLE_NO_CULLING = 1 << 1,
+    TRIANGLE_TWO_D        = 1 << 0,
+    TRIANGLE_NO_CULLING   = 1 << 1,
     TRIANGLE_WRITE_OVER_Z = 1 << 2,
-    TRIANGLE_WIRE_FRAME = 1 << 3,
+    TRIANGLE_WIRE_FRAME   = 1 << 3,
 } TriangleFlags;
 
 typedef struct {
@@ -59,7 +59,7 @@ static struct {
     b32 quit;
     s32 width, height;
     f32 dt;
-    u64 time;
+    f64 time;
     // TODO remove this from here
     Camera camera;
     Camera swap_camera; // spare camera to hold a different camera in
@@ -91,20 +91,25 @@ static struct {
     },
 };
 
-void  render_init(void);
-void  clear_background(Color color);
-void  renderer_flush(void);
-void  change_camera(void);
+//
+// Render Initialization.
+//
+void render_init(void);
 
-void  draw_model(Asset_Model *model, V3f position, Mat3 rotation, b32 selected);
-void  draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Light light);
-void  draw_model_textured(Asset_Model *model, V3f position, Mat3 rotation);
-Color simple_reflection(SimpleMtl *mtl, V3f light_pos, V3f v, V3f n, V3f light_color, Color object_color);
-void  draw_texture(Texture *tex, Recs32 rec);
-// There is a weird ordering bug with this. It drives me bonkers...
-void  draw_text(Font *f, const char *str, V2i pos, f32 size, Color color);
-void  draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags);
-void  draw_triangle3d(V3f v1, V3f v2, V3f v3, Color color, u32 flags);
-void  draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags);
+//
+// Clear all the triangle buffer and push pixels to render buffer
+//
+void renderer_flush(void);
+void clear_background(Color color);
+void change_camera(Camera camera);
+
+void draw_model(Asset_Model *model, V3f position, Mat3 rotation, b32 selected);
+void draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Light light);
+void draw_model_textured(Asset_Model *model, V3f position, Mat3 rotation);
+void draw_texture(Texture *tex, Recs32 rec);
+void draw_text(Font *f, const char *str, V2i pos, f32 size, Color color);
+void draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags);
+void draw_triangle3d(V3f v1, V3f v2, V3f v3, Color color, u32 flags);
+void draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags);
 
 #endif /* RENDER_H */

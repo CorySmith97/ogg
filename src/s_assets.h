@@ -97,6 +97,13 @@ typedef struct {
 } Image;
 
 typedef struct {
+    struct Bone *parent;
+    struct Bone **children;
+    V3f x0;
+    V3f x1;
+} Bone;
+
+typedef struct {
     char *key;
     Asset_Model *value;
 } Asset_Model_KV;

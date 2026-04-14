@@ -25,6 +25,7 @@ void console_init(void)
     console.file_handle = fopen(console.file, "w+");
     console.rec = (Recs32){.x = 0, .y = 0, .w = renderer.width, .h = 0};
     console_register_command("test", test);
+    console_register_command("mload", model_editor_load_model);
 }
 
 void console_deinit(void)
@@ -57,10 +58,13 @@ void console_update(f32 mouse_scroll)
             }
         }
     }
+    if (!console.open && console.rec.h == 0) {
+        platform_ctx.text_input_enabled = false;
+    }
     if (!console.open && console.rec.h != 0) {
         console.rec.h -= CONSOLE_OPEN_SPEED;
     }
-    if (is_key_pressed(console.toggle_key)) {
+    if (is_key_pressed_raw(console.toggle_key)) {
         console.open = !console.open;
     }
     if (console.open && mouse_scroll != 0) {

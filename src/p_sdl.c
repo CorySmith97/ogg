@@ -1,5 +1,7 @@
 bool is_key_down(s32 key);
 bool is_key_released(s32 key);
+bool is_key_pressed_raw(s32 key);
+bool is_key_down_raw(s32 key);
 void on_key_down(s32 key);
 void on_key_up(s32 key);
 void on_mouse_moved(f32 x, f32 y, f32 dx, f32 dy);
@@ -132,12 +134,16 @@ void platform_handle_events(bool *quit)
         }
     }
 
-    if (is_key_pressed(KEY_BACKSPACE)) {
-        if (platform_ctx.input_index > 0) {
-            platform_ctx.input_index -= 1;
-            platform_ctx.input[platform_ctx.input_index] = '\0';
+    if (platform_ctx.text_input_enabled) {
+        b32 pressed = is_key_pressed_raw(KEY_BACKSPACE);
+        if (pressed) {
+            if (platform_ctx.input_index > 0) {
+                platform_ctx.input_index -= 1;
+                platform_ctx.input[platform_ctx.input_index] = '\0';
+            }
         }
     }
+    *quit = is_key_pressed_raw(KEY_ESCAPE);
 }
 
 void platform_deinit(void)
@@ -214,6 +220,28 @@ u64 get_time()
     return SDL_GetPerformanceCounter();
 }
 
+bool is_key_down_raw(s32 key)
+{
+    return platform_ctx.keystate[key];
+}
+
+bool is_key_pressed_raw(s32 key)
+{
+    return platform_ctx.keystate[key] && !platform_ctx.prev_keystate[key];
+}
+
+bool is_key_down(s32 key)
+{
+    if (platform_ctx.text_input_enabled) return false;
+    return platform_ctx.keystate[key];
+}
+
+bool is_key_pressed(s32 key)
+{
+    if (platform_ctx.text_input_enabled) return false;
+    return platform_ctx.keystate[key] && !platform_ctx.prev_keystate[key];
+}
+
 void on_key_down(s32 key) 
 {
     if (keyboard_state.key_curr_state[key] == true) {
@@ -261,10 +289,7 @@ void on_mouse_moved(f32 x, f32 y, f32 dx, f32 dy)
 
 void set_escape_quit(bool *quit)
 {
-    if (is_key_down(KEY_ESCAPE)) {
-        log_info("Hello");
-        *quit = true;
-    }
+    *quit = is_key_pressed_raw(KEY_ESCAPE);
 }
 
 void set_mouse_toggle_key(s32 key)
@@ -304,17 +329,3 @@ void platform_check_keystate(void)
     platform_ctx.keystate = SDL_GetKeyboardState(NULL);
 }
 
-bool is_key_down(s32 key)
-{
-    return platform_ctx.keystate[key];
-}
-
-bool is_key_pressed(s32 key)
-{
-    return platform_ctx.keystate[key] && !platform_ctx.prev_keystate[key];
-}
-
-bool is_key_released(s32 key)
-{
-    return !platform_ctx.keystate[key] && platform_ctx.prev_keystate[key];
-}
