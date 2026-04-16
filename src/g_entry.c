@@ -29,7 +29,7 @@ static struct {
     .dynamic_entities = NULL,
     .static_entities = NULL,
     .tiles = NULL,
-    .state = GAME_STATE_EDITOR,
+    .state = GAME_STATE_MODEL_EDITOR,
 
     // This is all editor stuff that should be moved
     .selected_entity = -1,
@@ -105,6 +105,7 @@ void game_init(void)
     arrput(gs.dynamic_entities, e2);
     arrput(gs.dynamic_entities, e3);
     gs.font = load_font("data/atlas.png", 128, 128);
+    m_editor.hud_font = gs.font;
     ui_init(gs.font);
 
     for (s32 i = 0; i < 10; i++) {
@@ -156,7 +157,7 @@ void game_frame(void)
             console_write_log(str8_lit("Game state editor"));
             gs.state = GAME_STATE_EDITOR;
             notifications_push((Notification){ .msg = str8_lit("Editor State"), .lifetime = 2.0f });
-            change_camera();
+            //change_camera();
         }
     }
     if (is_key_pressed(KEY_2)) {
@@ -164,7 +165,7 @@ void game_frame(void)
             notifications_push((Notification){ .msg = str8_lit("Gameplay State"), .lifetime = 2.0f });
             console_write_log(str8_lit("Game state gameplay"));
             gs.state = GAME_STATE_GAMEPLAY;
-            change_camera();
+            change_camera(renderer.swap_camera);
         }
     }
 
@@ -173,6 +174,7 @@ void game_frame(void)
             notifications_push((Notification){ .msg = str8_lit("Model State"), .lifetime = 2.0f });
             console_write_log(str8_lit("Game state model editor"));
             gs.state = GAME_STATE_MODEL_EDITOR;
+            change_camera(m_editor.camera);
         }
     }
 

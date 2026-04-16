@@ -6,11 +6,59 @@ void gizmo_init(void)
     plane_texture = load_texture_from_file("data/gizmo_plane.png", false);
 }
 
+static void draw_ring(V3f center, V3f axis_u, V3f axis_v,
+                      f32 r, f32 half_t, Color color, s32 segments)
+{
+    V3f cam_dir = v3f_normalize(v3f_sub(renderer.camera.position, center));
+    f32 step = (2.0f * (f32)M_PI) / (f32)segments;
+
+    for (s32 i = 0; i < segments; i++) {
+        f32 a0   = i * step;
+        f32 a1   = a0 + step;
+        f32 amid = (a0 + a1) * 0.5f;
+
+        V3f mid_dir = v3f_add(v3f_scale(axis_u, cosf(amid)),
+                              v3f_scale(axis_v, sinf(amid)));
+        if (v3f_dot(mid_dir, cam_dir) < 0.0f) continue;
+
+        V3f d0 = v3f_add(v3f_scale(axis_u, cosf(a0)), v3f_scale(axis_v, sinf(a0)));
+        V3f d1 = v3f_add(v3f_scale(axis_u, cosf(a1)), v3f_scale(axis_v, sinf(a1)));
+
+        V3f inner0 = v3f_add(center, v3f_scale(d0, r - half_t));
+        V3f outer0 = v3f_add(center, v3f_scale(d0, r + half_t));
+        V3f inner1 = v3f_add(center, v3f_scale(d1, r - half_t));
+        V3f outer1 = v3f_add(center, v3f_scale(d1, r + half_t));
+
+        draw_rectangle3d(inner0, outer0, inner1, outer1, color, TRIANGLE_WRITE_OVER_Z);
+    }
+}
+
 void gizmo_draw(Gizmo *gizmo)
 {
     float x = gizmo->position.x;
     float y = gizmo->position.y;
     float z = gizmo->position.z;
+
+    if (gizmo->mode == GIZMO_MODE_ROTATE) {
+        V3f pos = gizmo->position;
+
+        // Highlight colors for active axis
+        Color rx = (gizmo->active_axis == GIZMO_AXIS_X) ? (Color){255,140,140,255} : COLOR_RED;
+        Color ry = (gizmo->active_axis == GIZMO_AXIS_Y) ? (Color){140,200,255,255} : COLOR_BLUE;
+        Color rz = (gizmo->active_axis == GIZMO_AXIS_Z) ? (Color){140,255,140,255} : COLOR_GREEN;
+
+        f32 ht_base   = 0.04f;
+        f32 ht_active = 0.07f;
+
+        // Slightly staggered radii to prevent Z-fighting
+        draw_ring(pos, v3f(0,1,0), v3f(0,0,1), 1.00f,
+                  gizmo->active_axis == GIZMO_AXIS_X ? ht_active : ht_base, rx, 32);
+        draw_ring(pos, v3f(1,0,0), v3f(0,0,1), 1.05f,
+                  gizmo->active_axis == GIZMO_AXIS_Y ? ht_active : ht_base, ry, 32);
+        draw_ring(pos, v3f(1,0,0), v3f(0,1,0), 1.10f,
+                  gizmo->active_axis == GIZMO_AXIS_Z ? ht_active : ht_base, rz, 32);
+        return;
+    }
 
     float len = 1.0f;
     float o   = 0.05f; // small offset along axis
@@ -124,6 +172,19 @@ void gizmo_update(Gizmo *gizmo)
     float x = gizmo->position.x;
     float y = gizmo->position.y;
     float z = gizmo->position.z;
+
+    if (gizmo->mode == GIZMO_MODE_ROTATE) {
+        // Thin disc AABBs covering each ring's plane
+        float r   = 1.15f;
+        float eps = 0.07f;
+        gizmo->aabbs[GIZMO_AXIS_X]  = (AABB){ v3f(x-eps, y-r, z-r), v3f(x+eps, y+r, z+r) };
+        gizmo->aabbs[GIZMO_AXIS_Y]  = (AABB){ v3f(x-r, y-eps, z-r), v3f(x+r, y+eps, z+r) };
+        gizmo->aabbs[GIZMO_AXIS_Z]  = (AABB){ v3f(x-r, y-r, z-eps), v3f(x+r, y+r, z+eps) };
+        gizmo->aabbs[GIZMO_AXIS_XZ] = (AABB){0};
+        gizmo->aabbs[GIZMO_AXIS_XY] = (AABB){0};
+        gizmo->aabbs[GIZMO_AXIS_YZ] = (AABB){0};
+        return;
+    }
 
     float len = 1.0f;
     float o   = 0.05f;
@@ -267,5 +328,19 @@ V3f gizmo_translation_modify(Gizmo *gizmo, Gizmo_Axis axis, V2f delta)
     return ret;
 }
 
-void gizmo_rotation_modify(Gizmo *gizmo, Gizmo_Axis axis, f32 angle);
-Mat3 gizmo_get_rotation(Gizmo *gizmo);
+void gizmo_rotation_modify(Gizmo *gizmo, Gizmo_Axis axis, f32 angle)
+{
+    switch (axis) {
+        case GIZMO_AXIS_X: gizmo->axis_rotation[0] += angle; break;
+        case GIZMO_AXIS_Y: gizmo->axis_rotation[1] += angle; break;
+        case GIZMO_AXIS_Z: gizmo->axis_rotation[2] += angle; break;
+        default: break;
+    }
+}
+
+Mat3 gizmo_get_rotation(Gizmo *gizmo)
+{
+    return mat3_mul(rotation_z(gizmo->axis_rotation[2]),
+           mat3_mul(rotation_y(gizmo->axis_rotation[1]),
+                    rotation_x(gizmo->axis_rotation[0])));
+}

@@ -36,6 +36,7 @@ typedef struct Entity{
     s32 spellcaster_lvl;
 
     void (*update_fn) (struct Entity *e);
+
 } Entity;
 
 Entity global_entities[ENTITY_TAG_COUNT];
@@ -44,6 +45,7 @@ Entity global_entities[ENTITY_TAG_COUNT];
 void entity_init(void);
 void entity_update(Entity *e);
 void entity_draw(Entity *e);
+void entity_anim_init(Entity *e, const char *skel, const char *skin, const char *anim);
 
 // SERDE
 void entity_serde_write(Entity *e);

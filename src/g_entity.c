@@ -18,27 +18,20 @@ f32 angle_diff(f32 a, f32 b) {
     while (d < -M_PI) d += 2.0f * M_PI;
     return d;
 }
-
 void entity_update(Entity *e)
 {
     e->position = v3f_add(e->position, v3f_scale(v3f_sub(e->target, e->position), 0.1));
-    // TODO is the angle is too wide then it doesnt rotate properly
     V3f dir = v3f_sub(e->target, e->position);
-
     if (!v3f_equal(dir, v3f(0,0,0))) {
-        dir = v3f_normalize(dir);
-
-        // assuming forward is +Z
-        f32 yaw = atan2f(dir.x, -dir.z);
-
-        e->rotation = rotation_y(yaw);
+        e->rotation = rotation_y(atan2f(dir.x, -dir.z));
     }
+
     e->update_fn(e);
 }
 
 void entity_draw(Entity *e)
 {
-    draw_model(e->model, e->position, e->rotation, e->hit);
+        draw_model(e->model, e->position, e->rotation, e->hit);
 }
 
 RayCollision entity_mouse_ray_collision(Entity *e, Ray mouse_ray)

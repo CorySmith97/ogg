@@ -80,10 +80,16 @@ void editor_draw(void)
     }
 
     if (is_key_pressed(KEY_Q)) {
-        // Clicked empty space: deselect everything.
         gs.selected_entity = -1;
         gs.selected_axis = -1;
         gs.gizmo.attached = false;
+    }
+
+    if (is_key_pressed(KEY_R) && gs.gizmo.attached) {
+        gs.gizmo.mode = (gs.gizmo.mode == GIZMO_MODE_TRANSLATE)
+                      ? GIZMO_MODE_ROTATE
+                      : GIZMO_MODE_TRANSLATE;
+        gs.selected_axis = -1;
     }
 
     //
@@ -92,25 +98,37 @@ void editor_draw(void)
     if (gs.selected_axis >= 0 && mouse_down && gs.selected_entity >= 0) {
         Entity *e = &gs.dynamic_entities[gs.selected_entity];
 
-        // TODO: project mouse delta into world / axis space more correctly.
-        V3f delta = gizmo_translation_modify(
-            &gs.gizmo,
-            gs.selected_axis,
-            v2f_scale(mouse_delta, 0.01f)
-        );
-
-        e->position = v3f_add(e->position, delta);
-        e->target = e->position;
-        gs.gizmo.position = e->position;
+        if (gs.gizmo.mode == GIZMO_MODE_ROTATE) {
+            f32 angle = 0.0f;
+            switch (gs.selected_axis) {
+                case GIZMO_AXIS_X: angle = -mouse_delta.y * 0.01f; break;
+                case GIZMO_AXIS_Y: angle =  mouse_delta.x * 0.01f; break;
+                case GIZMO_AXIS_Z: angle =  mouse_delta.x * 0.01f; break;
+                default: break;
+            }
+            gizmo_rotation_modify(&gs.gizmo, (Gizmo_Axis)gs.selected_axis, angle);
+            e->rotation = gizmo_get_rotation(&gs.gizmo);
+        } else {
+            V3f delta = gizmo_translation_modify(
+                &gs.gizmo,
+                gs.selected_axis,
+                v2f_scale(mouse_delta, 0.01f)
+            );
+            e->position = v3f_add(e->position, delta);
+            e->target = e->position;
+            gs.gizmo.position = e->position;
+        }
     }
 
     //
     // 3) Releasing mouse ends gizmo drag but keeps entity selected
     //
     if (mouse_released) {
-        Entity *e = &gs.dynamic_entities[gs.selected_entity];
-        e->position = v3f(roundf(e->position.x), roundf(e->position.y), roundf(e->position.z));
-        gs.gizmo.position = e->position;
+        if (gs.gizmo.mode == GIZMO_MODE_TRANSLATE && gs.selected_entity >= 0) {
+            Entity *e = &gs.dynamic_entities[gs.selected_entity];
+            e->position = v3f(roundf(e->position.x), roundf(e->position.y), roundf(e->position.z));
+            gs.gizmo.position = e->position;
+        }
         gs.selected_axis = -1;
     }
     for (s32 i = 0; i < arrlen(gs.tiles); i++) {
@@ -122,6 +140,7 @@ void editor_draw(void)
         entity_draw(&e);
         if (e.hit) {
             if (!gs.camera_moving) {
+                gs.gizmo.active_axis = gs.selected_axis;
                 gizmo_draw(&gs.gizmo);
                 show_demo = true;
             }

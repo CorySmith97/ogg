@@ -561,3 +561,98 @@ static inline V3f v3f_max(V3f a, V3f b)
     );
 }
 
+
+Mat4 mat4_from_quat(Quat q)
+{
+    // Pre-compute doubled products
+    f32 xx = q.x * q.x,  yy = q.y * q.y,  zz = q.z * q.z;
+    f32 xy = q.x * q.y,  xz = q.x * q.z,  yz = q.y * q.z;
+    f32 wx = q.w * q.x,  wy = q.w * q.y,  wz = q.w * q.z;
+ 
+    Mat4 m = {0};
+ 
+    // Column 0  (basis vector X)
+    m.m[0][0] = 1.0f - 2.0f * (yy + zz);
+    m.m[0][1] =        2.0f * (xy + wz);
+    m.m[0][2] =        2.0f * (xz - wy);
+    m.m[0][3] = 0.0f;
+ 
+    // Column 1  (basis vector Y)
+    m.m[1][0] =        2.0f * (xy - wz);
+    m.m[1][1] = 1.0f - 2.0f * (xx + zz);
+    m.m[1][2] =        2.0f * (yz + wx);
+    m.m[1][3] = 0.0f;
+ 
+    // Column 2  (basis vector Z)
+    m.m[2][0] =        2.0f * (xz + wy);
+    m.m[2][1] =        2.0f * (yz - wx);
+    m.m[2][2] = 1.0f - 2.0f * (xx + yy);
+    m.m[2][3] = 0.0f;
+ 
+    // Column 3  (translation — none for a pure rotation)
+    m.m[3][0] = 0.0f;
+    m.m[3][1] = 0.0f;
+    m.m[3][2] = 0.0f;
+    m.m[3][3] = 1.0f;
+ 
+    return m;
+}
+
+Quat quat(f32 x, f32 y, f32 z, f32 w)
+{
+    return (Quat){x, y, z, w};
+}
+
+Quat quat_identity(void)
+{
+    return (Quat){0.0f, 0.0f, 0.0f, 1.0f};
+}
+
+Quat quat_normalise(Quat q)
+{
+    f32 len = sqrtf(q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w);
+    if (len < 1e-8f) return quat_identity();
+    f32 inv = 1.0f / len;
+    return (Quat){q.x*inv, q.y*inv, q.z*inv, q.w*inv};
+}
+
+Mat4 mat4_inverse(Mat4 a)
+{
+    f32 a00 = a.c[0],  a01 = a.c[1],  a02 = a.c[2],  a03 = a.c[3];
+    f32 a10 = a.c[4],  a11 = a.c[5],  a12 = a.c[6],  a13 = a.c[7];
+    f32 a20 = a.c[8],  a21 = a.c[9],  a22 = a.c[10], a23 = a.c[11];
+    f32 a30 = a.c[12], a31 = a.c[13], a32 = a.c[14], a33 = a.c[15];
+
+    f32 b00 = a00*a11 - a01*a10, b01 = a00*a12 - a02*a10;
+    f32 b02 = a00*a13 - a03*a10, b03 = a01*a12 - a02*a11;
+    f32 b04 = a01*a13 - a03*a11, b05 = a02*a13 - a03*a12;
+    f32 b06 = a20*a31 - a21*a30, b07 = a20*a32 - a22*a30;
+    f32 b08 = a20*a33 - a23*a30, b09 = a21*a32 - a22*a31;
+    f32 b10 = a21*a33 - a23*a31, b11 = a22*a33 - a23*a32;
+
+    f32 det = b00*b11 - b01*b10 + b02*b09 + b03*b08 - b04*b07 + b05*b06;
+    if (fabsf(det) < 1e-8f) return mat4_identity();
+    f32 inv_det = 1.0f / det;
+
+    return (Mat4){
+        ( a11*b11 - a12*b10 + a13*b09) * inv_det,
+        (-a01*b11 + a02*b10 - a03*b09) * inv_det,
+        ( a31*b05 - a32*b04 + a33*b03) * inv_det,
+        (-a21*b05 + a22*b04 - a23*b03) * inv_det,
+
+        (-a10*b11 + a12*b08 - a13*b07) * inv_det,
+        ( a00*b11 - a02*b08 + a03*b07) * inv_det,
+        (-a30*b05 + a32*b02 - a33*b01) * inv_det,
+        ( a20*b05 - a22*b02 + a23*b01) * inv_det,
+
+        ( a10*b10 - a11*b08 + a13*b06) * inv_det,
+        (-a00*b10 + a01*b08 - a03*b06) * inv_det,
+        ( a30*b04 - a31*b02 + a33*b00) * inv_det,
+        (-a20*b04 + a21*b02 - a23*b00) * inv_det,
+
+        (-a10*b09 + a11*b07 - a12*b06) * inv_det,
+        ( a00*b09 - a01*b07 + a02*b06) * inv_det,
+        (-a30*b03 + a31*b01 - a32*b00) * inv_det,
+        ( a20*b03 - a21*b01 + a22*b00) * inv_det,
+    };
+}

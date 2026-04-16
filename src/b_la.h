@@ -60,7 +60,12 @@ union Mat3 {
 typedef union Mat4 Mat4;
 union Mat4 {
     f32 c[16];
+    f32 m[4][4];
 };
+
+typedef struct {
+    f32 x, y, z, w;
+} Quat;
 
 typedef struct Camera {
     V3f target;
@@ -134,5 +139,12 @@ Mat4 mat4_identity(void);
 Mat4 mat4_mul(Mat4 m1, Mat4 m2);
 Mat4 perspective(f32 near, f32 far, f32 ar, f32 fov);
 Mat4 look_at(V3f position, V3f target, V3f up);
+
+Quat quat(f32 x, f32 y, f32 z, f32 w);
+Quat quat_identity(void);
+Quat quat_normalise(Quat q);
+
+Mat4 mat4_from_quat(Quat q);
+Mat4 mat4_inverse(Mat4 m);
 
 #endif // LA_H

@@ -60,6 +60,8 @@ typedef s64      b64;
 #define min(val1, val2) ((val1 < val2) ? val1 : val2)
 #define max(val1, val2) ((val1 > val2) ? val1 : val2)
 
+#define clampf(v, mn, mx) ((v) < (mn) ? (mn) : (v) > (mx) ? (mx) : (v))
+
 #define M_TAU 2*M_PI
 
 #define array_push(a, v)                                        \
@@ -232,8 +234,9 @@ static void temp_end(Temp temp);
 //- rjf: push helper macros
 #define push_array_no_zero_aligned(a, T, c, align) (T *)arena_push((a), sizeof(T)*(c), (align), (0))
 #define push_array_aligned(a, T, c, align) (T *)arena_push((a), sizeof(T)*(c), (align), (1))
-#define push_array_no_zero(a, T, c) push_array_no_zero_aligned(a, T, c, max(8, AlignOf(T)))
-#define push_array(a, T, c) push_array_aligned(a, T, c, max(8, AlignOf(T)))
+#define push_array_no_zero(a, T, c) push_array_no_zero_aligned(a, T, c, max(8, _Alignof(T)))
+#define push_array(a, T, c) push_array_aligned(a, T, c, max(8, _Alignof(T)))
+#define arena_push_struct(a, T) push_array_aligned(a, T, 1, max(8, _Alignof(T)))
 
 
 typedef struct {

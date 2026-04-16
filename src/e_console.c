@@ -40,7 +40,7 @@ void console_update(f32 mouse_scroll)
     }
     if (console.open && console.rec.h == MIN_CONSOLE_HEIGHT) {
         platform_ctx.text_input_enabled = true;
-        if (is_key_pressed(KEY_ENTER)) {
+        if (is_key_pressed_raw(KEY_ENTER)) {
             String8 str;
             u32 len = strlen(platform_ctx.input);
             str.data = arena_push(console.arena, len, 1, 0);

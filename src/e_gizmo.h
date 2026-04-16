@@ -11,13 +11,16 @@ typedef enum {
     GIZMO_AXIS_COUNT,
 } Gizmo_Axis;
 
-// There will be 3 separate modes of gizmos. 
-// Translation
-// Rotation
-// Scaling
+typedef enum {
+    GIZMO_MODE_TRANSLATE,
+    GIZMO_MODE_ROTATE,
+} GizmoMode;
+
 typedef struct {
+    GizmoMode   mode;
+    s32         active_axis;
     Gizmo_Axis  axis[GIZMO_AXIS_COUNT];
-    f32         axis_rotation[GIZMO_AXIS_COUNT];
+    f32         axis_rotation[3];
     AABB        aabbs[GIZMO_AXIS_COUNT];
     V3f         position;
     b32         attached;

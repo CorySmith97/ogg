@@ -33,8 +33,8 @@ TileBin triangle_bins[(GAME_WIDTH / TILE_W) * (GAME_HEIGHT / TILE_H)];
 TriangleArray *triangles;
 Worker workers[NUM_THREADS];
 pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t queue_cond = PTHREAD_COND_INITIALIZER;
-pthread_cond_t done_cond = PTHREAD_COND_INITIALIZER;
+pthread_cond_t  queue_cond = PTHREAD_COND_INITIALIZER;
+pthread_cond_t  done_cond = PTHREAD_COND_INITIALIZER;
 
 TileBin *work_queue[TILE_COUNT];
 s32 queue_head = 0;
@@ -46,6 +46,7 @@ s32 pool_running = 1;
 void *worker_thread(void *arg)
 {
     UNUSED(arg);
+    Arena *arena = arena_alloc();
     while (1)
     {
         pthread_mutex_lock(&queue_mutex);
@@ -67,11 +68,12 @@ void *worker_thread(void *arg)
         // so we can release the lock before doing pixel work
         size_t len = bin->tri_idx.len;
 
-        // TODO this needs to be a fixed buffer of some kind.
-        size_t local_idx[len]; // VLA, or heap alloc if len could be huge
+        size_t *local_idx = alloc_push(len);
         memcpy(local_idx, bin->tri_idx.data, len * sizeof(size_t));
-        bin->tri_idx.len = 0; // clear while locked, before workers
-                                    // can re-queue this bin next frame
+
+        // clear while locked, before workers
+        bin->tri_idx.len = 0;
+        // can re-queue this bin next frame
 
         pthread_mutex_unlock(&queue_mutex);
 
@@ -89,6 +91,8 @@ void *worker_thread(void *arg)
         if (jobs_remaining == 0)
             pthread_cond_signal(&done_cond);
         pthread_mutex_unlock(&queue_mutex);
+
+        arena_reset(arena);
     }
 }
 
@@ -133,10 +137,12 @@ void render_shutdown(void)
 }
 
 
-void change_camera(Camera camera)
+void change_camera(void)
 {
+    Camera temp_camera;
+    temp_camera = renderer.swap_camera;
     renderer.swap_camera = renderer.camera;
-    renderer.camera = camera;
+    renderer.camera = temp_camera;
 }
 
 void renderer_flush(void)
@@ -407,71 +413,6 @@ void clear_background(Color color)
             size_t idx = PIXEL_INDEX(x, y);
             renderer.pixels[idx] = color.rgba;
             renderer.zbuffer[idx] = FLT_MAX;
-        }
-    }
-}
-
-void draw_model_triangle_selection(Asset_Model *model, V3f position, Mat3 rotation, b32 *selected)
-{
-    Mat4 view = camera_matrix(renderer.camera);
-    for (s32 i = 0; i < arrlen(model->vertices); i += 3)
-    {
-        s32 index = i;
-        Vertex v1 = model->vertices[i];
-        Vertex v2 = model->vertices[i + 1];
-        Vertex v3 = model->vertices[i + 2];
-
-        V3f p1 = v3f_mul_mat3(v1.position, rotation);
-        V3f p2 = v3f_mul_mat3(v2.position, rotation);
-        V3f p3 = v3f_mul_mat3(v3.position, rotation);
-
-        V3f n1 = v3f_mul_mat3(v1.normal, rotation);
-        V3f n2 = v3f_mul_mat3(v2.normal, rotation);
-        V3f n3 = v3f_mul_mat3(v3.normal, rotation);
-
-        p1.z = -p1.z;
-        p2.z = -p2.z;
-        p3.z = -p3.z;
-        p1 = v3f_add(p1, position);
-        p2 = v3f_add(p2, position);
-        p3 = v3f_add(p3, position);
-
-        p1 = v3f_translate_by_mat4(p1, view);
-        p2 = v3f_translate_by_mat4(p2, view);
-        p3 = v3f_translate_by_mat4(p3, view);
-
-        if (p1.z >= NEAR && p2.z >= NEAR && p3.z >= NEAR)
-        {
-            Color t1;
-            Color t2;
-            Color t3;
-            t1 = COLOR_WHITE;
-            t2 = COLOR_WHITE;
-            t3 = COLOR_WHITE;
-
-			V3f positions[3] = {p1, p2, p3};
-			V3f normals[3] = {n1, n2, n3};
-            Color colors[3] = {t1, t2, t3};
-            V3f uvs[3] = {v1.uv, v2.uv, v3.uv};
-
-            if (model->mtl != NULL)
-                renderer_push_triangle_w_normals(
-						positions,
-						normals,
-                        colors,
-                        uvs,
-                        model->mtl->diffuse_texture,
-						model->mtl,
-                        selected[index] ? TRIANGLE_WIRE_FRAME : 0);
-            else
-                renderer_push_triangle(
-                        p1,
-                        p2,
-                        p3,
-                        colors,
-                        uvs,
-                        NULL,
-                        0);
         }
     }
 }

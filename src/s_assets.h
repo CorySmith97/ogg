@@ -5,6 +5,9 @@
  * some light interpolation. I dont care for, at the moment, a super high fidelity animation system.
  * I just want to be able to have some simple, and low data, animations to add some life to the engine.
  *
+ * The animation system will be composed of a "skeleton" that is composed of a series of smaller meshes.
+ * A tree will be composed
+ *
  * TODO certain shapes should have static models that can simply be accessed. Then options should be added
  * to those to create/add textures to them that can then be painted in the editor.
  *  - CUBE
@@ -73,12 +76,6 @@ typedef struct {
     Texture *diffuse_texture;   // map_Kd
 } SimpleMtl;
 
-typedef struct {
-    Vertex    *vertices;
-    Face      *faces;
-    SimpleMtl *mtl;
-} Asset_Model;
-
 /* Fonts are monospaces texture maps. Each character is the same size "sprite"
  */
 typedef struct {
@@ -97,11 +94,33 @@ typedef struct {
 } Image;
 
 typedef struct {
-    struct Bone *parent;
-    struct Bone **children;
+    String8 name;
+    s16 parent;
     V3f x0;
     V3f x1;
 } Bone;
+
+typedef struct {
+    Bone  *bones;
+    s32    count;
+} Skeleton;
+
+typedef struct {
+    Quat r;
+    V3f t;
+    V3f s;
+} Transform;
+
+typedef struct {
+    u16 bone_count;
+    Transform *local;
+} Pose;
+
+typedef struct {
+    Vertex    *vertices;
+    Face      *faces;
+    SimpleMtl *mtl;
+} Asset_Model;
 
 typedef struct {
     char *key;
