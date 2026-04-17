@@ -101,6 +101,78 @@ static void paint_triangle(Asset_Model *model, s32 tri_flat_idx, u16 group)
     }
 }
 
+// BFS flood-fill from a triangle, painting all connected triangles that share
+// the same skin group as the start triangle.
+static void flood_fill_paint(Asset_Model *model, s32 start_tri, u16 group)
+{
+    if (start_tri < 0) return;
+    s32 tri_count = (s32)arrlen(model->vertices) / 3;
+    u16 target_group = model->skin_groups[model->index_buffer[start_tri]];
+
+    b32 *visited = calloc(tri_count, sizeof(b32));
+    s32 *queue   = malloc(tri_count * sizeof(s32));
+    s32 head = 0, tail = 0;
+
+    visited[start_tri / 3] = true;
+    queue[tail++] = start_tri;
+
+    while (head < tail) {
+        s32 tri = queue[head++];
+        paint_triangle(model, tri, group);
+
+        u32 b0 = model->index_buffer[tri    ];
+        u32 b1 = model->index_buffer[tri + 1];
+        u32 b2 = model->index_buffer[tri + 2];
+
+        for (s32 i = 0; i < tri_count * 3; i += 3) {
+            s32 idx = i / 3;
+            if (visited[idx]) continue;
+            u32 t0 = model->index_buffer[i    ];
+            u32 t1 = model->index_buffer[i + 1];
+            u32 t2 = model->index_buffer[i + 2];
+            b32 shares = (t0==b0||t0==b1||t0==b2 ||
+                          t1==b0||t1==b1||t1==b2 ||
+                          t2==b0||t2==b1||t2==b2);
+            if (shares && model->skin_groups[t0] == target_group) {
+                visited[idx] = true;
+                queue[tail++] = i;
+            }
+        }
+    }
+
+    free(visited);
+    free(queue);
+}
+
+// Convert a world-space point to integer screen coordinates.
+// Returns (-1,-1) if behind the camera.
+static V2i world_to_screen(V3f world)
+{
+    Mat4 view = camera_matrix(m_editor.camera);
+    V3f  vs   = v3f_translate_by_mat4(world, view);
+    if (vs.z < NEAR) return v2i(-1, -1);
+    return to_screen(project(vs));
+}
+
+// Paint all triangles whose screen-space centroid falls within [x0,x1] x [y0,y1].
+static void box_paint_region(Asset_Model *model, V2f a, V2f b, u16 group)
+{
+    f32 x0 = fminf(a.x, b.x), x1 = fmaxf(a.x, b.x);
+    f32 y0 = fminf(a.y, b.y), y1 = fmaxf(a.y, b.y);
+
+    for (s32 i = 0; i < arrlen(model->vertices); i += 3) {
+        V3f wc = v3f_scale(
+            v3f_add(v3f_add(m_editor.world_positions[i],
+                            m_editor.world_positions[i+1]),
+                            m_editor.world_positions[i+2]),
+            1.0f / 3.0f);
+        V2i sc = world_to_screen(wc);
+        if (sc.x < 0) continue;
+        if (sc.x >= x0 && sc.x <= x1 && sc.y >= y0 && sc.y <= y1)
+            paint_triangle(model, i, group);
+    }
+}
+
 // ---- MicroUI panel ---------------------------------------------------------
 
 static void draw_skin_panel(void)
@@ -152,6 +224,17 @@ static void draw_skin_panel(void)
             mu_label(ui, info);
         }
 
+        // Flood fill from hovered triangle
+        mu_layout_row(ui, 1, (int[]){-1}, 18);
+        mu_label(ui, "F = flood fill from hover");
+        mu_layout_row(ui, 1, (int[]){-1}, 24);
+        if (mu_button(ui, "Flood Fill") &&
+            m_editor.mode == MODEL_EDITOR_MODE_PAINT &&
+            m_editor.hovered_tri >= 0)
+        {
+            flood_fill_paint(m_editor.selected, m_editor.hovered_tri, m_editor.active_group);
+        }
+
         // Save current skin groups to data/<model>.skin
         mu_layout_row(ui, 1, (int[]){-1}, 24);
         if (mu_button(ui, "Save Skin")) {
@@ -162,6 +245,53 @@ static void draw_skin_panel(void)
 
         mu_end_window(ui);
     }
+}
+
+// Shortest-arc quaternion rotating unit vector a onto unit vector b.
+static Quat quat_from_to(V3f a, V3f b)
+{
+    V3f axis = v3f_cross(a, b);
+    f32 dot  = v3f_dot(a, b);
+    if (dot < -0.9999f) {
+        V3f ref = (fabsf(a.x) < 0.9f) ? v3f(1,0,0) : v3f(0,1,0);
+        axis = v3f_normalize(v3f_cross(a, ref));
+        return (Quat){axis.x, axis.y, axis.z, 0.0f};
+    }
+    f32 s = sqrtf((1.0f + dot) * 2.0f);
+    f32 inv = 1.0f / s;
+    return quat_normalise((Quat){axis.x*inv, axis.y*inv, axis.z*inv, s*0.5f});
+}
+
+// Draw a diamond-shaped bone between two world-space points.
+// Both triangles share the wide end; the tip points toward b.
+static void draw_bone_line(V3f a, V3f b, Color color)
+{
+    V3f d = v3f_sub(b, a);
+    f32 len = sqrtf(v3f_dot(d, d));
+    if (len < 0.0001f) return;
+    V3f dir = v3f_scale(d, 1.0f / len);
+
+    V3f ref  = (fabsf(dir.y) < 0.9f) ? v3f(0,1,0) : v3f(1,0,0);
+    V3f perp = v3f_normalize(v3f_cross(dir, ref));
+    f32 s    = len * 0.10f;
+    // Knob is 20% of the way from a toward b
+    V3f knob = v3f_add(a, v3f_scale(dir, len * 0.2f));
+    V3f mp   = v3f_add(knob, v3f_scale(perp, s));
+    V3f mm   = v3f_sub(knob, v3f_scale(perp, s));
+
+    Mat4 view = camera_matrix(renderer.camera);
+    V3f va  = v3f_translate_by_mat4(a,    view);
+    V3f vb  = v3f_translate_by_mat4(b,    view);
+    V3f vmp = v3f_translate_by_mat4(mp,   view);
+    V3f vmm = v3f_translate_by_mat4(mm,   view);
+    if (va.z < NEAR || vb.z < NEAR || vmp.z < NEAR || vmm.z < NEAR) return;
+
+    Color col3[3] = {color, color, color};
+    V3f   uvs[3]  = {0};
+    renderer_push_triangle(va,  vmp, vmm, col3, uvs, NULL,
+        TRIANGLE_WRITE_OVER_Z | TRIANGLE_NO_CULLING | TRIANGLE_WIRE_FRAME);
+    renderer_push_triangle(vb,  vmp, vmm, col3, uvs, NULL,
+        TRIANGLE_WRITE_OVER_Z | TRIANGLE_NO_CULLING | TRIANGLE_WIRE_FRAME);
 }
 
 // ---- AI-GENERATED: anim editor helpers -------------------------------------
@@ -352,6 +482,56 @@ static void draw_anim_groups_live(Asset_Model *model)
     }
 }
 
+// Load a recorded frame back into edit_pose and apply it as a live preview.
+static void anim_editor_load_frame(s32 idx)
+{
+    if (!m_editor.edit_base || !m_editor.edit_anim) return;
+    if (idx < 0 || idx >= (s32)arrlen(m_editor.edit_anim->frames)) return;
+    u32 jcount = m_editor.edit_base->count;
+    AnimFrame *fr = &m_editor.edit_anim->frames[idx];
+    memcpy(m_editor.edit_pose, fr->xforms, sizeof(Transform) * jcount);
+    anim_apply_pose(m_editor.edit_base, m_editor.edit_pose, m_editor.selected);
+    m_editor.selected_frame = idx;
+}
+
+// Overwrite a recorded frame with the current edit_pose.
+static void anim_editor_update_frame(s32 idx)
+{
+    if (!m_editor.edit_base || !m_editor.edit_anim) return;
+    if (idx < 0 || idx >= (s32)arrlen(m_editor.edit_anim->frames)) return;
+    u32 jcount = m_editor.edit_base->count;
+    AnimFrame *fr = &m_editor.edit_anim->frames[idx];
+    memcpy(fr->xforms, m_editor.edit_pose, sizeof(Transform) * jcount);
+    console_write_log_alloc("Frame %d updated", idx);
+}
+
+// Append a copy of an existing frame.
+static void anim_editor_duplicate_frame(s32 idx)
+{
+    if (!m_editor.edit_base || !m_editor.edit_anim) return;
+    if (idx < 0 || idx >= (s32)arrlen(m_editor.edit_anim->frames)) return;
+    u32 jcount = m_editor.edit_base->count;
+    AnimFrame src = m_editor.edit_anim->frames[idx];
+    AnimFrame copy = { .xforms = malloc(sizeof(Transform) * jcount) };
+    memcpy(copy.xforms, src.xforms, sizeof(Transform) * jcount);
+    arrput(m_editor.edit_anim->frames, copy);
+    console_write_log_alloc("Frame %d duplicated -> %d", idx,
+                            (s32)arrlen(m_editor.edit_anim->frames) - 1);
+}
+
+// Delete a recorded frame and adjust selected_frame.
+static void anim_editor_delete_frame(s32 idx)
+{
+    if (!m_editor.edit_anim) return;
+    s32 fcount = (s32)arrlen(m_editor.edit_anim->frames);
+    if (idx < 0 || idx >= fcount) return;
+    free(m_editor.edit_anim->frames[idx].xforms);
+    arrdel(m_editor.edit_anim->frames, idx);
+    if (m_editor.selected_frame >= (s32)arrlen(m_editor.edit_anim->frames))
+        m_editor.selected_frame = (s32)arrlen(m_editor.edit_anim->frames) - 1;
+    console_write_log_alloc("Frame %d deleted", idx);
+}
+
 // MicroUI panel for the anim editor.
 // AI-GENERATED
 static void draw_anim_panel(void)
@@ -363,7 +543,16 @@ static void draw_anim_panel(void)
 
     mu_layout_row(ui, 1, (int[]){-1}, 18);
     mu_label(ui, "Mode: ANIM  [G to change]");
-    mu_label(ui, "R = toggle rotate/translate");
+    mu_label(ui, "Click node = select joint");
+    mu_label(ui, "Drag node  = free move");
+    mu_label(ui, "R = gizmo rotate/translate");
+
+    // IK + gizmo toggles
+    mu_layout_row(ui, 1, (int[]){-1}, 24);
+    if (mu_button(ui, m_editor.ik_mode ? ">IK ON  [I]" : " IK off [I]"))
+        m_editor.ik_mode = !m_editor.ik_mode;
+    if (mu_button(ui, m_editor.prefer_gizmo ? ">Gizmo mode" : " Free drag"))
+        m_editor.prefer_gizmo = !m_editor.prefer_gizmo;
 
     // Build skel from currently-painted groups
     mu_layout_row(ui, 1, (int[]){-1}, 24);
@@ -398,6 +587,35 @@ static void draw_anim_panel(void)
         }
     }
 
+    // Parent assignment for the selected joint
+    if (m_editor.selected_joint >= 0) {
+        s32 j = m_editor.selected_joint;
+        s16 cur_parent = m_editor.edit_base->joints[j].parent;
+
+        mu_layout_row(ui, 1, (int[]){-1}, 18);
+        char par_hdr[48];
+        snprintf(par_hdr, sizeof(par_hdr), "Joint %d parent:", j);
+        mu_label(ui, par_hdr);
+
+        char lbl[8];
+        mu_layout_row(ui, 4, (int[]){44, 44, 44, -1}, 24);
+        // "None" = root joint
+        snprintf(lbl, sizeof(lbl), "%sNone", (cur_parent == -1) ? ">" : " ");
+        if (mu_button(ui, lbl)) {
+            m_editor.edit_base->joints[j].parent = -1;
+            anim_apply_pose(m_editor.edit_base, m_editor.edit_pose, m_editor.selected);
+        }
+        // Only allow lower-indexed joints as parents (preserves topological order)
+        for (s32 p = 0; p < j; p++) {
+            if (!m_editor.joint_has_verts[p]) continue;
+            snprintf(lbl, sizeof(lbl), "%s%d", (cur_parent == (s16)p) ? ">" : " ", p);
+            if (mu_button(ui, lbl)) {
+                m_editor.edit_base->joints[j].parent = (s16)p;
+                anim_apply_pose(m_editor.edit_base, m_editor.edit_pose, m_editor.selected);
+            }
+        }
+    }
+
     // Record / clear
     mu_layout_row(ui, 2, (int[]){100, -1}, 24);
     if (mu_button(ui, "Add Frame"))
@@ -412,13 +630,40 @@ static void draw_anim_panel(void)
             anim_apply_pose(m_editor.edit_base, m_editor.edit_pose, m_editor.selected);
     }
 
-    // Frame count
+    // Frame list
+    s32 fcount = (s32)arrlen(m_editor.edit_anim->frames);
     mu_layout_row(ui, 1, (int[]){-1}, 18);
-    snprintf(info, sizeof(info), "Recorded frames: %d",
-             (s32)arrlen(m_editor.edit_anim->frames));
+    snprintf(info, sizeof(info), "Frames: %d", fcount);
     mu_label(ui, info);
 
+    if (fcount > 0) {
+        mu_begin_panel(ui, "frames");
+        for (s32 fi = 0; fi < fcount; fi++) {
+            b32 is_sel = (fi == m_editor.selected_frame);
+            char fl[12];
+            snprintf(fl, sizeof(fl), "%s%d", is_sel ? ">" : " ", fi);
+
+            mu_layout_row(ui, 4, (int[]){30, 40, 40, -1}, 22);
+            mu_label(ui, fl);
+            if (mu_button(ui, "Load"))
+                anim_editor_load_frame(fi);
+            if (mu_button(ui, "Upd") && is_sel)
+                anim_editor_update_frame(fi);
+            if (mu_button(ui, "Del")) {
+                anim_editor_delete_frame(fi);
+                break; // array length changed; restart next frame
+            }
+        }
+        mu_end_panel(ui);
+    }
+
+    // Duplicate selected frame
+    mu_layout_row(ui, 1, (int[]){-1}, 24);
+    if (mu_button(ui, "Duplicate Frame") && m_editor.selected_frame >= 0)
+        anim_editor_duplicate_frame(m_editor.selected_frame);
+
     // Sequence name + duration
+    mu_layout_row(ui, 1, (int[]){-1}, 18);
     mu_label(ui, "Sequence name:");
     mu_layout_row(ui, 1, (int[]){-1}, 24);
     mu_textbox(ui, m_editor.seq_name, sizeof(m_editor.seq_name));
@@ -508,6 +753,336 @@ static void dispatch_ui_commands(void)
     }
 }
 
+// ---- rig editor helpers ----------------------------------------------------
+
+// Place a new joint at a world-space position, parented to `parent` (-1 = root).
+static void rig_add_joint(V3f world_pos, s16 parent)
+{
+    if (!m_editor.edit_base) {
+        m_editor.edit_base = calloc(1, sizeof(FrameBase));
+        if (!m_editor.edit_anim) {
+            m_editor.edit_anim = calloc(1, sizeof(AnimData));
+        }
+        m_editor.edit_anim->base = m_editor.edit_base;
+    }
+    u32 g = m_editor.edit_base->count;
+    if (g >= 16) { console_write_log_alloc("Max 16 joints reached"); return; }
+
+    AnimJoint j = { .type = ANIM_XFORM_ROTATE, .group = (u16)g, .parent = parent };
+    arrput(m_editor.edit_base->joints, j);
+    m_editor.edit_base->count++;
+
+    m_editor.joint_centers[g]   = world_pos;
+    m_editor.joint_active[g]    = true;
+    m_editor.joint_has_verts[g] = false;
+    m_editor.edit_pose[g] = (Transform){
+        .r = quat_identity(), .t = v3f(0,0,0), .s = v3f(1,1,1)
+    };
+    m_editor.selected_joint = (s32)g;
+    console_write_log_alloc("Joint %u placed", g);
+}
+
+// Remove joint g, renumbering all subsequent joint indices and parent refs.
+static void rig_delete_joint(s32 g)
+{
+    if (!m_editor.edit_base || g < 0 || g >= (s32)m_editor.edit_base->count) return;
+
+    arrdel(m_editor.edit_base->joints, g);
+    m_editor.edit_base->count--;
+
+    // Fix parent references
+    for (u32 j = 0; j < m_editor.edit_base->count; j++) {
+        s16 p = m_editor.edit_base->joints[j].parent;
+        if      (p == (s16)g) m_editor.edit_base->joints[j].parent = -1;
+        else if (p  > (s16)g) m_editor.edit_base->joints[j].parent--;
+        // Also fix the group index stored in the joint
+        if ((s32)m_editor.edit_base->joints[j].group > g)
+            m_editor.edit_base->joints[j].group--;
+    }
+
+    // Shift joint_centers, joint_active, joint_has_verts down
+    for (s32 i = g; i < 15; i++) {
+        m_editor.joint_centers[i]   = m_editor.joint_centers[i+1];
+        m_editor.joint_active[i]    = m_editor.joint_active[i+1];
+        m_editor.joint_has_verts[i] = m_editor.joint_has_verts[i+1];
+        m_editor.edit_pose[i]       = m_editor.edit_pose[i+1];
+    }
+    m_editor.joint_active[15]    = false;
+    m_editor.joint_has_verts[15] = false;
+
+    // Shift skin group assignments on the model
+    if (m_editor.selected) {
+        for (u32 i = 0; i < m_editor.selected->base_count; i++) {
+            u16 sg = m_editor.selected->skin_groups[i];
+            if (sg == (u16)g)
+                m_editor.selected->skin_groups[i] = ANIM_GROUP_STATIC;
+            else if (sg != ANIM_GROUP_STATIC && sg > (u16)g)
+                m_editor.selected->skin_groups[i]--;
+        }
+    }
+
+    if (m_editor.selected_joint == g)        m_editor.selected_joint = -1;
+    else if (m_editor.selected_joint > g)    m_editor.selected_joint--;
+    console_write_log_alloc("Joint %d removed", g);
+}
+
+// Assign each base vertex to the nearest joint by world-space distance.
+static void rig_auto_skin(void)
+{
+    if (!m_editor.edit_base || !m_editor.selected) return;
+    u32 jcount = m_editor.edit_base->count;
+    if (jcount == 0) return;
+
+    for (u32 i = 0; i < m_editor.selected->base_count; i++) {
+        V3f pw = model_to_world(m_editor.selected->base_positions[i],
+                                m_editor.transform, v3f(0,0,0));
+        f32 best = FLT_MAX;
+        u16 best_g = ANIM_GROUP_STATIC;
+        for (u16 g = 0; g < jcount && g < 16; g++) {
+            V3f d = v3f_sub(pw, m_editor.joint_centers[g]);
+            f32 dist = sqrtf(v3f_dot(d, d));
+            if (dist < best) { best = dist; best_g = g; }
+        }
+        m_editor.selected->skin_groups[i] = best_g;
+    }
+    compute_joint_centers();
+    console_write_log_alloc("Auto-skinned %u verts to %u joints",
+                            m_editor.selected->base_count, jcount);
+}
+
+// Wipe the rig to zero joints without touching the anim data.
+static void rig_clear_skeleton(void)
+{
+    if (m_editor.edit_base) {
+        arrfree(m_editor.edit_base->joints);
+        m_editor.edit_base->count = 0;
+    } else {
+        m_editor.edit_base = calloc(1, sizeof(FrameBase));
+        if (m_editor.edit_anim) m_editor.edit_anim->base = m_editor.edit_base;
+    }
+    m_editor.selected_joint = -1;
+    memset(m_editor.joint_active,    0, sizeof(m_editor.joint_active));
+    memset(m_editor.joint_has_verts, 0, sizeof(m_editor.joint_has_verts));
+    console_write_log_alloc("Skeleton cleared");
+}
+
+static void draw_rig_panel(void)
+{
+    mu_Context *ui = platform_ctx.ui;
+    if (!mu_begin_window(ui, "Rig Editor", mu_rect(0, 0, 220, GAME_HEIGHT * 3 / 4)))
+        return;
+
+    mu_layout_row(ui, 1, (int[]){-1}, 18);
+    mu_label(ui, "Mode: RIG  [G to change]");
+    mu_label(ui, "Click mesh  = place joint");
+    mu_label(ui, "Drag node   = move joint");
+    mu_label(ui, "Ctrl+click  = set parent");
+    mu_label(ui, "Del         = remove joint");
+
+    mu_layout_row(ui, 1, (int[]){-1}, 24);
+    if (mu_button(ui, "Auto-skin to joints"))
+        rig_auto_skin();
+
+    mu_layout_row(ui, 1, (int[]){-1}, 24);
+    if (mu_button(ui, "Clear Skeleton"))
+        rig_clear_skeleton();
+
+    if (!m_editor.edit_base || m_editor.edit_base->count == 0) {
+        mu_end_window(ui);
+        return;
+    }
+
+    // Joint list
+    char info[64];
+    snprintf(info, sizeof(info), "Joints: %u", m_editor.edit_base->count);
+    mu_layout_row(ui, 1, (int[]){-1}, 18);
+    mu_label(ui, info);
+
+    mu_begin_panel(ui, "rig_joints");
+        for (u32 g = 0; g < m_editor.edit_base->count; g++) {
+            b32 is_sel = ((s32)g == m_editor.selected_joint);
+            s16 par    = m_editor.edit_base->joints[g].parent;
+            char row[48];
+            if (par < 0)
+                snprintf(row, sizeof(row), "%sJ%u (root)", is_sel ? ">" : " ", g);
+            else
+                snprintf(row, sizeof(row), "%sJ%u -> J%d", is_sel ? ">" : " ", g, (s32)par);
+            mu_layout_row(ui, 1, (int[]){-1}, 20);
+            if (mu_button(ui, row))
+                m_editor.selected_joint = (s32)g;
+        }
+        mu_end_panel(ui);
+
+    // Remove selected
+    if (m_editor.selected_joint >= 0) {
+        mu_layout_row(ui, 1, (int[]){-1}, 24);
+        char del_lbl[32];
+        snprintf(del_lbl, sizeof(del_lbl), "Remove Joint %d", m_editor.selected_joint);
+        if (mu_button(ui, del_lbl))
+            rig_delete_joint(m_editor.selected_joint);
+    }
+
+    mu_end_window(ui);
+}
+
+void model_editor_rig_frame(f32 dt)
+{
+    UNUSED(dt);
+    if (!m_editor.selected) return;
+
+    renderer.camera = m_editor.camera;
+    if (is_mouse_button_down(MOUSEBUTTON_RIGHT) || is_key_down(KEY_V))
+        model_editor_camera_update();
+
+    V2f mouse       = get_mouse_pos();
+    V2f mouse_delta = get_mouse_delta();
+    Ray mouse_ray   = get_mouse_ray(renderer.camera, mouse);
+    UNUSED(mouse);
+
+    bool mouse_pressed  = is_mouse_button_pressed(MOUSEBUTTON_LEFT);
+    bool mouse_down     = is_mouse_button_down(MOUSEBUTTON_LEFT);
+    bool mouse_released = is_mouse_button_released(MOUSEBUTTON_LEFT);
+    bool ctrl_held      = is_key_down(KEY_LEFT_CONTROL);
+
+    if (is_key_pressed(KEY_DELETE) && m_editor.selected_joint >= 0)
+        rig_delete_joint(m_editor.selected_joint);
+
+    if (mouse_pressed) {
+        // Check if clicking an existing joint node
+        s32 picked = -1;
+        f32 closest = FLT_MAX;
+        if (m_editor.edit_base) {
+            for (u32 g = 0; g < m_editor.edit_base->count && g < 16; g++) {
+                f32 r = 0.15f;
+                AABB nb = {
+                    .min = v3f_sub(m_editor.joint_centers[g], v3f(r,r,r)),
+                    .max = v3f_add(m_editor.joint_centers[g], v3f(r,r,r))
+                };
+                RayCollision col = get_raycollision_box(mouse_ray, nb);
+                if (col.hit && col.distance < closest) {
+                    closest = col.distance;
+                    picked  = (s32)g;
+                }
+            }
+        }
+
+        if (picked >= 0) {
+            if (ctrl_held && m_editor.selected_joint >= 0 &&
+                picked != m_editor.selected_joint &&
+                m_editor.edit_base)
+            {
+                // Ctrl+click another joint: set it as parent of the selected joint.
+                // Parent must have a lower index to preserve topological order.
+                if (picked < m_editor.selected_joint) {
+                    m_editor.edit_base->joints[m_editor.selected_joint].parent = (s16)picked;
+                    console_write_log_alloc("Joint %d parent -> %d",
+                                            m_editor.selected_joint, picked);
+                } else {
+                    console_write_log_alloc("Parent must have lower index than child");
+                }
+            } else {
+                m_editor.selected_joint = picked;
+                m_editor.node_dragging  = true;
+            }
+        } else if (!ctrl_held) {
+            // Click on empty space / model surface: place a new joint
+            V3f hit = v3f_add(mouse_ray.position, v3f_scale(mouse_ray.direction, 3.0f));
+            f32 best_dist = FLT_MAX;
+            for (s32 i = 0; i < arrlen(m_editor.selected->vertices); i += 3) {
+                RayCollision col = get_ray_collision_triangle(
+                    mouse_ray,
+                    m_editor.world_positions[i],
+                    m_editor.world_positions[i+1],
+                    m_editor.world_positions[i+2]);
+                if (col.hit && col.distance < best_dist) {
+                    best_dist = col.distance;
+                    hit       = col.point;
+                }
+            }
+            // Parent the new joint to whatever is currently selected
+            s16 parent = (s16)m_editor.selected_joint;
+            // Validate: new joint will be index == current count, so parent must be < that
+            if (m_editor.edit_base &&
+                parent >= (s16)m_editor.edit_base->count)
+                parent = -1;
+            rig_add_joint(hit, parent);
+        }
+    }
+
+    // Drag selected joint
+    if (m_editor.node_dragging && mouse_down && m_editor.selected_joint >= 0) {
+        s32 j = m_editor.selected_joint;
+        Camera cam = renderer.camera;
+        V3f right  = v3f_normalize(v3f_cross(cam.up, cam.front));
+        V3f up_cam = v3f_normalize(v3f_cross(right, cam.front));
+        V3f to_jt  = v3f_sub(m_editor.joint_centers[j], cam.position);
+        f32 depth  = fabsf(v3f_dot(to_jt, cam.front));
+        if (depth < 0.01f) depth = 0.01f;
+        f32 scale  = depth * tanf(cam.fovy * 0.5f * (3.14159f / 180.0f)) * 2.0f / SCREEN_HEIGHT;
+        V3f world_delta = v3f_add(v3f_scale(right,  mouse_delta.x *  scale),
+                                  v3f_scale(up_cam, -mouse_delta.y * scale));
+        m_editor.joint_centers[j] = v3f_add(m_editor.joint_centers[j], world_delta);
+    }
+
+    if (mouse_released)
+        m_editor.node_dragging = false;
+
+    // Draw model with current skin groups so user can see the assignments
+    draw_skin_groups(m_editor.selected, m_editor.transform);
+
+    // Hover detection for node highlight
+    s32 hovered = -1;
+    if (m_editor.edit_base && !m_editor.node_dragging) {
+        f32 closest = FLT_MAX;
+        for (u32 g = 0; g < m_editor.edit_base->count && g < 16; g++) {
+            f32 r = 0.15f;
+            AABB nb = {
+                .min = v3f_sub(m_editor.joint_centers[g], v3f(r,r,r)),
+                .max = v3f_add(m_editor.joint_centers[g], v3f(r,r,r))
+            };
+            RayCollision col = get_raycollision_box(mouse_ray, nb);
+            if (col.hit && col.distance < closest) {
+                closest = col.distance;
+                hovered = (s32)g;
+            }
+        }
+    }
+
+    // Draw joint nodes and bones
+    if (m_editor.edit_base) {
+        Mat4 view = camera_matrix(renderer.camera);
+        for (u32 g = 0; g < m_editor.edit_base->count && g < 16; g++) {
+            V3f p = v3f_translate_by_mat4(m_editor.joint_centers[g], view);
+            if (p.z < NEAR) continue;
+            b32 is_sel = ((s32)g == m_editor.selected_joint);
+            b32 is_hov = ((s32)g == hovered);
+            Color c = is_sel ? (Color){255,255,255,255}
+                    : is_hov ? (Color){255,255,100,255}
+                             : GROUP_PALETTE[g % 16];
+            Color col3[3] = {c,c,c};
+            V3f   uvs[3]  = {0};
+            f32 s = is_sel ? 0.05f : is_hov ? 0.038f : 0.028f;
+            u32 flags = TRIANGLE_WRITE_OVER_Z | TRIANGLE_NO_CULLING | TRIANGLE_WIRE_FRAME;
+            renderer_push_triangle(
+                v3f(p.x, p.y+s, p.z), v3f(p.x-s, p.y-s, p.z), v3f(p.x+s, p.y-s, p.z),
+                col3, uvs, NULL, flags);
+
+            // Draw bone to parent
+            s16 par = m_editor.edit_base->joints[g].parent;
+            if (par >= 0 && (u32)par < m_editor.edit_base->count) {
+                Color bc = is_sel ? (Color){255,255,200,200} : (Color){200,200,200,180};
+                draw_bone_line(m_editor.joint_centers[(u16)par],
+                               m_editor.joint_centers[g], bc);
+            }
+        }
+    }
+
+    mu_begin(platform_ctx.ui);
+    draw_rig_panel();
+    mu_end(platform_ctx.ui);
+    dispatch_ui_commands();
+}
+
 void model_editor_frame(void)
 {
     if (!m_editor.selected) return;
@@ -530,11 +1105,18 @@ void model_editor_frame(void)
                     m_editor.selected->base_positions[m_editor.selected->index_buffer[j]];
         }
         switch (m_editor.mode) {
-            case MODEL_EDITOR_MODE_SELECT: m_editor.mode = MODEL_EDITOR_MODE_PAINT; break;
-            case MODEL_EDITOR_MODE_PAINT:  m_editor.mode = MODEL_EDITOR_MODE_ANIM;  break;
+            case MODEL_EDITOR_MODE_SELECT: m_editor.mode = MODEL_EDITOR_MODE_PAINT;  break;
+            case MODEL_EDITOR_MODE_PAINT:  m_editor.mode = MODEL_EDITOR_MODE_RIG;    break;
+            case MODEL_EDITOR_MODE_RIG:    m_editor.mode = MODEL_EDITOR_MODE_ANIM;   break;
             case MODEL_EDITOR_MODE_ANIM:   m_editor.mode = MODEL_EDITOR_MODE_SELECT; break;
         }
         m_editor.hovered_tri = -1;
+    }
+
+    // RIG mode: bone placement and editing.
+    if (m_editor.mode == MODEL_EDITOR_MODE_RIG) {
+        model_editor_rig_frame(renderer.dt * 1000.0f);
+        return;
     }
 
     // ANIM mode: hand off to the dedicated frame function and show only its panel.
@@ -569,8 +1151,35 @@ void model_editor_frame(void)
         }
         draw_hovered_tri(m_editor.selected, m_editor.transform, m_editor.hovered_tri);
 
-        if (is_mouse_button_down(MOUSEBUTTON_LEFT) && m_editor.hovered_tri >= 0)
-            paint_triangle(m_editor.selected, m_editor.hovered_tri, m_editor.active_group);
+        // Box paint: press starts anchor, drag >5px activates box mode.
+        // Release in box mode paints the region; a plain click paints one triangle.
+        if (is_mouse_button_pressed(MOUSEBUTTON_LEFT)) {
+            m_editor.box_paint_start = mouse;
+            m_editor.box_painting    = false;
+        }
+        if (is_mouse_button_down(MOUSEBUTTON_LEFT)) {
+            f32 dx = mouse.x - m_editor.box_paint_start.x;
+            f32 dy = mouse.y - m_editor.box_paint_start.y;
+            if (!m_editor.box_painting && (dx*dx + dy*dy) > 25.0f)
+                m_editor.box_painting = true;
+
+            if (m_editor.box_painting) {
+                // Draw box overlay
+                Color box_c = {255, 255, 100, 120};
+                V2f s = m_editor.box_paint_start, e = mouse;
+                f32 bx = fminf(s.x, e.x), by = fminf(s.y, e.y);
+                f32 bw = fabsf(e.x - s.x),  bh = fabsf(e.y - s.y);
+                draw_recs32((Recs32){bx, by, bw, bh}, 0.01f, box_c);
+            } else if (m_editor.hovered_tri >= 0) {
+                paint_triangle(m_editor.selected, m_editor.hovered_tri, m_editor.active_group);
+            }
+        }
+        if (is_mouse_button_released(MOUSEBUTTON_LEFT) && m_editor.box_painting) {
+            box_paint_region(m_editor.selected, m_editor.box_paint_start, mouse, m_editor.active_group);
+            m_editor.box_painting = false;
+        }
+        if (is_key_pressed(KEY_F) && m_editor.hovered_tri >= 0)
+            flood_fill_paint(m_editor.selected, m_editor.hovered_tri, m_editor.active_group);
     }
 
     mu_begin(platform_ctx.ui);
@@ -619,12 +1228,47 @@ void model_editor_anim_frame(f32 dt)
         m_editor.gizmo_axis = -1;
     }
 
+    // I toggles IK mode
+    if (is_key_pressed(KEY_I))
+        m_editor.ik_mode = !m_editor.ik_mode;
+
     // Rebuild AABBs every frame so they track the gizmo position
     if (m_editor.selected_joint >= 0)
         gizmo_update(&m_editor.joint_gizmo);
 
-    // ---- mouse press: pick a gizmo axis ----
-    if (mouse_pressed && m_editor.selected_joint >= 0) {
+    // ---- mouse press: try to click a joint node directly in the viewport ----
+    if (mouse_pressed && m_editor.edit_base) {
+        f32 closest_node = FLT_MAX;
+        s32 picked = -1;
+        for (u16 g = 0; g < m_editor.edit_base->count; g++) {
+            if (!m_editor.joint_has_verts[g]) continue;
+            f32 r = 0.15f;
+            AABB nb = {
+                .min = v3f_sub(m_editor.joint_centers[g], v3f(r,r,r)),
+                .max = v3f_add(m_editor.joint_centers[g], v3f(r,r,r))
+            };
+            RayCollision col = get_raycollision_box(mouse_ray, nb);
+            if (col.hit && col.distance < closest_node) {
+                closest_node = col.distance;
+                picked = (s32)g;
+            }
+        }
+        if (picked >= 0) {
+            m_editor.selected_joint              = picked;
+            m_editor.joint_gizmo.position        = m_editor.joint_centers[picked];
+            m_editor.joint_gizmo.attached         = true;
+            m_editor.joint_gizmo.mode             = GIZMO_MODE_ROTATE;
+            m_editor.joint_gizmo.axis_rotation[0] = 0.0f;
+            m_editor.joint_gizmo.axis_rotation[1] = 0.0f;
+            m_editor.joint_gizmo.axis_rotation[2] = 0.0f;
+            m_editor.gizmo_axis                   = -1;
+            m_editor.node_dragging                = !m_editor.prefer_gizmo;
+            m_editor.ik_drag_target               = m_editor.joint_centers[picked];
+        }
+    }
+
+    // ---- mouse press: pick a gizmo axis (only if we didn't grab a node) ----
+    if (mouse_pressed && !m_editor.node_dragging && m_editor.selected_joint >= 0) {
         f32 closest = FLT_MAX;
         m_editor.gizmo_axis = -1;
         for (s32 i = 0; i < GIZMO_AXIS_COUNT; i++) {
@@ -636,7 +1280,50 @@ void model_editor_anim_frame(f32 dt)
         }
     }
 
-    // ---- drag: update pose and apply live preview ----
+    // ---- node drag: free movement projected onto camera-perpendicular plane ----
+    if (m_editor.node_dragging && mouse_down && m_editor.selected_joint >= 0) {
+        s32 j = m_editor.selected_joint;
+        Camera cam = renderer.camera;
+        V3f right  = v3f_normalize(v3f_cross(cam.up, cam.front));
+        V3f up_cam = v3f_normalize(v3f_cross(right, cam.front));
+        V3f to_jt  = v3f_sub(m_editor.joint_centers[j], cam.position);
+        f32 depth  = fabsf(v3f_dot(to_jt, cam.front));
+        if (depth < 0.01f) depth = 0.01f;
+        f32 scale  = depth * tanf(cam.fovy * 0.5f * (3.14159f / 180.0f)) * 2.0f / SCREEN_HEIGHT;
+        V3f world_delta = v3f_add(v3f_scale(right,  mouse_delta.x *  scale),
+                                  v3f_scale(up_cam, -mouse_delta.y * scale));
+
+        m_editor.ik_drag_target = v3f_add(m_editor.ik_drag_target, world_delta);
+        V3f model_delta = v3f(world_delta.x, world_delta.y, -world_delta.z);
+        m_editor.edit_pose[j].t = v3f_add(m_editor.edit_pose[j].t, model_delta);
+        m_editor.joint_gizmo.position = v3f_add(m_editor.joint_gizmo.position, world_delta);
+
+        // IK: rotate immediate parent to aim toward the dragged target
+        if (m_editor.ik_mode && m_editor.edit_base) {
+            s16 p = m_editor.edit_base->joints[j].parent;
+            if (p >= 0 && m_editor.joint_has_verts[(u16)p]) {
+                V3f pc  = m_editor.joint_centers[(u16)p];
+                V3f jc  = m_editor.joint_centers[j];
+                V3f diff = v3f_sub(jc, pc);
+                f32 rest_len = sqrtf(v3f_dot(diff, diff));
+                V3f to_tgt   = v3f_sub(m_editor.ik_drag_target, pc);
+                f32 tgt_len  = sqrtf(v3f_dot(to_tgt, to_tgt));
+                if (rest_len > 0.001f && tgt_len > 0.001f) {
+                    V3f rest_dir_w = v3f_scale(diff,   1.0f / rest_len);
+                    V3f tgt_dir_w  = v3f_scale(to_tgt, 1.0f / tgt_len);
+                    Quat dq_w = quat_from_to(rest_dir_w, tgt_dir_w);
+                    // Convert world→model space: z-flip negates quat's z axis component
+                    Quat dq_m = quat_normalise((Quat){dq_w.x, dq_w.y, -dq_w.z, dq_w.w});
+                    m_editor.edit_pose[(s32)p].r = dq_m;
+                }
+            }
+        }
+
+        if (m_editor.edit_base)
+            anim_apply_pose(m_editor.edit_base, m_editor.edit_pose, m_editor.selected);
+    }
+
+    // ---- gizmo axis drag: precise axis-aligned rotate/translate ----
     if (m_editor.gizmo_axis >= 0 && mouse_down && m_editor.selected_joint >= 0) {
         s32 j = m_editor.selected_joint;
 
@@ -645,19 +1332,17 @@ void model_editor_anim_frame(f32 dt)
             switch (m_editor.gizmo_axis) {
                 case GIZMO_AXIS_X: angle = -mouse_delta.y * 0.01f; break;
                 case GIZMO_AXIS_Y: angle =  mouse_delta.x * 0.01f; break;
-                case GIZMO_AXIS_Z: angle =  mouse_delta.x * 0.01f; break;
+                case GIZMO_AXIS_Z: angle = -mouse_delta.x * 0.01f; break;
                 default: break;
             }
             gizmo_rotation_modify(&m_editor.joint_gizmo, (Gizmo_Axis)m_editor.gizmo_axis, angle);
             m_editor.edit_pose[j].r = mat3_to_quat(gizmo_get_rotation(&m_editor.joint_gizmo));
         } else {
-            // World-space delta from gizmo; negate z to convert to model-space
             V3f world_delta = gizmo_translation_modify(
                 &m_editor.joint_gizmo, (Gizmo_Axis)m_editor.gizmo_axis,
                 v2f_scale(mouse_delta, 0.01f));
             V3f model_delta = v3f(world_delta.x, world_delta.y, -world_delta.z);
             m_editor.edit_pose[j].t = v3f_add(m_editor.edit_pose[j].t, model_delta);
-            // Move gizmo visually so it follows the joint
             m_editor.joint_gizmo.position = v3f_add(m_editor.joint_gizmo.position, world_delta);
         }
 
@@ -665,8 +1350,10 @@ void model_editor_anim_frame(f32 dt)
             anim_apply_pose(m_editor.edit_base, m_editor.edit_pose, m_editor.selected);
     }
 
-    if (mouse_released)
-        m_editor.gizmo_axis = -1;
+    if (mouse_released) {
+        m_editor.gizmo_axis   = -1;
+        m_editor.node_dragging = false;
+    }
 
     // ---- draw model with group colours using live vertex positions ----
     draw_anim_groups_live(m_editor.selected);
@@ -675,22 +1362,57 @@ void model_editor_anim_frame(f32 dt)
     // Markers are pushed as view-space triangles (renderer.camera already applied by
     // draw_anim_groups_live logic above, but markers go through renderer_push_triangle
     // which expects view-space).
+    // Check which joint the mouse ray is nearest (for hover highlight)
+    s32 hovered_joint = -1;
+    if (m_editor.edit_base && !m_editor.node_dragging) {
+        f32 closest_hover = FLT_MAX;
+        for (u16 g = 0; g < m_editor.edit_base->count; g++) {
+            if (!m_editor.joint_has_verts[g]) continue;
+            f32 r = 0.15f;
+            AABB nb = {
+                .min = v3f_sub(m_editor.joint_centers[g], v3f(r,r,r)),
+                .max = v3f_add(m_editor.joint_centers[g], v3f(r,r,r))
+            };
+            RayCollision col = get_raycollision_box(mouse_ray, nb);
+            if (col.hit && col.distance < closest_hover) {
+                closest_hover = col.distance;
+                hovered_joint = (s32)g;
+            }
+        }
+    }
+
     Mat4 view = camera_matrix(renderer.camera);
     for (u16 g = 0; g < 16; g++) {
         if (!m_editor.joint_has_verts[g]) continue;
         V3f p = v3f_translate_by_mat4(m_editor.joint_centers[g], view);
         if (p.z < NEAR) continue;
-        Color c   = ((s32)g == m_editor.selected_joint)
-                  ? (Color){255, 255, 255, 255}
-                  : GROUP_PALETTE[g % 16];
+        b32 is_sel    = ((s32)g == m_editor.selected_joint);
+        b32 is_hovered = ((s32)g == hovered_joint);
+        Color c = is_sel     ? (Color){255, 255, 255, 255}
+                : is_hovered ? (Color){255, 255, 100, 255}
+                             : GROUP_PALETTE[g % 16];
         Color col3[3] = {c, c, c};
         V3f   uvs3[3] = {0};
-        f32 s = 0.025f;
+        // Selected joint gets a larger marker; hovering joint gets medium
+        f32 s = is_sel ? 0.045f : is_hovered ? 0.035f : 0.025f;
+        u32 flags = TRIANGLE_WRITE_OVER_Z | TRIANGLE_NO_CULLING;
+        if (is_sel || is_hovered) flags |= TRIANGLE_WIRE_FRAME;
         renderer_push_triangle(
             v3f(p.x,     p.y + s, p.z),
             v3f(p.x - s, p.y - s, p.z),
             v3f(p.x + s, p.y - s, p.z),
-            col3, uvs3, NULL, TRIANGLE_WRITE_OVER_Z | TRIANGLE_NO_CULLING);
+            col3, uvs3, NULL, flags);
+    }
+
+    // ---- draw bones between parent-child joint pairs ----
+    if (m_editor.edit_base) {
+        for (u32 g = 0; g < m_editor.edit_base->count; g++) {
+            s16 p = m_editor.edit_base->joints[g].parent;
+            if (p < 0 || !m_editor.joint_has_verts[g] || !m_editor.joint_has_verts[(u16)p])
+                continue;
+            Color bc = {220, 220, 220, 200};
+            draw_bone_line(m_editor.joint_centers[(u16)p], m_editor.joint_centers[g], bc);
+        }
     }
 
     // ---- draw gizmo if a joint is selected ----

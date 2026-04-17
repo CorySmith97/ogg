@@ -4,7 +4,8 @@
 typedef enum {
     MODEL_EDITOR_MODE_SELECT,   // existing triangle selection behaviour
     MODEL_EDITOR_MODE_PAINT,    // vertex group painting
-    MODEL_EDITOR_MODE_ANIM,     // AI-GENERATED: gizmo-based keyframe posing
+    MODEL_EDITOR_MODE_RIG,      // place/move/parent joints, auto-skin
+    MODEL_EDITOR_MODE_ANIM,     // gizmo-based keyframe posing
 } ModelEditorMode;
 
 // One distinct color per group index (0-15), used both in the viewport and the UI palette.
@@ -46,6 +47,20 @@ static struct {
     s32              gizmo_axis;        // active gizmo axis index (-1 = none)
     char             seq_name[32];      // sequence name for the saved .anim file
     float            frame_dur_ms;      // ms per frame when saving (mu_Real = float)
+    s32              selected_frame;    // index of frame selected in the frame list (-1 = none)
+
+    // Box painting
+    b32              box_painting;      // true while the user is drag-painting a screen rect
+    V2f              box_paint_start;   // screen-space anchor of the box paint drag
+
+    // Node dragging / IK
+    b32              node_dragging;     // true while dragging a joint node directly
+    b32              ik_mode;           // when true, dragging a node also rotates its parent
+    b32              prefer_gizmo;      // when true, node clicks select the joint but don't activate free-drag
+    V3f              ik_drag_target;    // world-space target accumulated during this node drag
+
+    // Rig editor
+    b32              joint_active[16];  // true for each joint explicitly placed in rig mode
 
 } m_editor = {
     .selected           = NULL,
@@ -55,6 +70,7 @@ static struct {
     .hovered_tri        = -1,
     .selected_joint     = -1,
     .gizmo_axis         = -1,
+    .selected_frame     = -1,
     .seq_name           = "idle",
     .frame_dur_ms       = 200.0f,
     .camera = {
@@ -72,5 +88,6 @@ void model_editor_load_model(String8 model_name);
 void model_editor_init(void);
 void model_editor_frame(void);
 void model_editor_anim_frame(f32 dt);
+void model_editor_rig_frame(f32 dt);
 
 #endif // MODEL_EDITOR
