@@ -37,6 +37,9 @@ typedef struct Entity{
 
     void (*update_fn) (struct Entity *e);
 
+    AnimData  *anim_data;
+    AnimState  anim;
+
 } Entity;
 
 Entity global_entities[ENTITY_TAG_COUNT];

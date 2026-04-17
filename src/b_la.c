@@ -616,6 +616,25 @@ Quat quat_normalise(Quat q)
     return (Quat){q.x*inv, q.y*inv, q.z*inv, q.w*inv};
 }
 
+// Hamilton product: compose two rotations (a applied first, then b)
+Quat quat_mul(Quat a, Quat b)
+{
+    return (Quat){
+        a.w*b.x + a.x*b.w + a.y*b.z - a.z*b.y,
+        a.w*b.y - a.x*b.z + a.y*b.w + a.z*b.x,
+        a.w*b.z + a.x*b.y - a.y*b.x + a.z*b.w,
+        a.w*b.w - a.x*b.x - a.y*b.y - a.z*b.z,
+    };
+}
+
+// Rotate vector v by quaternion q using: v + 2w(q.xyz × v) + 2(q.xyz × (q.xyz × v))
+V3f quat_rotate_v3f(Quat q, V3f v)
+{
+    V3f qv = {q.x, q.y, q.z};
+    V3f t  = v3f_scale(v3f_cross(qv, v), 2.0f);
+    return v3f_add(v3f_add(v, v3f_scale(t, q.w)), v3f_cross(qv, t));
+}
+
 Mat4 mat4_inverse(Mat4 a)
 {
     f32 a00 = a.c[0],  a01 = a.c[1],  a02 = a.c[2],  a03 = a.c[3];
@@ -655,4 +674,42 @@ Mat4 mat4_inverse(Mat4 a)
         (-a30*b03 + a31*b01 - a32*b00) * inv_det,
         ( a20*b03 - a21*b01 + a22*b00) * inv_det,
     };
+}
+
+// AI-GENERATED: Shepperd's method for Mat3 → Quat.
+// Mat3 is row-major: c[row*3+col], so c[0..2]=row0, c[3..5]=row1, c[6..8]=row2.
+// Review: verify axis conventions match your coordinate system (z-flip may invert X/Z rotations).
+Quat mat3_to_quat(Mat3 m)
+{
+    // diagonal: m00=c[0], m11=c[4], m22=c[8]
+    f32 trace = m.c[0] + m.c[4] + m.c[8];
+    Quat q;
+
+    if (trace > 0.0f) {
+        f32 s = 0.5f / sqrtf(trace + 1.0f);
+        q.w = 0.25f / s;
+        q.x = (m.c[7] - m.c[5]) * s;   // m21 - m12
+        q.y = (m.c[2] - m.c[6]) * s;   // m02 - m20
+        q.z = (m.c[3] - m.c[1]) * s;   // m10 - m01
+    } else if (m.c[0] > m.c[4] && m.c[0] > m.c[8]) {
+        f32 s = 2.0f * sqrtf(1.0f + m.c[0] - m.c[4] - m.c[8]);
+        q.w = (m.c[7] - m.c[5]) / s;
+        q.x = 0.25f * s;
+        q.y = (m.c[1] + m.c[3]) / s;   // m01 + m10
+        q.z = (m.c[2] + m.c[6]) / s;   // m02 + m20
+    } else if (m.c[4] > m.c[8]) {
+        f32 s = 2.0f * sqrtf(1.0f + m.c[4] - m.c[0] - m.c[8]);
+        q.w = (m.c[2] - m.c[6]) / s;
+        q.x = (m.c[1] + m.c[3]) / s;
+        q.y = 0.25f * s;
+        q.z = (m.c[5] + m.c[7]) / s;   // m12 + m21
+    } else {
+        f32 s = 2.0f * sqrtf(1.0f + m.c[8] - m.c[0] - m.c[4]);
+        q.w = (m.c[3] - m.c[1]) / s;
+        q.x = (m.c[2] + m.c[6]) / s;
+        q.y = (m.c[5] + m.c[7]) / s;
+        q.z = 0.25f * s;
+    }
+
+    return quat_normalise(q);
 }

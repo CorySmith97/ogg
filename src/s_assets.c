@@ -177,8 +177,42 @@ Asset_Model *load_model_from_file(const char *file)
             if (strncmp(line, "usemtl", 6) == 1){}
         }
     }
+    // Build base_positions (unique rest-pose positions) and index_buffer.
+    // This is the foundation for animation skinning — the renderer always reads
+    // model->vertices, but the animation system works on the smaller base set
+    // and scatters results back via index_buffer.
+    {
+        u32 flat_count = (u32)arrlen(model->vertices);
+        model->index_buffer = malloc(sizeof(u32) * flat_count);
+
+        for (u32 j = 0; j < flat_count; j++) {
+            V3f pos = model->vertices[j].position;
+
+            u32 found = UINT32_MAX;
+            for (u32 k = 0; k < (u32)arrlen(model->base_positions); k++) {
+                if (v3f_equal(model->base_positions[k], pos)) {
+                    found = k;
+                    break;
+                }
+            }
+
+            if (found == UINT32_MAX) {
+                found = (u32)arrlen(model->base_positions);
+                arrput(model->base_positions, pos);
+            }
+
+            model->index_buffer[j] = found;
+        }
+
+        model->base_count  = (u32)arrlen(model->base_positions);
+        model->skin_groups = malloc(sizeof(u16) * model->base_count);
+        for (u32 i = 0; i < model->base_count; i++)
+            model->skin_groups[i] = ANIM_GROUP_STATIC;
+    }
+
     log_info("Model loaded    %s", file);
     log_info("Vertices loaded %td", arrlen(model->vertices));
+    log_info("Base positions  %u (from %td flat)", model->base_count, arrlen(model->vertices));
     console_write_log_alloc("Loaded model %s", file);
     goto ret;
 
@@ -188,6 +222,44 @@ ret:
     return model;
 }
 
+
+void skin_save(const char *file, Asset_Model *model)
+{
+    FILE *f = fopen(file, "w");
+    if (!f) {
+        console_write_log_alloc("skin_save: could not open %s", file);
+        return;
+    }
+    fprintf(f, "%u\n", model->base_count);
+    for (u32 i = 0; i < model->base_count; i++)
+        fprintf(f, "%u\n", (unsigned)model->skin_groups[i]);
+    fclose(f);
+    console_write_log_alloc("Saved skin -> %s", file);
+}
+
+void skin_load(const char *file, Asset_Model *model)
+{
+    FILE *f = fopen(file, "r");
+    if (!f) {
+        console_write_log_alloc("skin_load: could not open %s", file);
+        return;
+    }
+    u32 base_count = 0;
+    fscanf(f, "%u\n", &base_count);
+    if (base_count != model->base_count) {
+        console_write_log_alloc("skin_load: count mismatch %u vs %u in %s",
+                                base_count, model->base_count, file);
+        fclose(f);
+        return;
+    }
+    for (u32 i = 0; i < model->base_count; i++) {
+        unsigned g = ANIM_GROUP_STATIC;
+        fscanf(f, "%u\n", &g);
+        model->skin_groups[i] = (u16)g;
+    }
+    fclose(f);
+    console_write_log_alloc("Loaded skin <- %s", file);
+}
 
 Font *load_font(const char *file, s32 cwidth, s32 cheight)
 {

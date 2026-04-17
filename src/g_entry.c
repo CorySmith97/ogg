@@ -98,6 +98,12 @@ void game_init(void)
             .rotation = mat3_identity(),
             .update_fn = update_shopkeeper,
             };
+
+    entity_anim_init(&e, 
+                     "data/shopkeeper.skel",
+                     "data/shopkeeper.skin",
+                     "data/shopkeeper.anim");
+    anim_state_play(&e.anim, "idle");
     e.aabb.min = v3f(e.position.x - 0.25, e.position.y - 0.5, e.position.z - 0.25);
     e.aabb.max = v3f(e.position.x + 0.25, e.position.y + 0.5, e.position.z + 0.25);
 
@@ -193,9 +199,11 @@ void game_frame(void)
                 game_ui();
 
                 if (is_mouse_button_pressed(MOUSEBUTTON_LEFT)) {
+                    log_debug("Pressing left in game");
                     for (s32 i = 0; i < arrlen(gs.tiles); i++) {
                         RayCollision collision = tile_mouse_ray_collision(&gs.tiles[i], mouse_ray);
                         if (collision.hit) {
+                    log_debug("Hit tile %d", i);
                             Entity *e = &gs.dynamic_entities[gs.player_index];
                             e->target = gs.tiles[i].position;
                         }

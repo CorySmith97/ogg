@@ -116,10 +116,80 @@ typedef struct {
     Transform *local;
 } Pose;
 
+// ---------------------------------------------------------------------------
+// Animation
+// ---------------------------------------------------------------------------
+
+// What kind of transformation a joint applies to its vertex group
+typedef enum {
+    ANIM_XFORM_ROTATE,
+    ANIM_XFORM_TRANSLATE,
+    ANIM_XFORM_SCALE,
+} AnimXformType;
+
+// One entry in the FrameBase skeleton topology.
+// parent == -1 means root joint.
 typedef struct {
-    Vertex    *vertices;
+    AnimXformType type;
+    u16           group;
+    s16           parent;
+} AnimJoint;
+
+// The skeleton topology: defines which joints exist and what they do.
+// Shared across all animations that target the same character.
+typedef struct {
+    AnimJoint *joints;  // stb-ds dynamic array
+    u32        count;
+} FrameBase;
+
+// One keyframe: one Transform per joint in the FrameBase (same order)
+typedef struct {
+    Transform *xforms;  // [joint_count]
+} AnimFrame;
+
+// Reference to a frame within an AnimSequence, plus how long to hold it (ms)
+typedef struct {
+    u32 frame_idx;
+    u32 duration_ms;
+} AnimFrameRef;
+
+typedef enum {
+    ANIM_LOOP,  // restart from frame 0 when done
+    ANIM_HOLD,  // freeze on the last frame
+    ANIM_STOP,  // return to rest pose when done
+} AnimLoopMode;
+
+// A named animation clip: an ordered list of frame references
+typedef struct {
+    AnimFrameRef *frames;   // stb-ds dynamic array
+    AnimLoopMode  loop;
+    String8       name;
+} AnimSequence;
+
+// Sentinel group value — vertex is not driven by any joint
+#define ANIM_GROUP_STATIC 0xFFFFu
+
+// Per-model skin data: maps each unique base position to a group index
+typedef struct {
+    u16 *groups;        // [vertex_count], ANIM_GROUP_STATIC = unaffected
+    u32  vertex_count;
+} AnimSkin;
+
+// ---------------------------------------------------------------------------
+
+typedef struct {
+    Vertex    *vertices;        // flat unindexed triangle array (renderer reads this)
     Face      *faces;
     SimpleMtl *mtl;
+
+    // Deduplication for animation skinning.
+    // base_positions holds each unique rest-pose position once.
+    // index_buffer[j] is which base position flat vertex j came from.
+    // skin_groups[i] is which animation group base position i belongs to.
+    V3f       *base_positions;  // [base_count]
+    u32        base_count;
+    u32       *index_buffer;    // [arrlen(vertices)]
+    u16       *skin_groups;     // [base_count], ANIM_GROUP_STATIC by default
 } Asset_Model;
 
 typedef struct {
@@ -138,5 +208,9 @@ void         deload_model(Asset_Model *model);
 Font        *load_font(const char *file, int cwidth, int cheight);
 Texture     *load_texture_from_file(const char *file, bool flip);
 SimpleMtl   *load_material_file(const char *file);
+
+// Write/read skin_groups to/from a .skin text file
+void skin_save(const char *file, Asset_Model *model);
+void skin_load(const char *file, Asset_Model *model);
 
 #endif // ASSET_H

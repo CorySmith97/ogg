@@ -18,6 +18,14 @@ f32 angle_diff(f32 a, f32 b) {
     while (d < -M_PI) d += 2.0f * M_PI;
     return d;
 }
+void entity_anim_init(Entity *e, const char *skel, const char *skin, const char *anim)
+{
+    if (!e->model) return;
+    skin_load(skin, e->model);
+    e->anim_data = anim_data_load(skel, anim);
+    anim_state_init(&e->anim, e->anim_data, e->model);
+}
+
 void entity_update(Entity *e)
 {
     e->position = v3f_add(e->position, v3f_scale(v3f_sub(e->target, e->position), 0.1));
@@ -26,12 +34,17 @@ void entity_update(Entity *e)
         e->rotation = rotation_y(atan2f(dir.x, -dir.z));
     }
 
+    if (e->anim_data)
+        anim_update(&e->anim, renderer.dt * 1000.0f);
+
     e->update_fn(e);
 }
 
 void entity_draw(Entity *e)
 {
-        draw_model(e->model, e->position, e->rotation, e->hit);
+    if (e->anim_data)
+        anim_apply(&e->anim, e->model);
+    draw_model(e->model, e->position, e->rotation, e->hit);
 }
 
 RayCollision entity_mouse_ray_collision(Entity *e, Ray mouse_ray)

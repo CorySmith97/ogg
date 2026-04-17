@@ -34,11 +34,11 @@ static const char key_map[256] = {
 
 static int text_width(mu_Font font, const char *text, int len) {
   if (len == -1) { len = strlen(text); }
-  return len * 16;
+  return len * 12;
 }
 
 static int text_height(mu_Font font) {
-  return 16;
+  return 12;
 }
 
 void platform_init(const char *name, u32 width, u32 height)

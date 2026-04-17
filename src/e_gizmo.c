@@ -9,6 +9,10 @@ void gizmo_init(void)
 static void draw_ring(V3f center, V3f axis_u, V3f axis_v,
                       f32 r, f32 half_t, Color color, s32 segments)
 {
+    // Normal to the ring plane — used for the axial quad so the ring is
+    // visible even when viewed edge-on (e.g. X ring from a camera on the YZ plane).
+    V3f ring_normal = v3f_cross(axis_u, axis_v);
+
     V3f cam_dir = v3f_normalize(v3f_sub(renderer.camera.position, center));
     f32 step = (2.0f * (f32)M_PI) / (f32)segments;
 
@@ -24,12 +28,21 @@ static void draw_ring(V3f center, V3f axis_u, V3f axis_v,
         V3f d0 = v3f_add(v3f_scale(axis_u, cosf(a0)), v3f_scale(axis_v, sinf(a0)));
         V3f d1 = v3f_add(v3f_scale(axis_u, cosf(a1)), v3f_scale(axis_v, sinf(a1)));
 
+        // Radial quad — wide in the ring's own plane
         V3f inner0 = v3f_add(center, v3f_scale(d0, r - half_t));
         V3f outer0 = v3f_add(center, v3f_scale(d0, r + half_t));
         V3f inner1 = v3f_add(center, v3f_scale(d1, r - half_t));
         V3f outer1 = v3f_add(center, v3f_scale(d1, r + half_t));
-
         draw_rectangle3d(inner0, outer0, inner1, outer1, color, TRIANGLE_WRITE_OVER_Z);
+
+        // Axial quad — perpendicular to the ring plane so the ring is
+        // always visible regardless of viewing angle
+        V3f mid0 = v3f_add(center, v3f_scale(d0, r));
+        V3f mid1 = v3f_add(center, v3f_scale(d1, r));
+        V3f nm   = v3f_scale(ring_normal, half_t);
+        draw_rectangle3d(v3f_sub(mid0, nm), v3f_add(mid0, nm),
+                         v3f_sub(mid1, nm), v3f_add(mid1, nm),
+                         color, TRIANGLE_WRITE_OVER_Z);
     }
 }
 
@@ -333,7 +346,7 @@ void gizmo_rotation_modify(Gizmo *gizmo, Gizmo_Axis axis, f32 angle)
     switch (axis) {
         case GIZMO_AXIS_X: gizmo->axis_rotation[0] += angle; break;
         case GIZMO_AXIS_Y: gizmo->axis_rotation[1] += angle; break;
-        case GIZMO_AXIS_Z: gizmo->axis_rotation[2] += angle; break;
+        case GIZMO_AXIS_Z: gizmo->axis_rotation[2] -= angle; break;
         default: break;
     }
 }

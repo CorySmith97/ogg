@@ -143,6 +143,11 @@ Mat4 look_at(V3f position, V3f target, V3f up);
 Quat quat(f32 x, f32 y, f32 z, f32 w);
 Quat quat_identity(void);
 Quat quat_normalise(Quat q);
+Quat quat_mul(Quat a, Quat b);
+V3f  quat_rotate_v3f(Quat q, V3f v);
+// AI-GENERATED: convert a row-major Mat3 to a unit quaternion (Shepperd's method).
+// Handles the four degenerate cases near 180-degree rotations.
+Quat mat3_to_quat(Mat3 m);
 
 Mat4 mat4_from_quat(Quat q);
 Mat4 mat4_inverse(Mat4 m);
