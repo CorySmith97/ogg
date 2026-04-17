@@ -1018,7 +1018,7 @@ void model_editor_rig_frame(f32 dt)
         V3f to_jt  = v3f_sub(m_editor.joint_centers[j], cam.position);
         f32 depth  = fabsf(v3f_dot(to_jt, cam.front));
         if (depth < 0.01f) depth = 0.01f;
-        f32 scale  = depth * tanf(cam.fovy * 0.5f * (3.14159f / 180.0f)) * 2.0f / SCREEN_HEIGHT;
+        f32 scale  = depth * tanf(cam.fovy * 0.5f * (3.14159f / 180.0f)) * 2.0f / SCREEN_HEIGHT * 0.25f;
         V3f world_delta = v3f_add(v3f_scale(right,  mouse_delta.x *  scale),
                                   v3f_scale(up_cam, -mouse_delta.y * scale));
         m_editor.joint_centers[j] = v3f_add(m_editor.joint_centers[j], world_delta);
@@ -1289,7 +1289,7 @@ void model_editor_anim_frame(f32 dt)
         V3f to_jt  = v3f_sub(m_editor.joint_centers[j], cam.position);
         f32 depth  = fabsf(v3f_dot(to_jt, cam.front));
         if (depth < 0.01f) depth = 0.01f;
-        f32 scale  = depth * tanf(cam.fovy * 0.5f * (3.14159f / 180.0f)) * 2.0f / SCREEN_HEIGHT;
+        f32 scale  = depth * tanf(cam.fovy * 0.5f * (3.14159f / 180.0f)) * 2.0f / SCREEN_HEIGHT * 0.25f;
         V3f world_delta = v3f_add(v3f_scale(right,  mouse_delta.x *  scale),
                                   v3f_scale(up_cam, -mouse_delta.y * scale));
 
@@ -1330,9 +1330,9 @@ void model_editor_anim_frame(f32 dt)
         if (m_editor.joint_gizmo.mode == GIZMO_MODE_ROTATE) {
             f32 angle = 0.0f;
             switch (m_editor.gizmo_axis) {
-                case GIZMO_AXIS_X: angle = -mouse_delta.y * 0.01f; break;
-                case GIZMO_AXIS_Y: angle =  mouse_delta.x * 0.01f; break;
-                case GIZMO_AXIS_Z: angle = -mouse_delta.x * 0.01f; break;
+                case GIZMO_AXIS_X: angle = -mouse_delta.y * 0.003f; break;
+                case GIZMO_AXIS_Y: angle =  mouse_delta.x * 0.003f; break;
+                case GIZMO_AXIS_Z: angle = -mouse_delta.x * 0.003f; break;
                 default: break;
             }
             gizmo_rotation_modify(&m_editor.joint_gizmo, (Gizmo_Axis)m_editor.gizmo_axis, angle);
@@ -1340,7 +1340,7 @@ void model_editor_anim_frame(f32 dt)
         } else {
             V3f world_delta = gizmo_translation_modify(
                 &m_editor.joint_gizmo, (Gizmo_Axis)m_editor.gizmo_axis,
-                v2f_scale(mouse_delta, 0.01f));
+                v2f_scale(mouse_delta, 0.003f));
             V3f model_delta = v3f(world_delta.x, world_delta.y, -world_delta.z);
             m_editor.edit_pose[j].t = v3f_add(m_editor.edit_pose[j].t, model_delta);
             m_editor.joint_gizmo.position = v3f_add(m_editor.joint_gizmo.position, world_delta);
