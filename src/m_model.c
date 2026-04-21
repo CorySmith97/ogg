@@ -173,78 +173,78 @@ static void box_paint_region(Asset_Model *model, V2f a, V2f b, u16 group)
     }
 }
 
-// ---- MicroUI panel ---------------------------------------------------------
+// ---- Nuklear panel ---------------------------------------------------------
 
 static void draw_skin_panel(void)
 {
-    mu_Context *ui = platform_ctx.ui;
+    struct nk_context *ui = platform_ctx.ui;
+    static const nk_flags flags =
+        NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_SCALABLE | NK_WINDOW_TITLE;
 
-    if (mu_begin_window(ui, "Skin Editor",
-                        mu_rect(GAME_WIDTH - 220, 0, 220, GAME_HEIGHT / 2)))
+    if (nk_begin(ui, "Skin Editor",
+                 nk_rect(GAME_WIDTH - 220, 0, 400, GAME_HEIGHT / 2), flags))
     {
         // Mode toggle
-        mu_layout_row(ui, 2, (int[]){100, -1}, 24);
-        if (mu_button(ui, "Select"))
+        nk_layout_row_dynamic(ui, 24, 2);
+        if (nk_button_label(ui, "Select"))
             m_editor.mode = MODEL_EDITOR_MODE_SELECT;
-        if (mu_button(ui, "Paint"))
+        if (nk_button_label(ui, "Paint"))
             m_editor.mode = MODEL_EDITOR_MODE_PAINT;
 
         // Current mode label
-        mu_layout_row(ui, 1, (int[]){-1}, 18);
-        mu_label(ui, m_editor.mode == MODEL_EDITOR_MODE_PAINT
+        nk_layout_row_dynamic(ui, 18, 1);
+        nk_label_wrap(ui, m_editor.mode == MODEL_EDITOR_MODE_PAINT
                          ? "Mode: PAINT  [G to toggle]"
                          : "Mode: SELECT [G to toggle]");
 
-        // Group selector — 4 per row, colour-coded via button labels
-        mu_layout_row(ui, 1, (int[]){-1}, 18);
-        mu_label(ui, "Active group:");
+        // Group selector
+        nk_layout_row_dynamic(ui, 18, 1);
+        nk_label_wrap(ui, "Active group:");
 
         char label[8];
-        mu_layout_row(ui, 4, (int[]){44, 44, 44, -1}, 28);
+        nk_layout_row_dynamic(ui, 28, 4);
         for (u16 g = 0; g < 16; g++) {
             snprintf(label, sizeof(label), "%s%d", (g == m_editor.active_group) ? ">" : " ", g);
-            if (mu_button(ui, label))
+            if (nk_button_label(ui, label))
                 m_editor.active_group = g;
         }
 
         // Stats
         if (m_editor.selected) {
-            mu_layout_row(ui, 1, (int[]){-1}, 18);
+            nk_layout_row_dynamic(ui, 18, 1);
             char info[64];
             snprintf(info, sizeof(info), "Base verts: %u", m_editor.selected->base_count);
-            mu_label(ui, info);
+            nk_label_wrap(ui, info);
 
-            // Count how many base positions are in the active group
             u32 painted = 0;
             for (u32 i = 0; i < m_editor.selected->base_count; i++) {
                 if (m_editor.selected->skin_groups[i] == m_editor.active_group)
                     painted++;
             }
             snprintf(info, sizeof(info), "In group %d: %u", m_editor.active_group, painted);
-            mu_label(ui, info);
+            nk_label_wrap(ui, info);
         }
 
-        // Flood fill from hovered triangle
-        mu_layout_row(ui, 1, (int[]){-1}, 18);
-        mu_label(ui, "F = flood fill from hover");
-        mu_layout_row(ui, 1, (int[]){-1}, 24);
-        if (mu_button(ui, "Flood Fill") &&
+        // Flood fill
+        nk_layout_row_dynamic(ui, 18, 1);
+        nk_label_wrap(ui, "F = flood fill from hover");
+        nk_layout_row_dynamic(ui, 24, 1);
+        if (nk_button_label(ui, "Flood Fill") &&
             m_editor.mode == MODEL_EDITOR_MODE_PAINT &&
             m_editor.hovered_tri >= 0)
         {
             flood_fill_paint(m_editor.selected, m_editor.hovered_tri, m_editor.active_group);
         }
 
-        // Save current skin groups to data/<model>.skin
-        mu_layout_row(ui, 1, (int[]){-1}, 24);
-        if (mu_button(ui, "Save Skin")) {
+        // Save skin
+        nk_layout_row_dynamic(ui, 24, 1);
+        if (nk_button_label(ui, "Save Skin")) {
             char path[300];
             snprintf(path, sizeof(path), "data/%s.skin", m_editor.model_name);
             skin_save(path, m_editor.selected);
         }
-
-        mu_end_window(ui);
     }
+    nk_end(ui);
 }
 
 // Shortest-arc quaternion rotating unit vector a onto unit vector b.
@@ -323,6 +323,7 @@ static void compute_joint_centers(void)
     for (u16 g = 0; g < 16; g++) {
         if (counts[g] == 0) continue;
         V3f center = v3f_scale(sums[g], 1.0f / (f32)counts[g]);
+        m_editor.joint_centers_model[g] = center;
         // Convert model-space centroid to world space (z-flip + model transform)
         m_editor.joint_centers[g] = model_to_world(center, m_editor.transform, v3f(0, 0, 0));
         m_editor.joint_has_verts[g] = true;
@@ -381,6 +382,7 @@ static void anim_editor_build_skel(void)
             .t = v3f(0, 0, 0),
             .s = v3f(1, 1, 1),
         };
+        m_editor.joint_t_user[j] = v3f(0, 0, 0);
     }
 
     console_write_log_alloc("Built skel: %u joints", m_editor.edit_base->count);
@@ -490,6 +492,14 @@ static void anim_editor_load_frame(s32 idx)
     u32 jcount = m_editor.edit_base->count;
     AnimFrame *fr = &m_editor.edit_anim->frames[idx];
     memcpy(m_editor.edit_pose, fr->xforms, sizeof(Transform) * jcount);
+    // Recover user translations by un-baking pivot correction (t_stored = t_user + pivot - R*pivot)
+    for (u32 j = 0; j < jcount; j++) {
+        V3f pivot = m_editor.joint_centers_model[j];
+        Quat Rq   = m_editor.edit_pose[j].r;
+        m_editor.joint_t_user[j] = v3f_add(
+            v3f_sub(m_editor.edit_pose[j].t, pivot),
+            quat_rotate_v3f(Rq, pivot));
+    }
     anim_apply_pose(m_editor.edit_base, m_editor.edit_pose, m_editor.selected);
     m_editor.selected_frame = idx;
 }
@@ -532,50 +542,53 @@ static void anim_editor_delete_frame(s32 idx)
     console_write_log_alloc("Frame %d deleted", idx);
 }
 
-// MicroUI panel for the anim editor.
-// AI-GENERATED
 static void draw_anim_panel(void)
 {
-    mu_Context *ui = platform_ctx.ui;
-    if (!mu_begin_window(ui, "Anim Editor",
-                         mu_rect(0, 0, 220, GAME_HEIGHT * 3 / 4)))
+    struct nk_context *ui = platform_ctx.ui;
+    static const nk_flags flags =
+        NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_SCALABLE | NK_WINDOW_TITLE;
+
+    if (!nk_begin(ui, "Anim Editor",
+                  nk_rect(0, 0, 400, GAME_HEIGHT * 3 / 4), flags)) {
+        nk_end(ui);
         return;
+    }
 
-    mu_layout_row(ui, 1, (int[]){-1}, 18);
-    mu_label(ui, "Mode: ANIM  [G to change]");
-    mu_label(ui, "Click node = select joint");
-    mu_label(ui, "Drag node  = free move");
-    mu_label(ui, "R = gizmo rotate/translate");
+    nk_layout_row_dynamic(ui, 18, 1);
+    nk_label_wrap(ui, "Mode: ANIM  [G to change]");
+    nk_label_wrap(ui, "Click node = select joint");
+    nk_label_wrap(ui, "Drag node  = free move");
+    nk_label_wrap(ui, "R = gizmo rotate/trans");
 
-    // IK + gizmo toggles
-    mu_layout_row(ui, 1, (int[]){-1}, 24);
-    if (mu_button(ui, m_editor.ik_mode ? ">IK ON  [I]" : " IK off [I]"))
+    nk_layout_row_dynamic(ui, 24, 1);
+    if (nk_button_label(ui, m_editor.ik_mode ? ">IK ON  [I]" : " IK off [I]"))
         m_editor.ik_mode = !m_editor.ik_mode;
-    if (mu_button(ui, m_editor.prefer_gizmo ? ">Gizmo mode" : " Free drag"))
+    if (nk_button_label(ui, m_editor.prefer_gizmo ? ">Gizmo mode" : " Free drag"))
         m_editor.prefer_gizmo = !m_editor.prefer_gizmo;
 
-    // Build skel from currently-painted groups
-    mu_layout_row(ui, 1, (int[]){-1}, 24);
-    if (mu_button(ui, "Build Skel from Groups")) {
+    //nk_layout_row_dynamic(ui, 24, 1);
+    if (nk_button_label(ui, "Build Skel")) {
         anim_editor_build_skel();
         compute_joint_centers();
     }
 
-    if (!m_editor.edit_base) { mu_end_window(ui); return; }
+    if (!m_editor.edit_base) {
+        nk_end(ui);
+        return;
+    }
 
-    // Joint selector — only show groups that have verts
-    mu_layout_row(ui, 1, (int[]){-1}, 18);
+    nk_layout_row_dynamic(ui, 18, 1);
     char info[64];
     snprintf(info, sizeof(info), "Joints: %u  [R=rot/trans]", m_editor.edit_base->count);
-    mu_label(ui, info);
+    nk_label_wrap(ui, info);
 
     char label[8];
-    mu_layout_row(ui, 4, (int[]){44, 44, 44, -1}, 28);
+    nk_layout_row_dynamic(ui, 28, 4);
     for (u16 g = 0; g < 16; g++) {
         if (!m_editor.joint_has_verts[g]) continue;
         snprintf(label, sizeof(label), "%s%d",
                  (g == (u16)m_editor.selected_joint) ? ">" : " ", g);
-        if (mu_button(ui, label)) {
+        if (nk_button_label(ui, label)) {
             m_editor.selected_joint = (s32)g;
             m_editor.joint_gizmo.position        = m_editor.joint_centers[g];
             m_editor.joint_gizmo.attached         = true;
@@ -587,95 +600,90 @@ static void draw_anim_panel(void)
         }
     }
 
-    // Parent assignment for the selected joint
     if (m_editor.selected_joint >= 0) {
         s32 j = m_editor.selected_joint;
         s16 cur_parent = m_editor.edit_base->joints[j].parent;
 
-        mu_layout_row(ui, 1, (int[]){-1}, 18);
+        nk_layout_row_dynamic(ui, 18, 1);
         char par_hdr[48];
         snprintf(par_hdr, sizeof(par_hdr), "Joint %d parent:", j);
-        mu_label(ui, par_hdr);
+        nk_label_wrap(ui, par_hdr);
 
         char lbl[8];
-        mu_layout_row(ui, 4, (int[]){44, 44, 44, -1}, 24);
-        // "None" = root joint
+        nk_layout_row_dynamic(ui, 24, 4);
         snprintf(lbl, sizeof(lbl), "%sNone", (cur_parent == -1) ? ">" : " ");
-        if (mu_button(ui, lbl)) {
+        if (nk_button_label(ui, lbl)) {
             m_editor.edit_base->joints[j].parent = -1;
             anim_apply_pose(m_editor.edit_base, m_editor.edit_pose, m_editor.selected);
         }
-        // Only allow lower-indexed joints as parents (preserves topological order)
         for (s32 p = 0; p < j; p++) {
             if (!m_editor.joint_has_verts[p]) continue;
             snprintf(lbl, sizeof(lbl), "%s%d", (cur_parent == (s16)p) ? ">" : " ", p);
-            if (mu_button(ui, lbl)) {
+            if (nk_button_label(ui, lbl)) {
                 m_editor.edit_base->joints[j].parent = (s16)p;
                 anim_apply_pose(m_editor.edit_base, m_editor.edit_pose, m_editor.selected);
             }
         }
     }
 
-    // Record / clear
-    mu_layout_row(ui, 2, (int[]){100, -1}, 24);
-    if (mu_button(ui, "Add Frame"))
+    nk_layout_row_dynamic(ui, 24, 2);
+    if (nk_button_label(ui, "Add Frame"))
         anim_editor_add_frame();
-    if (mu_button(ui, "Clear Pose")) {
+    if (nk_button_label(ui, "Clear Pose")) {
         for (s32 j = 0; j < 16; j++) {
             m_editor.edit_pose[j] = (Transform){
                 .r = quat_identity(), .t = v3f(0,0,0), .s = v3f(1,1,1)
             };
+            m_editor.joint_t_user[j] = v3f(0, 0, 0);
         }
         if (m_editor.edit_base)
             anim_apply_pose(m_editor.edit_base, m_editor.edit_pose, m_editor.selected);
     }
 
-    // Frame list
     s32 fcount = (s32)arrlen(m_editor.edit_anim->frames);
-    mu_layout_row(ui, 1, (int[]){-1}, 18);
+    nk_layout_row_dynamic(ui, 18, 1);
     snprintf(info, sizeof(info), "Frames: %d", fcount);
-    mu_label(ui, info);
+    nk_label_wrap(ui, info);
 
     if (fcount > 0) {
-        mu_begin_panel(ui, "frames");
-        for (s32 fi = 0; fi < fcount; fi++) {
-            b32 is_sel = (fi == m_editor.selected_frame);
-            char fl[12];
-            snprintf(fl, sizeof(fl), "%s%d", is_sel ? ">" : " ", fi);
-
-            mu_layout_row(ui, 4, (int[]){30, 40, 40, -1}, 22);
-            mu_label(ui, fl);
-            if (mu_button(ui, "Load"))
-                anim_editor_load_frame(fi);
-            if (mu_button(ui, "Upd") && is_sel)
-                anim_editor_update_frame(fi);
-            if (mu_button(ui, "Del")) {
-                anim_editor_delete_frame(fi);
-                break; // array length changed; restart next frame
+        nk_layout_row_dynamic(ui, 150, 1);
+        if (nk_group_begin(ui, "frames", NK_WINDOW_BORDER)) {
+            for (s32 fi = 0; fi < fcount; fi++) {
+                b32 is_sel = (fi == m_editor.selected_frame);
+                char fl[12];
+                snprintf(fl, sizeof(fl), "%s%d", is_sel ? ">" : " ", fi);
+                nk_layout_row_dynamic(ui, 22, 4);
+                nk_label_wrap(ui, fl);
+                if (nk_button_label(ui, "Load"))
+                    anim_editor_load_frame(fi);
+                if (nk_button_label(ui, "Upd") && is_sel)
+                    anim_editor_update_frame(fi);
+                if (nk_button_label(ui, "Del")) {
+                    anim_editor_delete_frame(fi);
+                    break;
+                }
             }
+            nk_group_end(ui);
         }
-        mu_end_panel(ui);
     }
 
-    // Duplicate selected frame
-    mu_layout_row(ui, 1, (int[]){-1}, 24);
-    if (mu_button(ui, "Duplicate Frame") && m_editor.selected_frame >= 0)
+    nk_layout_row_dynamic(ui, 24, 1);
+    if (nk_button_label(ui, "Duplicate Frame") && m_editor.selected_frame >= 0)
         anim_editor_duplicate_frame(m_editor.selected_frame);
 
-    // Sequence name + duration
-    mu_layout_row(ui, 1, (int[]){-1}, 18);
-    mu_label(ui, "Sequence name:");
-    mu_layout_row(ui, 1, (int[]){-1}, 24);
-    mu_textbox(ui, m_editor.seq_name, sizeof(m_editor.seq_name));
+    nk_layout_row_dynamic(ui, 18, 1);
+    nk_label_wrap(ui, "Sequence name:");
+    nk_layout_row_dynamic(ui, 24, 1);
+    nk_edit_string_zero_terminated(ui, NK_EDIT_FIELD, m_editor.seq_name,
+                                   sizeof(m_editor.seq_name), nk_filter_default);
 
-    mu_layout_row(ui, 1, (int[]){-1}, 18);
-    mu_label(ui, "ms per frame:");
-    mu_layout_row(ui, 1, (int[]){-1}, 24);
-    mu_slider(ui, &m_editor.frame_dur_ms, 50.0f, 1000.0f);
+    nk_layout_row_dynamic(ui, 18, 1);
+    nk_label_wrap(ui, "ms per frame:");
+    nk_layout_row_dynamic(ui, 24, 1);
+    nk_slider_float(ui, 50.0f, &m_editor.frame_dur_ms, 1000.0f, 1.0f);
 
-    // Save both .skel and .anim
-    mu_layout_row(ui, 1, (int[]){-1}, 24);
-    if (mu_button(ui, "Save Skel + Anim")) {
+    nk_layout_row_dynamic(ui, 24, 1);
+    if (nk_button_label(ui, "Save Skel + Anim")) {
         char skel_path[300], anim_path[300];
         snprintf(skel_path, sizeof(skel_path), "data/%s.skel", m_editor.model_name);
         snprintf(anim_path, sizeof(anim_path), "data/%s.anim", m_editor.model_name);
@@ -683,7 +691,7 @@ static void draw_anim_panel(void)
         write_anim_file(anim_path);
     }
 
-    mu_end_window(ui);
+    nk_end(ui);
 }
 
 // ---- public API ------------------------------------------------------------
@@ -715,42 +723,28 @@ void model_editor_load_model(String8 model_name)
             m_editor.selected->vertices[i].position, m_editor.transform, v3f(0,0,0));
 }
 
-// Shared MicroUI command dispatcher — same logic in both model_editor_frame and
-// model_editor_anim_frame.  Call after mu_end().
-// AI-GENERATED
 static void dispatch_ui_commands(void)
 {
-    mu_Command *cmd = NULL;
+    const struct nk_command *cmd;
     f32 ui_z = 0.4f;
-    while (mu_next_command(platform_ctx.ui, &cmd)) {
+    nk_foreach(cmd, platform_ctx.ui) {
         switch (cmd->type) {
-            case MU_COMMAND_ICON: {
-                char icon_char;
-                switch (cmd->icon.id) {
-                    case 1: icon_char = 'X'; break;
-                    case 2: icon_char = 'V'; break;
-                    case 3: icon_char = '>'; break;
-                    case 4: icon_char = 'v'; break;
-                    default: icon_char = '?'; break;
-                }
-                char icon_str[2] = {icon_char, '\0'};
-                draw_text(m_editor.hud_font, icon_str,
-                          v2i(cmd->icon.rect.x, cmd->icon.rect.y),
-                          16, mu_to_color(cmd->icon.color));
-            } break;
-            case MU_COMMAND_TEXT:
-                if ((unsigned char)cmd->text.str[0] >= 32)
-                    draw_text(m_editor.hud_font, cmd->text.str,
-                              v2i(cmd->text.pos.x, cmd->text.pos.y),
-                              12, mu_to_color(cmd->text.color));
-                break;
-            case MU_COMMAND_RECT:
-                draw_recs32(mu_to_rec(cmd->rect.rect), ui_z,
-                            mu_to_color(cmd->rect.color));
+            case NK_COMMAND_RECT_FILLED: {
+                const struct nk_command_rect_filled *r =
+                    (const struct nk_command_rect_filled *)cmd;
+                Color c = {r->color.r, r->color.g, r->color.b, r->color.a};
+                draw_recs32((Recs32){(f32)r->x, (f32)r->y, (f32)r->w, (f32)r->h}, ui_z, c);
                 ui_z -= 0.001f;
-                break;
+            } break;
+            case NK_COMMAND_TEXT: {
+                const struct nk_command_text *t = (const struct nk_command_text *)cmd;
+                Color c = {t->foreground.r, t->foreground.g, t->foreground.b, t->foreground.a};
+                draw_text(m_editor.hud_font, t->string, v2i(t->x, t->y), (s32)t->height, c);
+            } break;
+            default: break;
         }
     }
+    nk_clear(platform_ctx.ui);
 }
 
 // ---- rig editor helpers ----------------------------------------------------
@@ -868,37 +862,43 @@ static void rig_clear_skeleton(void)
 
 static void draw_rig_panel(void)
 {
-    mu_Context *ui = platform_ctx.ui;
-    if (!mu_begin_window(ui, "Rig Editor", mu_rect(0, 0, 220, GAME_HEIGHT * 3 / 4)))
-        return;
+    struct nk_context *ui = platform_ctx.ui;
+    static const nk_flags flags =
+        NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_SCALABLE | NK_WINDOW_TITLE;
 
-    mu_layout_row(ui, 1, (int[]){-1}, 18);
-    mu_label(ui, "Mode: RIG  [G to change]");
-    mu_label(ui, "Click mesh  = place joint");
-    mu_label(ui, "Drag node   = move joint");
-    mu_label(ui, "Ctrl+click  = set parent");
-    mu_label(ui, "Del         = remove joint");
-
-    mu_layout_row(ui, 1, (int[]){-1}, 24);
-    if (mu_button(ui, "Auto-skin to joints"))
-        rig_auto_skin();
-
-    mu_layout_row(ui, 1, (int[]){-1}, 24);
-    if (mu_button(ui, "Clear Skeleton"))
-        rig_clear_skeleton();
-
-    if (!m_editor.edit_base || m_editor.edit_base->count == 0) {
-        mu_end_window(ui);
+    if (!nk_begin(ui, "Rig Editor",
+                  nk_rect(0, 0, 400, GAME_HEIGHT * 3 / 4), flags)) {
+        nk_end(ui);
         return;
     }
 
-    // Joint list
+    nk_layout_row_dynamic(ui, 80, 1);
+    nk_label_wrap(ui, "Mode: RIG [G to change]");
+    nk_label_wrap(ui, "Click mesh = place joint");
+    nk_label_wrap(ui, "Drag node  = move joint");
+    nk_label_wrap(ui, "Ctrl+click = set parent");
+    nk_label_wrap(ui, "Del        = remove joint");
+
+    nk_layout_row_dynamic(ui, 24, 1);
+    if (nk_button_label(ui, "Auto-skin to joints"))
+        rig_auto_skin();
+
+    nk_layout_row_dynamic(ui, 24, 1);
+    if (nk_button_label(ui, "Clear Skeleton"))
+        rig_clear_skeleton();
+
+    if (!m_editor.edit_base || m_editor.edit_base->count == 0) {
+        nk_end(ui);
+        return;
+    }
+
     char info[64];
     snprintf(info, sizeof(info), "Joints: %u", m_editor.edit_base->count);
-    mu_layout_row(ui, 1, (int[]){-1}, 18);
-    mu_label(ui, info);
+    nk_layout_row_dynamic(ui, 18, 1);
+    nk_label_wrap(ui, info);
 
-    mu_begin_panel(ui, "rig_joints");
+    nk_layout_row_dynamic(ui, 120, 1);
+    if (nk_group_begin(ui, "rig_joints", NK_WINDOW_BORDER)) {
         for (u32 g = 0; g < m_editor.edit_base->count; g++) {
             b32 is_sel = ((s32)g == m_editor.selected_joint);
             s16 par    = m_editor.edit_base->joints[g].parent;
@@ -907,22 +907,22 @@ static void draw_rig_panel(void)
                 snprintf(row, sizeof(row), "%sJ%u (root)", is_sel ? ">" : " ", g);
             else
                 snprintf(row, sizeof(row), "%sJ%u -> J%d", is_sel ? ">" : " ", g, (s32)par);
-            mu_layout_row(ui, 1, (int[]){-1}, 20);
-            if (mu_button(ui, row))
+            nk_layout_row_dynamic(ui, 20, 1);
+            if (nk_button_label(ui, row))
                 m_editor.selected_joint = (s32)g;
         }
-        mu_end_panel(ui);
+        nk_group_end(ui);
+    }
 
-    // Remove selected
     if (m_editor.selected_joint >= 0) {
-        mu_layout_row(ui, 1, (int[]){-1}, 24);
+        nk_layout_row_dynamic(ui, 24, 1);
         char del_lbl[32];
         snprintf(del_lbl, sizeof(del_lbl), "Remove Joint %d", m_editor.selected_joint);
-        if (mu_button(ui, del_lbl))
+        if (nk_button_label(ui, del_lbl))
             rig_delete_joint(m_editor.selected_joint);
     }
 
-    mu_end_window(ui);
+    nk_end(ui);
 }
 
 void model_editor_rig_frame(f32 dt)
@@ -931,8 +931,6 @@ void model_editor_rig_frame(f32 dt)
     if (!m_editor.selected) return;
 
     renderer.camera = m_editor.camera;
-    if (is_mouse_button_down(MOUSEBUTTON_RIGHT) || is_key_down(KEY_V))
-        model_editor_camera_update();
 
     V2f mouse       = get_mouse_pos();
     V2f mouse_delta = get_mouse_delta();
@@ -943,11 +941,12 @@ void model_editor_rig_frame(f32 dt)
     bool mouse_down     = is_mouse_button_down(MOUSEBUTTON_LEFT);
     bool mouse_released = is_mouse_button_released(MOUSEBUTTON_LEFT);
     bool ctrl_held      = is_key_down(KEY_LEFT_CONTROL);
+    bool ui_over        = nk_window_is_any_hovered(platform_ctx.ui);
 
     if (is_key_pressed(KEY_DELETE) && m_editor.selected_joint >= 0)
         rig_delete_joint(m_editor.selected_joint);
 
-    if (mouse_pressed) {
+    if (mouse_pressed && !ui_over) {
         // Check if clicking an existing joint node
         s32 picked = -1;
         f32 closest = FLT_MAX;
@@ -1077,9 +1076,7 @@ void model_editor_rig_frame(f32 dt)
         }
     }
 
-    mu_begin(platform_ctx.ui);
     draw_rig_panel();
-    mu_end(platform_ctx.ui);
     dispatch_ui_commands();
 }
 
@@ -1090,9 +1087,7 @@ void model_editor_frame(void)
     // AI-GENERATED: sync renderer.camera ← m_editor.camera so that
     // draw_rectangle3d (used by the gizmo) uses the same view as the model mesh.
     renderer.camera = m_editor.camera;
-
-    if (is_mouse_button_down(MOUSEBUTTON_RIGHT) || is_key_down(KEY_V)) 
-        model_editor_camera_update();
+    model_editor_camera_update();
 
     // G cycles SELECT → PAINT → ANIM → SELECT.
     // When leaving ANIM, reset vertices to rest pose so world_positions cache is valid.
@@ -1153,11 +1148,12 @@ void model_editor_frame(void)
 
         // Box paint: press starts anchor, drag >5px activates box mode.
         // Release in box mode paints the region; a plain click paints one triangle.
-        if (is_mouse_button_pressed(MOUSEBUTTON_LEFT)) {
+        bool ui_over = nk_window_is_any_hovered(platform_ctx.ui);
+        if (!ui_over && is_mouse_button_pressed(MOUSEBUTTON_LEFT)) {
             m_editor.box_paint_start = mouse;
             m_editor.box_painting    = false;
         }
-        if (is_mouse_button_down(MOUSEBUTTON_LEFT)) {
+        if (!ui_over && is_mouse_button_down(MOUSEBUTTON_LEFT)) {
             f32 dx = mouse.x - m_editor.box_paint_start.x;
             f32 dy = mouse.y - m_editor.box_paint_start.y;
             if (!m_editor.box_painting && (dx*dx + dy*dy) > 25.0f)
@@ -1174,7 +1170,7 @@ void model_editor_frame(void)
                 paint_triangle(m_editor.selected, m_editor.hovered_tri, m_editor.active_group);
             }
         }
-        if (is_mouse_button_released(MOUSEBUTTON_LEFT) && m_editor.box_painting) {
+        if (!ui_over && is_mouse_button_released(MOUSEBUTTON_LEFT) && m_editor.box_painting) {
             box_paint_region(m_editor.selected, m_editor.box_paint_start, mouse, m_editor.active_group);
             m_editor.box_painting = false;
         }
@@ -1182,9 +1178,7 @@ void model_editor_frame(void)
             flood_fill_paint(m_editor.selected, m_editor.hovered_tri, m_editor.active_group);
     }
 
-    mu_begin(platform_ctx.ui);
     draw_skin_panel();
-    mu_end(platform_ctx.ui);
     dispatch_ui_commands();
 }
 
@@ -1218,6 +1212,7 @@ void model_editor_anim_frame(f32 dt)
     bool mouse_pressed  = is_mouse_button_pressed(MOUSEBUTTON_LEFT);
     bool mouse_down     = is_mouse_button_down(MOUSEBUTTON_LEFT);
     bool mouse_released = is_mouse_button_released(MOUSEBUTTON_LEFT);
+    bool ui_over        = nk_window_is_any_hovered(platform_ctx.ui);
 
     // R toggles rotate ↔ translate on the active joint's gizmo
     if (is_key_pressed(KEY_R) && m_editor.selected_joint >= 0) {
@@ -1237,7 +1232,7 @@ void model_editor_anim_frame(f32 dt)
         gizmo_update(&m_editor.joint_gizmo);
 
     // ---- mouse press: try to click a joint node directly in the viewport ----
-    if (mouse_pressed && m_editor.edit_base) {
+    if (mouse_pressed && !ui_over && m_editor.edit_base) {
         f32 closest_node = FLT_MAX;
         s32 picked = -1;
         for (u16 g = 0; g < m_editor.edit_base->count; g++) {
@@ -1268,7 +1263,7 @@ void model_editor_anim_frame(f32 dt)
     }
 
     // ---- mouse press: pick a gizmo axis (only if we didn't grab a node) ----
-    if (mouse_pressed && !m_editor.node_dragging && m_editor.selected_joint >= 0) {
+    if (mouse_pressed && !ui_over && !m_editor.node_dragging && m_editor.selected_joint >= 0) {
         f32 closest = FLT_MAX;
         m_editor.gizmo_axis = -1;
         for (s32 i = 0; i < GIZMO_AXIS_COUNT; i++) {
@@ -1291,11 +1286,17 @@ void model_editor_anim_frame(f32 dt)
         if (depth < 0.01f) depth = 0.01f;
         f32 scale  = depth * tanf(cam.fovy * 0.5f * (3.14159f / 180.0f)) * 2.0f / SCREEN_HEIGHT * 0.25f;
         V3f world_delta = v3f_add(v3f_scale(right,  mouse_delta.x *  scale),
-                                  v3f_scale(up_cam, -mouse_delta.y * scale));
+                                  v3f_scale(up_cam, mouse_delta.y * scale));
 
         m_editor.ik_drag_target = v3f_add(m_editor.ik_drag_target, world_delta);
         V3f model_delta = v3f(world_delta.x, world_delta.y, -world_delta.z);
-        m_editor.edit_pose[j].t = v3f_add(m_editor.edit_pose[j].t, model_delta);
+        m_editor.joint_t_user[j] = v3f_add(m_editor.joint_t_user[j], model_delta);
+        {
+            Quat Rq   = m_editor.edit_pose[j].r;
+            V3f pivot = m_editor.joint_centers_model[j];
+            m_editor.edit_pose[j].t = v3f_add(m_editor.joint_t_user[j],
+                                               v3f_sub(pivot, quat_rotate_v3f(Rq, pivot)));
+        }
         m_editor.joint_gizmo.position = v3f_add(m_editor.joint_gizmo.position, world_delta);
 
         // IK: rotate immediate parent to aim toward the dragged target
@@ -1315,6 +1316,9 @@ void model_editor_anim_frame(f32 dt)
                     // Convert world→model space: z-flip negates quat's z axis component
                     Quat dq_m = quat_normalise((Quat){dq_w.x, dq_w.y, -dq_w.z, dq_w.w});
                     m_editor.edit_pose[(s32)p].r = dq_m;
+                    V3f pp    = m_editor.joint_centers_model[(s32)p];
+                    m_editor.edit_pose[(s32)p].t = v3f_add(m_editor.joint_t_user[(s32)p],
+                                                            v3f_sub(pp, quat_rotate_v3f(dq_m, pp)));
                 }
             }
         }
@@ -1336,13 +1340,25 @@ void model_editor_anim_frame(f32 dt)
                 default: break;
             }
             gizmo_rotation_modify(&m_editor.joint_gizmo, (Gizmo_Axis)m_editor.gizmo_axis, angle);
-            m_editor.edit_pose[j].r = mat3_to_quat(gizmo_get_rotation(&m_editor.joint_gizmo));
+            {
+                Quat Rq   = mat3_to_quat(gizmo_get_rotation(&m_editor.joint_gizmo));
+                V3f pivot = m_editor.joint_centers_model[j];
+                m_editor.edit_pose[j].r = Rq;
+                m_editor.edit_pose[j].t = v3f_add(m_editor.joint_t_user[j],
+                                                   v3f_sub(pivot, quat_rotate_v3f(Rq, pivot)));
+            }
         } else {
             V3f world_delta = gizmo_translation_modify(
                 &m_editor.joint_gizmo, (Gizmo_Axis)m_editor.gizmo_axis,
                 v2f_scale(mouse_delta, 0.003f));
             V3f model_delta = v3f(world_delta.x, world_delta.y, -world_delta.z);
-            m_editor.edit_pose[j].t = v3f_add(m_editor.edit_pose[j].t, model_delta);
+            m_editor.joint_t_user[j] = v3f_add(m_editor.joint_t_user[j], model_delta);
+            {
+                Quat Rq   = m_editor.edit_pose[j].r;
+                V3f pivot = m_editor.joint_centers_model[j];
+                m_editor.edit_pose[j].t = v3f_add(m_editor.joint_t_user[j],
+                                                   v3f_sub(pivot, quat_rotate_v3f(Rq, pivot)));
+            }
             m_editor.joint_gizmo.position = v3f_add(m_editor.joint_gizmo.position, world_delta);
         }
 
@@ -1421,29 +1437,27 @@ void model_editor_anim_frame(f32 dt)
         gizmo_draw(&m_editor.joint_gizmo);
     }
 
-    // ---- MicroUI ----
-    mu_begin(platform_ctx.ui);
     draw_anim_panel();
-    mu_end(platform_ctx.ui);
     dispatch_ui_commands();
 }
 
 void model_editor_camera_update(void)
 {
 	V2f mouse_delta = get_mouse_delta();
+    f32 dt = renderer.dt;
 
     if (is_mouse_button_down(MOUSEBUTTON_MIDDLE)) {
         if (is_key_down(KEY_W)) {
-            m_editor.camera.position = v3f_add(m_editor.camera.position, v3f_scale(m_editor.camera.front, 0.005));
+            m_editor.camera.position = v3f_add(m_editor.camera.position, v3f_scale(m_editor.camera.front, 0.5 * dt));
         }
         if (is_key_down(KEY_S)) {
-            m_editor.camera.position = v3f_add(m_editor.camera.position, v3f_scale(m_editor.camera.front, -0.005));
+            m_editor.camera.position = v3f_add(m_editor.camera.position, v3f_scale(m_editor.camera.front, -0.5 * dt));
         }
         if (is_key_down(KEY_A)) {
-            m_editor.camera.position = v3f_add(m_editor.camera.position, v3f_scale(v3f_cross(m_editor.camera.front, m_editor.camera.up), 0.005));
+            m_editor.camera.position = v3f_add(m_editor.camera.position, v3f_scale(v3f_cross(m_editor.camera.front, m_editor.camera.up), 0.5 * dt));
         }
         if (is_key_down(KEY_D)) {
-            m_editor.camera.position = v3f_sub(m_editor.camera.position, v3f_scale(v3f_cross(m_editor.camera.front, m_editor.camera.up), 0.005));
+            m_editor.camera.position = v3f_sub(m_editor.camera.position, v3f_scale(v3f_cross(m_editor.camera.front, m_editor.camera.up), 0.5 * dt));
         }
         f32 x_offset = mouse_delta.x;
         f32 y_offset = -mouse_delta.y;

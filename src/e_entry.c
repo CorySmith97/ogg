@@ -147,81 +147,79 @@ void editor_draw(void)
         }
     }
 
-    // On F1, get the container and toggle its open flag
-    if (is_key_pressed(KEY_F1)) {
-        mu_Container *cnt = mu_get_container(platform_ctx.ui, "Entity");
-        cnt->open = !cnt->open;
-    }
-    mu_begin(platform_ctx.ui);
-    if (show_demo) {
-        if (mu_begin_window(platform_ctx.ui, "Entity", mu_rect(0, 0, SCREEN_WIDTH/6, SCREEN_HEIGHT/2))) {
-            mu_Container *win = mu_get_current_container(platform_ctx.ui);
-            win->rect.w = mu_max(win->rect.w, 240);
-            win->rect.h = mu_max(win->rect.h, 300);
+    static bool entity_panel_open = true;
+    if (is_key_pressed(KEY_F1))
+        entity_panel_open = !entity_panel_open;
+
+    struct nk_context *ctx = platform_ctx.ui;
+    static const nk_flags panel_flags =
+        NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_SCALABLE | NK_WINDOW_TITLE;
+
+    if (show_demo && entity_panel_open) {
+        if (nk_begin(ctx, "Entity",
+                     nk_rect(0, 0, SCREEN_WIDTH / 6, SCREEN_HEIGHT / 2), panel_flags))
+        {
             if (gs.selected_entity >= 0) {
                 Entity *e = &gs.dynamic_entities[gs.selected_entity];
-                if (mu_header(platform_ctx.ui, "Entity Info")) {
-
-                    mu_label(platform_ctx.ui, "model: ");
-                    mu_label(platform_ctx.ui, e->model_tag);
+                if (nk_tree_push(ctx, NK_TREE_TAB, "Entity Info", NK_MAXIMIZED)) {
+                    nk_layout_row_dynamic(ctx, 20, 1);
+                    nk_label_wrap(ctx, "model: ");
+                    nk_label_wrap(ctx, e->model_tag);
                     snprintf(buf, 256, "Entity ID: %d", gs.selected_entity);
                     static f32 rotation = 0;
-                    mu_slider(platform_ctx.ui, &rotation, 0, M_TAU);
+                    nk_layout_row_dynamic(ctx, 22, 1);
+                    nk_slider_float(ctx, 0, &rotation, (float)M_TAU, 0.01f);
                     e->rotation = rotation_y(rotation);
-                    mu_label(platform_ctx.ui, buf);
-                    snprintf(buf, 256, "pos: %.1f, %.1f, %.1f", e->position.x, e->position.y, e->position.z);
-                    mu_label(platform_ctx.ui, buf);
+                    nk_layout_row_dynamic(ctx, 20, 1);
+                    nk_label_wrap(ctx, buf);
+                    snprintf(buf, 256, "pos: %.1f, %.1f, %.1f",
+                             e->position.x, e->position.y, e->position.z);
+                    nk_label_wrap(ctx, buf);
+                    nk_tree_pop(ctx);
                 }
-                if (mu_header(platform_ctx.ui, "Game Info:")) {
-                    mu_label(platform_ctx.ui, "Race: ");   
-                    mu_label(platform_ctx.ui, "Base Class: ");   
-                    if (mu_header(platform_ctx.ui, "Attributes:")) {
-                        mu_label(platform_ctx.ui, "Strength: ");   
-                        mu_number(platform_ctx.ui, &e->attributes.strength, 1);
-                        mu_label(platform_ctx.ui, "Base Class: ");   
+                if (nk_tree_push(ctx, NK_TREE_TAB, "Game Info", NK_MAXIMIZED)) {
+                    nk_layout_row_dynamic(ctx, 20, 1);
+                    nk_label_wrap(ctx, "Race: ");
+                    nk_label_wrap(ctx, "Base Class: ");
+                    if (nk_tree_push(ctx, NK_TREE_TAB, "Attributes", NK_MAXIMIZED)) {
+                        nk_layout_row_dynamic(ctx, 20, 1);
+                        nk_label_wrap(ctx, "Strength: ");
+                        nk_property_float(ctx, "#strength", 0,
+                                          &e->attributes.strength, 10000, 1, 1);
+                        nk_label_wrap(ctx, "Base Class: ");
+                        nk_tree_pop(ctx);
                     }
+                    nk_tree_pop(ctx);
                 }
             } else {
                 snprintf(buf, 256, "No selected Entity");
-                mu_label(platform_ctx.ui, buf);
+                nk_layout_row_dynamic(ctx, 20, 1);
+                nk_label_wrap(ctx, buf);
             }
-
-
-            mu_end_window(platform_ctx.ui);
         }
+        nk_end(ctx);
     }
 
-    mu_end(platform_ctx.ui);
-
-    mu_Command *cmd = NULL;
-    float ui_z = 0.2f;  // Start just behind text (z=1.0)
-    while (mu_next_command(platform_ctx.ui, &cmd)) {
+    const struct nk_command *cmd;
+    float ui_z = 0.2f;
+    nk_foreach(cmd, ctx) {
         switch (cmd->type) {
-            case MU_COMMAND_ICON: {
-                char icon_char;
-                switch (cmd->icon.id) {
-                    case 1: icon_char = 'X'; break;        // MU_ICON_CLOSE
-                    case 2: icon_char = 'V'; break;        // MU_ICON_CHECK
-                    case 3: icon_char = '>'; break;        // MU_ICON_COLLAPSED
-                    case 4: icon_char = 'v'; break;        // MU_ICON_EXPANDED
-                    default: icon_char = '?'; break;
-                }
-                char icon_str[2] = {icon_char, '\0'};
-                draw_text(gs.font, icon_str, v2i(cmd->icon.rect.x, cmd->icon.rect.y),
-                          18, mu_to_color(cmd->icon.color));
-            }
-                break;
-            case MU_COMMAND_TEXT:
-                if ((unsigned char)cmd->text.str[0] >= 32)
-                    draw_text(gs.font, cmd->text.str, v2i(cmd->text.pos.x, cmd->text.pos.y),
-                              16, mu_to_color(cmd->text.color));
-                break;
-            case MU_COMMAND_RECT:
-                draw_recs32(mu_to_rec(cmd->rect.rect), ui_z, mu_to_color(cmd->rect.color));
-                ui_z -= 0.001f;  // Increment z to preserve draw order
-                break;
+            case NK_COMMAND_RECT_FILLED: {
+                const struct nk_command_rect_filled *r =
+                    (const struct nk_command_rect_filled *)cmd;
+                Color c = {r->color.r, r->color.g, r->color.b, r->color.a};
+                draw_recs32((Recs32){(f32)r->x, (f32)r->y, (f32)r->w, (f32)r->h}, ui_z, c);
+                ui_z -= 0.001f;
+            } break;
+            case NK_COMMAND_TEXT: {
+                const struct nk_command_text *t = (const struct nk_command_text *)cmd;
+                Color c = {t->foreground.r, t->foreground.g, t->foreground.b, t->foreground.a};
+                draw_text(gs.font, t->string, v2i(t->x, t->y), (s32)t->height, c);
+            } break;
+            default: break;
         }
     }
+    nk_clear(ctx);
     SectionStart("Editor Flush");
     if (is_key_pressed(KEY_N)) {
         log_debug("Triangled rendered %zu", triangles->len);

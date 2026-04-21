@@ -8,4 +8,10 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "tp_stb_image.h"
 
-#include "tp_microui.h"
+#define NK_INCLUDE_DEFAULT_ALLOCATOR
+#define NK_INCLUDE_STANDARD_VARARGS
+#define NK_IMPLEMENTATION
+#include "nuklear.h"
+
+#define CGLTF_IMPLEMENTATION
+#include "cgltf.h"

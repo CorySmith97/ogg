@@ -181,6 +181,7 @@ typedef struct {
     Vertex    *vertices;        // flat unindexed triangle array (renderer reads this)
     Face      *faces;
     SimpleMtl *mtl;
+    b32 loaded;
 
     // Deduplication for animation skinning.
     // base_positions holds each unique rest-pose position once.
@@ -202,7 +203,53 @@ typedef struct {
     Texture *value;
 } Texture_KV;
 
+// ---------------------------------------------------------------------------
+// glTF model
+// ---------------------------------------------------------------------------
+
+typedef struct {
+    s16  parent;    // index in GltfJoint array, -1 = root
+    V3f  rest_t;
+    Quat rest_r;
+    V3f  rest_s;
+    Mat4 inv_bind;  // column-major, as stored in glTF
+} GltfJoint;
+
+typedef enum { GLTF_CHAN_TRANSLATION, GLTF_CHAN_ROTATION, GLTF_CHAN_SCALE } GltfChanType;
+typedef enum { GLTF_INTERP_LINEAR, GLTF_INTERP_STEP, GLTF_INTERP_CUBICSPLINE } GltfInterp;
+
+typedef struct {
+    u32          joint_idx;
+    GltfChanType type;
+    GltfInterp   interp;
+    u32          count;
+    f32         *times;     // [count]
+    f32         *values;    // [count * 3] for T/S, [count * 4] for R
+} GltfChannel;
+
+typedef struct {
+    char         name[64];
+    GltfChannel *channels;      // stb-ds array
+    u32          channel_count;
+    f32          duration;      // seconds
+} GltfAnim;
+
+typedef struct {
+    Asset_Model  *mesh;
+    GltfJoint    *joints;           // [joint_count]
+    u32           joint_count;
+    u16          (*vert_joints)[4]; // [flat_vertex_count][4] joint indices per vertex
+    f32          (*vert_weights)[4];// [flat_vertex_count][4] blend weights per vertex
+    u32           flat_vertex_count;
+    GltfAnim     *anims;            // stb-ds array
+    u32           anim_count;
+    Vertex       *rest_vertices;    // copy of mesh vertices at load time; skinning reads from here
+} GltfModel;
+
+// ---------------------------------------------------------------------------
+
 Asset_Model *load_model_from_file(const char *file);
+GltfModel   *load_model_from_gltf(const char *file);
 void         deload_model(Asset_Model *model);
 // Loads fonts via a font atlas
 Font        *load_font(const char *file, int cwidth, int cheight);

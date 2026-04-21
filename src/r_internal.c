@@ -173,8 +173,8 @@ Color get_color_from_texture(Texture *t, V2f uv)
     uv.x = fmaxf(0.0f, fminf(1.0f, uv.x));
     uv.y = fmaxf(0.0f, fminf(1.0f, uv.y));
 
-    size_t x = (size_t)(uv.x * (t->width));
-    size_t y = (size_t)(uv.y * (t->height));
+    size_t x = (size_t)(uv.x * (t->width  - 1));
+    size_t y = (size_t)(uv.y * (t->height - 1));
 
     size_t idx = (y * t->width + x) * t->stride;
 
@@ -187,3 +187,32 @@ Color get_color_from_texture(Texture *t, V2f uv)
     return c;
 }
 
+
+static inline f32 clamp01(f32 x)
+{
+    if (x < 0.0f) return 0.0f;
+    if (x > 1.0f) return 1.0f;
+    return x;
+}
+
+static inline f32 smoothstepf(f32 a, f32 b, f32 x)
+{
+    f32 t = clamp01((x - a) / (b - a));
+    return t * t * (3.0f - 2.0f * t);
+}
+
+// sdf_sample_u8 is usually the red channel from the font atlas.
+// 128 is the contour. spread controls softness.
+// A good starting value is 8.0f to 16.0f depending on the atlas.
+static inline u8 sdf_to_alpha(u8 sdf_sample_u8, f32 spread)
+{
+    f32 d = (f32)sdf_sample_u8 / 255.0f;   // 0..1
+    f32 edge = 128.0f / 255.0f;            // ~0.502
+
+    // spread is in normalized texture-value space
+    f32 a = smoothstepf(edge - spread, edge + spread, d);
+    s32 out = (s32)(a * 255.0f + 0.5f);
+    if (out < 0) out = 0;
+    if (out > 255) out = 255;
+    return (u8)out;
+}

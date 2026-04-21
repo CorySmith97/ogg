@@ -273,33 +273,34 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
     V2i pos1;
     V2i pos2;
     V2i pos3;
-	Color c1;
-	Color c2;
-	Color c3;
+    Color c1;
+    Color c2;
+    Color c3;
+
     if (FlagExists(tri.flags, TRIANGLE_TWO_D))
     {
         pos1 = v2i((s32)tri.vertices[0].x, (s32)tri.vertices[0].y);
         pos2 = v2i((s32)tri.vertices[1].x, (s32)tri.vertices[1].y);
         pos3 = v2i((s32)tri.vertices[2].x, (s32)tri.vertices[2].y);
-		c1 = tri.colors[0];
-		c2 = tri.colors[1];
-		c3 = tri.colors[2];
+        c1 = tri.colors[0];
+        c2 = tri.colors[1];
+        c3 = tri.colors[2];
     }
     else
     {
         pos1 = to_screen(project(tri.vertices[0]));
         pos2 = to_screen(project(tri.vertices[1]));
         pos3 = to_screen(project(tri.vertices[2]));
-		if (tri.material) {
 
-			c1 = simple_reflection(tri.material, renderer.sun.position, tri.vertices[0], tri.normals[0], renderer.sun.color, COLOR_WHITE);
-			c2 = simple_reflection(tri.material, renderer.sun.position, tri.vertices[1], tri.normals[1], renderer.sun.color, COLOR_WHITE);
-			c3 = simple_reflection(tri.material, renderer.sun.position, tri.vertices[2], tri.normals[2], renderer.sun.color, COLOR_WHITE);
-		} else {
-			c1 = tri.colors[0];
-			c2 = tri.colors[1];
-			c3 = tri.colors[2];
-		}
+        if (tri.material) {
+            c1 = simple_reflection(tri.material, renderer.sun.position, tri.vertices[0], tri.normals[0], renderer.sun.color, COLOR_WHITE);
+            c2 = simple_reflection(tri.material, renderer.sun.position, tri.vertices[1], tri.normals[1], renderer.sun.color, COLOR_WHITE);
+            c3 = simple_reflection(tri.material, renderer.sun.position, tri.vertices[2], tri.normals[2], renderer.sun.color, COLOR_WHITE);
+        } else {
+            c1 = tri.colors[0];
+            c2 = tri.colors[1];
+            c3 = tri.colors[2];
+        }
     }
 
     AABBi rec = {
@@ -319,9 +320,10 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
         double total_area = signed_area(pos1.x, pos1.y, pos2.x, pos2.y, pos3.x, pos3.y);
         if (total_area >= 0)
             return;
+
         if (FlagExists(tri.flags, TRIANGLE_WIRE_FRAME)) {
             float t = (sinf(renderer.time) + 1.0f) * 0.5f;
-            float pulse =  0.4f + 0.7f * (t * t);  // eases in, snappy falloff
+            float pulse = 0.4f + 0.7f * (t * t);
 
             Color c = color_scale(COLOR_PURPLE, pulse);
             set_line(pos1, pos2, c);
@@ -342,26 +344,28 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
                 double z = 1.0 / inv_z;
 
                 size_t idx = PIXEL_INDEX(x, y);
-                if (idx < 0 || idx > GAME_WIDTH * GAME_HEIGHT) continue;
+                if (idx >= GAME_WIDTH * GAME_HEIGHT) continue;
+
                 if (!FlagExists(tri.flags, TRIANGLE_WRITE_OVER_Z)) {
                     if (z >= renderer.zbuffer[idx])
                         continue;
                 }
 
-
-                // TODO Interpolate colors
                 Color s32_color;
+
                 if (tri.texture != NULL)
                 {
                     V3f v1 = tri.uvs[0];
                     V3f v2 = tri.uvs[1];
                     V3f v3 = tri.uvs[2];
-                    f32 u = (v1.x/tri.vertices[0].z * bary.x +
-                            v2.x/tri.vertices[1].z * bary.y +
-                            v3.x/tri.vertices[2].z * bary.z) * z;
-                    f32 v = (v1.y/tri.vertices[0].z * bary.x +
-                            v2.y/tri.vertices[1].z * bary.y +
-                            v3.y/tri.vertices[2].z * bary.z) * z;
+
+                    f32 u = (v1.x / tri.vertices[0].z * bary.x +
+                             v2.x / tri.vertices[1].z * bary.y +
+                             v3.x / tri.vertices[2].z * bary.z) * (f32)z;
+
+                    f32 v = (v1.y / tri.vertices[0].z * bary.x +
+                             v2.y / tri.vertices[1].z * bary.y +
+                             v3.y / tri.vertices[2].z * bary.z) * (f32)z;
 
                     Color tex_color = get_color_from_texture(tri.texture, v2f(u, v));
 
@@ -371,9 +375,27 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
                             color_scale(c2, bary.y)),
                         color_scale(c3, bary.z));
 
-                    s32_color = color_modulate(tex_color, vert_color);
-                    if (s32_color.a == 0)
-                        continue;
+                    if (FlagExists(tri.flags, TRIANGLE_TEXT))
+                    {
+                        // SDF stored in red channel; edge near 128.
+                        // Tune this. Smaller = sharper, larger = softer.
+                        const f32 sdf_spread = 12.0f / 255.0f;
+
+                        u8 sdf_alpha = sdf_to_alpha(tex_color.r, sdf_spread);
+
+                        // Text color comes from vertex color; SDF drives coverage.
+                        s32_color = vert_color;
+                        s32_color.a = (u8)(((u32)vert_color.a * (u32)sdf_alpha) / 255u);
+
+                        if (s32_color.a == 0)
+                            continue;
+                    }
+                    else
+                    {
+                        s32_color = color_modulate(tex_color, vert_color);
+                        if (s32_color.a == 0)
+                            continue;
+                    }
                 }
                 else
                 {
@@ -385,10 +407,15 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
                 }
 
                 renderer.zbuffer[idx] = z;
-                set_pixel((u32)x, (u32)y, s32_color); //  (Color){c, c, c, 255});
+                set_pixel((u32)x, (u32)y, s32_color);
             }
         }
     }
+}
+
+void draw_gltf_model(GltfModel *model, V3f position, Mat3 rotation)
+{
+    draw_model(model->mesh, position, rotation, false);
 }
 
 void draw_point(V3f p, Color color)
@@ -657,7 +684,7 @@ void draw_texture(Texture *tex, Recs32 rec)
         colors, uvs2, tex, TRIANGLE_TWO_D);
 }
 
-void draw_texture_w_uvs(Texture *tex, Recs32 rec, V3f uvs[4], Color colors[4])
+void draw_texture_w_uvs(Texture *tex, Recs32 rec, V3f uvs[4], Color colors[4], u32 flags)
 {
     f32 x0 = rec.x;
     f32 y0 = rec.y;
@@ -692,13 +719,13 @@ void draw_texture_w_uvs(Texture *tex, Recs32 rec, V3f uvs[4], Color colors[4])
         v3f(x1, y1, 0.1), // BR
         v3f(x1, y0, 0.1), // TR
         v3f(x0, y0, 0.1), // TL
-        c1, uvs1, tex, TRIANGLE_TWO_D);
+        c1, uvs1, tex, TRIANGLE_TWO_D | flags);
 
     renderer_push_triangle(
         v3f(x0, y1, 0.1), // BL
         v3f(x1, y1, 0.1), // BR
         v3f(x0, y0, 0.1), // TL
-        c2, uvs2, tex, TRIANGLE_TWO_D);
+        c2, uvs2, tex, TRIANGLE_TWO_D | flags);
 }
 
 void draw_recs32(Recs32 rec, f32 z, Color color)
@@ -724,16 +751,14 @@ void draw_recs32(Recs32 rec, f32 z, Color color)
         colors, uvs, NULL, TRIANGLE_TWO_D);
 }
 
-// TODO AI GENERATED. REVISIT FOR FIXES
-
-#define GLYPH_W 128
-#define GLYPH_H 128
+#define GLYPH_W 16
+#define GLYPH_H 32
 
 void draw_text(Font *f, const char *str, V2i pos, f32 size, Color color)
 {
     s32 atlas_w = f->texture->width;
     s32 atlas_h = f->texture->height;
-    s32 sprites_per_row = atlas_w / f->character_width;
+    s32 sprites_per_row = atlas_w / GLYPH_W;
 
     char c = str[0];
     s32 i = 0;
@@ -746,10 +771,10 @@ void draw_text(Font *f, const char *str, V2i pos, f32 size, Color color)
         f32 du = 0.5f / (f32)atlas_w;
         f32 dv = 0.5f / (f32)atlas_h;
 
-        f32 u_min = ((f32)(col * f->character_width) + 0.5f) / (f32)atlas_w;
-        f32 v_min = ((f32)(row * f->character_height) + 0.5f) / (f32)atlas_h;
-        f32 u_max = ((f32)(col * f->character_width + f->character_width) - 0.5f) / (f32)atlas_w;
-        f32 v_max = ((f32)(row * f->character_height + f->character_height) - 0.5f) / (f32)atlas_h;
+        f32 u_min = ((f32)(col * GLYPH_W) + 0.5f) / (f32)atlas_w;
+        f32 v_min = ((f32)(row * GLYPH_H) + 0.5f) / (f32)atlas_h;
+        f32 u_max = ((f32)(col * GLYPH_W + GLYPH_W) - 0.5f) / (f32)atlas_w;
+        f32 v_max = ((f32)(row * GLYPH_H + GLYPH_H) - 0.5f) / (f32)atlas_h;
 
         V3f uvs[4] = {
             v3f(u_min, v_min, 0), /* top-left     */
@@ -763,7 +788,7 @@ void draw_text(Font *f, const char *str, V2i pos, f32 size, Color color)
             f->texture,
             rec,
             uvs,
-            colors);
+            colors, TRIANGLE_TEXT | TRIANGLE_NO_CULLING);
 
         i++;
         c = str[i];
@@ -802,7 +827,7 @@ void draw_string8(Font *f, String8 str, V2i pos, f32 size, Color color)
             f->texture,
             rec,
             uvs,
-            colors);
+            colors, TRIANGLE_TEXT | TRIANGLE_NO_CULLING);
     }
 }
 

@@ -19,6 +19,7 @@ static struct {
     s32       selected_entity;
     Gizmo_Axis selected_axis;
     Gizmo     gizmo;
+    s32      *initiative_order;
 } gs = {
     .sun = {
         .position = {4, 0, 0},
@@ -59,6 +60,8 @@ void game_ui(void);
 f32 angle = 0;
 Texture *entity_1;
 u64 last_time;
+GltfModel *m;
+GltfAnimState anim_s;
 
 void game_init(void)
 {
@@ -70,6 +73,8 @@ void game_init(void)
     entity_init();
     tiles_init();
 
+    m = load_model_from_gltf("data/robot.glb");
+    gltf_anim_init(&anim_s, m, "idle");
     load_and_store_model("shopkeeper", "data/shopkeeper.obj");
     load_and_store_texture("target", "data/target.png");
     load_and_store_model("fence", "data/lowpoly/OBJ/SM_Bld_Fence_01_Snow.obj");
@@ -223,6 +228,9 @@ void game_frame(void)
                 Entity e = gs.dynamic_entities[i];
                 entity_draw(&e);
             }
+            gltf_anim_update(&anim_s, renderer.dt);
+            gltf_anim_apply(&anim_s);
+            draw_gltf_model(m, v3f(0,0,0), mat3_scale(0.3));
             break;
         case GAME_STATE_MENU:
             //menu_update();

@@ -80,8 +80,12 @@ typedef struct KeyboardState {
 
 static struct {
     SDL_Window      *window;
+#if RENDERER_OPENGL
+    SDL_GLContext    gl_ctx;
+#else
     SDL_Renderer    *renderer;
     SDL_Texture     *texture;
+#endif
     uint32_t        width;
     uint32_t        height;
     const uint8_t   *keystate;
@@ -90,7 +94,7 @@ static struct {
     bool            mouse_enabled;
     char            text_input_buffer[2048];
     b32             text_input_enabled;
-    mu_Context     *ui;
+    struct nk_context *ui;
     char            input[1024];
     s32             input_index;
 } platform_ctx = {

@@ -79,7 +79,6 @@ typedef s64      b64;
     } while (0);
 
 #define internal static
-#define global   static
 
 #define AlignPow2(x,b)     (((x) + (b) - 1)&(~((b) - 1)))
 
@@ -271,6 +270,5 @@ typedef union Color {
 #define COLOR_GREEN  (Color){.r = 48, .g = 252, .a = 255}
 #define COLOR_PURPLE (Color){.r = 245, .g = 39, .b = 245, .a = 255}
 #define COLOR_YELLOW (Color){.r = 0x50, .g = 0x50, .a = 255}
-
 
 #endif // BASE_H

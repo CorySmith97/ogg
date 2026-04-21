@@ -1,6 +1,6 @@
 
 #define FOV 90.0f
-#define FAR 5.0f
+#define FAR 1000.0f
 #define NEAR 0.1f
 #define ASPECT_RATIO 16/9
 

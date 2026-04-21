@@ -39,8 +39,10 @@ static struct {
     // Review: these fields are only valid after "Build Skel" is pressed.
     FrameBase       *edit_base;         // flat FrameBase auto-built from painted groups
     AnimData        *edit_anim;         // AnimData accumulating recorded keyframes
-    Transform        edit_pose[16];     // live per-joint transform (indexed by group 0-15)
-    V3f              joint_centers[16]; // world-space centroids of each group's base positions
+    Transform        edit_pose[16];           // live per-joint transform (indexed by group 0-15)
+    V3f              joint_centers[16];       // world-space centroids of each group's base positions
+    V3f              joint_centers_model[16]; // model-space centroids — rotation pivots
+    V3f              joint_t_user[16];        // user-applied translation, separate from pivot correction
     b32              joint_has_verts[16]; // true if any base position belongs to this group
     Gizmo            joint_gizmo;       // single shared gizmo, repositioned per joint selection
     s32              selected_joint;    // group index of joint currently being posed (-1 = none)

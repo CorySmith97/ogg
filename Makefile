@@ -1,7 +1,7 @@
 CC=cc
 C_FILES=src/main.c
 M_FILES=src/main.m
-C_FLAGS=-std=c23 -Wall -g -Wno-missing-braces -O3
+C_FLAGS=-std=c23 -Wall -g -Wno-missing-braces
 C_FLAGS+= -Wextra -Wno-unused-function
 C_FLAGS+= -Wno-unused-variable -Wno-unused-parameter
 C_FLAGS+= -Wno-incompatible-pointer-types -Wno-initializer-overrides
@@ -17,7 +17,12 @@ LINK=
 LINK+= -L/opt/homebrew/Cellar/sdl2/2.32.10/lib -lsdl2
 LINK+= -L/opt/homebrew/Cellar/sdl2_image/2.8.8/lib -lsdl2_image
 
+LINK_GL= $(LINK) -framework OpenGL
+
 .SILENT:
 
 unity:
 	$(CC) -o $(BUILD_DIR)/app $(C_FILES) $(C_FLAGS) $(LINK) $(INCLUDE)
+
+opengl:
+	$(CC) -o $(BUILD_DIR)/app $(C_FILES) $(C_FLAGS) -DRENDERER_OPENGL $(LINK_GL) $(INCLUDE)

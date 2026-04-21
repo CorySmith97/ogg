@@ -35,11 +35,11 @@ typedef struct Entity{
     u32 movement_speed;
     s32 spellcaster_lvl;
 
-    void (*update_fn) (struct Entity *e);
 
     AnimData  *anim_data;
     AnimState  anim;
 
+    void (*update_fn) (struct Entity *e);
 } Entity;
 
 Entity global_entities[ENTITY_TAG_COUNT];

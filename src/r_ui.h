@@ -58,6 +58,7 @@ bool ui_window(const char *name, Recs32 rec);
 void ui_window_end(void);
 void ui_label(const char *name);
 bool ui_button(const char *name);
+void ui_pop_tooltip(String8 msg, s32 text_size);
 
 #endif // UI_H
 
