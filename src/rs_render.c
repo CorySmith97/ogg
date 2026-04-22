@@ -33,8 +33,8 @@ TileBin triangle_bins[(GAME_WIDTH / TILE_W) * (GAME_HEIGHT / TILE_H)];
 TriangleArray *triangles;
 Worker workers[NUM_THREADS];
 pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t  queue_cond = PTHREAD_COND_INITIALIZER;
-pthread_cond_t  done_cond = PTHREAD_COND_INITIALIZER;
+pthread_cond_t queue_cond = PTHREAD_COND_INITIALIZER;
+pthread_cond_t done_cond = PTHREAD_COND_INITIALIZER;
 
 TileBin *work_queue[TILE_COUNT];
 s32 queue_head = 0;
@@ -46,7 +46,6 @@ s32 pool_running = 1;
 void *worker_thread(void *arg)
 {
     UNUSED(arg);
-    Arena *arena = arena_alloc();
     while (1)
     {
         pthread_mutex_lock(&queue_mutex);
@@ -68,12 +67,11 @@ void *worker_thread(void *arg)
         // so we can release the lock before doing pixel work
         size_t len = bin->tri_idx.len;
 
-        size_t *local_idx = alloc_push(len);
+        // TODO this needs to be a fixed buffer of some kind.
+        size_t local_idx[len]; // VLA, or heap alloc if len could be huge
         memcpy(local_idx, bin->tri_idx.data, len * sizeof(size_t));
-
-        // clear while locked, before workers
-        bin->tri_idx.len = 0;
-        // can re-queue this bin next frame
+        bin->tri_idx.len = 0; // clear while locked, before workers
+                                    // can re-queue this bin next frame
 
         pthread_mutex_unlock(&queue_mutex);
 
@@ -91,12 +89,10 @@ void *worker_thread(void *arg)
         if (jobs_remaining == 0)
             pthread_cond_signal(&done_cond);
         pthread_mutex_unlock(&queue_mutex);
-
-        arena_reset(arena);
     }
 }
 
-void render_init(void)
+void rs_render_init(void)
 {
 
     triangles = malloc(sizeof(TriangleArray));
@@ -125,7 +121,7 @@ void render_init(void)
     console_write_log_alloc("    Thread count: %d", NUM_THREADS);
 }
 
-void render_shutdown(void)
+void rs_render_shutdown(void)
 {
     pthread_mutex_lock(&queue_mutex);
     pool_running = 0;
@@ -137,15 +133,8 @@ void render_shutdown(void)
 }
 
 
-void change_camera(void)
-{
-    Camera temp_camera;
-    temp_camera = renderer.swap_camera;
-    renderer.swap_camera = renderer.camera;
-    renderer.camera = temp_camera;
-}
 
-void renderer_flush(void)
+void rs_renderer_flush(void)
 {
     //log_info("Triangles pushed %zd", triangles->len);
     // enqueue all non-empty bins
@@ -279,33 +268,34 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
     V2i pos1;
     V2i pos2;
     V2i pos3;
-	Color c1;
-	Color c2;
-	Color c3;
+    Color c1;
+    Color c2;
+    Color c3;
+
     if (FlagExists(tri.flags, TRIANGLE_TWO_D))
     {
         pos1 = v2i((s32)tri.vertices[0].x, (s32)tri.vertices[0].y);
         pos2 = v2i((s32)tri.vertices[1].x, (s32)tri.vertices[1].y);
         pos3 = v2i((s32)tri.vertices[2].x, (s32)tri.vertices[2].y);
-		c1 = tri.colors[0];
-		c2 = tri.colors[1];
-		c3 = tri.colors[2];
+        c1 = tri.colors[0];
+        c2 = tri.colors[1];
+        c3 = tri.colors[2];
     }
     else
     {
         pos1 = to_screen(project(tri.vertices[0]));
         pos2 = to_screen(project(tri.vertices[1]));
         pos3 = to_screen(project(tri.vertices[2]));
-		if (tri.material) {
 
-			c1 = simple_reflection(tri.material, renderer.sun.position, tri.vertices[0], tri.normals[0], renderer.sun.color, COLOR_WHITE);
-			c2 = simple_reflection(tri.material, renderer.sun.position, tri.vertices[1], tri.normals[1], renderer.sun.color, COLOR_WHITE);
-			c3 = simple_reflection(tri.material, renderer.sun.position, tri.vertices[2], tri.normals[2], renderer.sun.color, COLOR_WHITE);
-		} else {
-			c1 = tri.colors[0];
-			c2 = tri.colors[1];
-			c3 = tri.colors[2];
-		}
+        //if (tri.material) {
+        //    c1 = simple_reflection(tri.material, renderer.sun.position, tri.vertices[0], tri.normals[0], renderer.sun.color, COLOR_WHITE);
+        //    c2 = simple_reflection(tri.material, renderer.sun.position, tri.vertices[1], tri.normals[1], renderer.sun.color, COLOR_WHITE);
+        //    c3 = simple_reflection(tri.material, renderer.sun.position, tri.vertices[2], tri.normals[2], renderer.sun.color, COLOR_WHITE);
+        //} else {
+            c1 = tri.colors[0];
+            c2 = tri.colors[1];
+            c3 = tri.colors[2];
+        //}
     }
 
     AABBi rec = {
@@ -325,9 +315,10 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
         double total_area = signed_area(pos1.x, pos1.y, pos2.x, pos2.y, pos3.x, pos3.y);
         if (total_area >= 0)
             return;
+
         if (FlagExists(tri.flags, TRIANGLE_WIRE_FRAME)) {
             float t = (sinf(renderer.time) + 1.0f) * 0.5f;
-            float pulse =  0.4f + 0.7f * (t * t);  // eases in, snappy falloff
+            float pulse = 0.4f + 0.7f * (t * t);
 
             Color c = color_scale(COLOR_PURPLE, pulse);
             set_line(pos1, pos2, c);
@@ -348,26 +339,28 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
                 double z = 1.0 / inv_z;
 
                 size_t idx = PIXEL_INDEX(x, y);
-                if (idx < 0 || idx > GAME_WIDTH * GAME_HEIGHT) continue;
+                if (idx >= GAME_WIDTH * GAME_HEIGHT) continue;
+
                 if (!FlagExists(tri.flags, TRIANGLE_WRITE_OVER_Z)) {
                     if (z >= renderer.zbuffer[idx])
                         continue;
                 }
 
-
-                // TODO Interpolate colors
                 Color s32_color;
+
                 if (tri.texture != NULL)
                 {
                     V3f v1 = tri.uvs[0];
                     V3f v2 = tri.uvs[1];
                     V3f v3 = tri.uvs[2];
-                    f32 u = (v1.x/tri.vertices[0].z * bary.x +
-                            v2.x/tri.vertices[1].z * bary.y +
-                            v3.x/tri.vertices[2].z * bary.z) * z;
-                    f32 v = (v1.y/tri.vertices[0].z * bary.x +
-                            v2.y/tri.vertices[1].z * bary.y +
-                            v3.y/tri.vertices[2].z * bary.z) * z;
+
+                    f32 u = (v1.x / tri.vertices[0].z * bary.x +
+                             v2.x / tri.vertices[1].z * bary.y +
+                             v3.x / tri.vertices[2].z * bary.z) * (f32)z;
+
+                    f32 v = (v1.y / tri.vertices[0].z * bary.x +
+                             v2.y / tri.vertices[1].z * bary.y +
+                             v3.y / tri.vertices[2].z * bary.z) * (f32)z;
 
                     Color tex_color = get_color_from_texture(tri.texture, v2f(u, v));
 
@@ -377,9 +370,27 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
                             color_scale(c2, bary.y)),
                         color_scale(c3, bary.z));
 
-                    s32_color = color_modulate(tex_color, vert_color);
-                    if (s32_color.a == 0)
-                        continue;
+                    if (FlagExists(tri.flags, TRIANGLE_TEXT))
+                    {
+                        // SDF stored in red channel; edge near 128.
+                        // Tune this. Smaller = sharper, larger = softer.
+                        const f32 sdf_spread = 12.0f / 255.0f;
+
+                        u8 sdf_alpha = sdf_to_alpha(tex_color.r, sdf_spread);
+
+                        // Text color comes from vertex color; SDF drives coverage.
+                        s32_color = vert_color;
+                        s32_color.a = (u8)(((u32)vert_color.a * (u32)sdf_alpha) / 255u);
+
+                        if (s32_color.a == 0)
+                            continue;
+                    }
+                    else
+                    {
+                        s32_color = color_modulate(tex_color, vert_color);
+                        if (s32_color.a == 0)
+                            continue;
+                    }
                 }
                 else
                 {
@@ -391,20 +402,21 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
                 }
 
                 renderer.zbuffer[idx] = z;
-                set_pixel((u32)x, (u32)y, s32_color); //  (Color){c, c, c, 255});
+                set_pixel((u32)x, (u32)y, s32_color);
             }
         }
     }
 }
 
-void draw_point(V3f p, Color color)
+
+void rs_draw_point(V3f p, Color color)
 {
     V2i pos = to_screen(project(p));
 
     set_pixel(pos.x, pos.y, color);
 }
 
-void clear_background(Color color)
+void rs_clear_background(Color color)
 {
     for (s32 y = 0; y < renderer.height; y++)
     {
@@ -417,7 +429,116 @@ void clear_background(Color color)
     }
 }
 
-void draw_model(Asset_Model *model, V3f position, Mat3 rotation, b32 selected)
+void rs_draw_model_triangle_selection(Asset_Model *model, V3f position, Mat3 rotation, b32 *selected)
+{
+    Mat4 view = camera_matrix(renderer.camera);
+    for (s32 i = 0; i < arrlen(model->vertices); i += 3)
+    {
+        s32 index = i;
+        Vertex v1 = model->vertices[i];
+        Vertex v2 = model->vertices[i + 1];
+        Vertex v3 = model->vertices[i + 2];
+
+        V3f p1 = v3f_mul_mat3(v1.position, rotation);
+        V3f p2 = v3f_mul_mat3(v2.position, rotation);
+        V3f p3 = v3f_mul_mat3(v3.position, rotation);
+
+        V3f n1 = v3f_mul_mat3(v1.normal, rotation);
+        V3f n2 = v3f_mul_mat3(v2.normal, rotation);
+        V3f n3 = v3f_mul_mat3(v3.normal, rotation);
+
+        p1.z = -p1.z;
+        p2.z = -p2.z;
+        p3.z = -p3.z;
+        p1 = v3f_add(p1, position);
+        p2 = v3f_add(p2, position);
+        p3 = v3f_add(p3, position);
+
+        p1 = v3f_translate_by_mat4(p1, view);
+        p2 = v3f_translate_by_mat4(p2, view);
+        p3 = v3f_translate_by_mat4(p3, view);
+
+        if (p1.z >= NEAR && p2.z >= NEAR && p3.z >= NEAR)
+        {
+            Color t1;
+            Color t2;
+            Color t3;
+            t1 = COLOR_WHITE;
+            t2 = COLOR_WHITE;
+            t3 = COLOR_WHITE;
+
+			V3f positions[3] = {p1, p2, p3};
+			V3f normals[3] = {n1, n2, n3};
+            Color colors[3] = {t1, t2, t3};
+            V3f uvs[3] = {v1.uv, v2.uv, v3.uv};
+
+            if (model->mtl != NULL)
+                renderer_push_triangle_w_normals(
+						positions,
+						normals,
+                        colors,
+                        uvs,
+                        model->mtl->diffuse_texture,
+						model->mtl,
+                        selected[index] ? TRIANGLE_WIRE_FRAME : 0);
+            else
+                renderer_push_triangle(
+                        p1,
+                        p2,
+                        p3,
+                        colors,
+                        uvs,
+                        NULL,
+                        0);
+        }
+    }
+}
+
+V3f *immediate_vert = NULL;
+Color *immediate_color = NULL;
+
+void rs_immediate_push_v(V3f v1,Color c)
+{
+    arrput(immediate_vert, v1);
+    arrput(immediate_color, c);
+}
+
+void rs_immediate_flush(void)
+{
+    assert(arrlen(immediate_vert) % 3 == 0);
+    assert(arrlen(immediate_color) % 3 == 0);
+    assert(arrlen(immediate_vert) == arrlen(immediate_color));
+
+    Mat4 view = camera_matrix(renderer.camera);
+    for (s32 i = 0; i < arrlen(immediate_vert); i += 3) {
+        V3f p1 = immediate_vert[i];
+        V3f p2 = immediate_vert[i+1];
+        V3f p3 = immediate_vert[i+2];
+        p1 = v3f_translate_by_mat4(p1, view);
+        p2 = v3f_translate_by_mat4(p2, view);
+        p3 = v3f_translate_by_mat4(p3, view);
+        Color colors[3] = {
+            immediate_color[i],
+            immediate_color[i+1],
+            immediate_color[i+2],
+        };
+
+        V3f uvs[3] = {0};
+        renderer_push_triangle(
+            p1,
+            p2,
+            p3,
+            colors,
+            uvs,
+            NULL,
+            0);
+    }
+
+    arrsetlen(immediate_vert, 0);
+    arrsetlen(immediate_color, 0);
+}
+
+void rs_draw_model(Asset_Model *model, V3f position, Mat3 rotation, b32 selected)
 {
     Mat4 view = camera_matrix(renderer.camera);
     for (s32 i = 0; i < arrlen(model->vertices); i += 3)
@@ -481,7 +602,7 @@ void draw_model(Asset_Model *model, V3f position, Mat3 rotation, b32 selected)
     }
 }
 
-void __attribute__((deprecated)) draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Light light)
+void __attribute__((deprecated)) rs_draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Light light)
 {
     // Mat4 pers = perspective(NEAR, FAR, ASPECT_RATIO, FOV);
     Mat4 view = camera_matrix(renderer.camera);
@@ -563,7 +684,7 @@ Color simple_reflection(SimpleMtl *mtl, V3f light_pos, V3f v, V3f n, V3f light_c
     return res;
 }
 
-void draw_texture(Texture *tex, Recs32 rec)
+void rs_draw_texture(Texture *tex, Recs32 rec)
 {
     f32 x0 = rec.x;
     f32 y0 = rec.y;
@@ -598,7 +719,7 @@ void draw_texture(Texture *tex, Recs32 rec)
         colors, uvs2, tex, TRIANGLE_TWO_D);
 }
 
-void draw_texture_w_uvs(Texture *tex, Recs32 rec, V3f uvs[4], Color colors[4])
+void rs_draw_texture_w_uvs(Texture *tex, Recs32 rec, V3f uvs[4], Color colors[4], u32 flags)
 {
     f32 x0 = rec.x;
     f32 y0 = rec.y;
@@ -633,16 +754,16 @@ void draw_texture_w_uvs(Texture *tex, Recs32 rec, V3f uvs[4], Color colors[4])
         v3f(x1, y1, 0.1), // BR
         v3f(x1, y0, 0.1), // TR
         v3f(x0, y0, 0.1), // TL
-        c1, uvs1, tex, TRIANGLE_TWO_D);
+        c1, uvs1, tex, TRIANGLE_TWO_D | flags);
 
     renderer_push_triangle(
         v3f(x0, y1, 0.1), // BL
         v3f(x1, y1, 0.1), // BR
         v3f(x0, y0, 0.1), // TL
-        c2, uvs2, tex, TRIANGLE_TWO_D);
+        c2, uvs2, tex, TRIANGLE_TWO_D | flags);
 }
 
-void draw_recs32(Recs32 rec, f32 z, Color color)
+void rs_draw_recs32(Recs32 rec, f32 z, Color color)
 {
     f32 x0 = rec.x;
     f32 y0 = rec.y;
@@ -665,16 +786,14 @@ void draw_recs32(Recs32 rec, f32 z, Color color)
         colors, uvs, NULL, TRIANGLE_TWO_D);
 }
 
-// TODO AI GENERATED. REVISIT FOR FIXES
+#define GLYPH_W 16
+#define GLYPH_H 32
 
-#define GLYPH_W 128
-#define GLYPH_H 128
-
-void draw_text(Font *f, const char *str, V2i pos, f32 size, Color color)
+void rs_draw_text(Font *f, const char *str, V2i pos, f32 size, Color color)
 {
     s32 atlas_w = f->texture->width;
     s32 atlas_h = f->texture->height;
-    s32 sprites_per_row = atlas_w / f->character_width;
+    s32 sprites_per_row = atlas_w / GLYPH_W;
 
     char c = str[0];
     s32 i = 0;
@@ -687,10 +806,10 @@ void draw_text(Font *f, const char *str, V2i pos, f32 size, Color color)
         f32 du = 0.5f / (f32)atlas_w;
         f32 dv = 0.5f / (f32)atlas_h;
 
-        f32 u_min = ((f32)(col * f->character_width) + 0.5f) / (f32)atlas_w;
-        f32 v_min = ((f32)(row * f->character_height) + 0.5f) / (f32)atlas_h;
-        f32 u_max = ((f32)(col * f->character_width + f->character_width) - 0.5f) / (f32)atlas_w;
-        f32 v_max = ((f32)(row * f->character_height + f->character_height) - 0.5f) / (f32)atlas_h;
+        f32 u_min = ((f32)(col * GLYPH_W) + 0.5f) / (f32)atlas_w;
+        f32 v_min = ((f32)(row * GLYPH_H) + 0.5f) / (f32)atlas_h;
+        f32 u_max = ((f32)(col * GLYPH_W + GLYPH_W) - 0.5f) / (f32)atlas_w;
+        f32 v_max = ((f32)(row * GLYPH_H + GLYPH_H) - 0.5f) / (f32)atlas_h;
 
         V3f uvs[4] = {
             v3f(u_min, v_min, 0), /* top-left     */
@@ -704,14 +823,14 @@ void draw_text(Font *f, const char *str, V2i pos, f32 size, Color color)
             f->texture,
             rec,
             uvs,
-            colors);
+            colors, TRIANGLE_TEXT | TRIANGLE_NO_CULLING);
 
         i++;
         c = str[i];
     }
 }
 
-void draw_string8(Font *f, String8 str, V2i pos, f32 size, Color color)
+void rs_draw_string8(Font *f, String8 str, V2i pos, f32 size, Color color)
 {
     s32 atlas_w = f->texture->width;
     s32 atlas_h = f->texture->height;
@@ -743,11 +862,11 @@ void draw_string8(Font *f, String8 str, V2i pos, f32 size, Color color)
             f->texture,
             rec,
             uvs,
-            colors);
+            colors, TRIANGLE_TEXT | TRIANGLE_NO_CULLING);
     }
 }
 
-void draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags)
+void rs_draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags)
 {
     Mat4 view = camera_matrix(renderer.camera);
 
@@ -776,7 +895,7 @@ void draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags)
             colors, uvs, NULL, TRIANGLE_NO_CULLING | flags);
 }
 
-void draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags)
+void rs_draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags)
 {
     Mat4 view = camera_matrix(renderer.camera);
 
@@ -818,7 +937,7 @@ void draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color color, u
             colors, uvs2, tex, TRIANGLE_NO_CULLING | flags);
 }
 
-void draw_triangle3d(V3f v1, V3f v2, V3f v3, Color color, u32 flags)
+void rs_draw_triangle3d(V3f v1, V3f v2, V3f v3, Color color, u32 flags)
 {
     Mat4 view = camera_matrix(renderer.camera);
     Color colors[3] = {color, color, color};

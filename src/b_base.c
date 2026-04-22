@@ -168,6 +168,16 @@ String8 str8_split(String8 str, char delimeter)
     };
 }
 
+b32 str8_compare(String8 str1, String8 str2)
+{
+    //assert(str1.len == str2.len, "Trying to compare two string8 of different length");
+    if (str1.len != str2.len) return false;
+
+    b32 val = memcmp(str1.data, str2.data, str1.len);
+    return val == 0;
+
+}
+
 char *str8_to_cstring(Arena *arena, String8 str)
 {
     char *ret = arena_push(arena, str.len + 1, 1, 0);

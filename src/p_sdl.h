@@ -80,12 +80,9 @@ typedef struct KeyboardState {
 
 static struct {
     SDL_Window      *window;
-#if RENDERER_OPENGL
     SDL_GLContext    gl_ctx;
-#else
     SDL_Renderer    *renderer;
     SDL_Texture     *texture;
-#endif
     uint32_t        width;
     uint32_t        height;
     const uint8_t   *keystate;

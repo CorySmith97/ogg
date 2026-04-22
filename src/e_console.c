@@ -26,6 +26,7 @@ void console_init(void)
     console.rec = (Recs32){.x = 0, .y = 0, .w = renderer.width, .h = 0};
     console_register_command("test", test);
     console_register_command("mload", model_editor_load_model);
+    console_register_command("backend", console_render_swap);
 }
 
 void console_deinit(void)

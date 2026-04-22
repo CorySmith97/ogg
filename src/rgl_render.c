@@ -6,7 +6,7 @@ typedef struct {
     u32 triangle_count;
 } DrawCall;
 
-void render_init(void)
+void rgl_render_init(void)
 {
 }
 

@@ -111,15 +111,6 @@ typedef struct {
     V3f s;
 } Transform;
 
-typedef struct {
-    u16 bone_count;
-    Transform *local;
-} Pose;
-
-// ---------------------------------------------------------------------------
-// Animation
-// ---------------------------------------------------------------------------
-
 // What kind of transformation a joint applies to its vertex group
 typedef enum {
     ANIM_XFORM_ROTATE,
@@ -174,8 +165,6 @@ typedef struct {
     u16 *groups;        // [vertex_count], ANIM_GROUP_STATIC = unaffected
     u32  vertex_count;
 } AnimSkin;
-
-// ---------------------------------------------------------------------------
 
 typedef struct {
     Vertex    *vertices; 

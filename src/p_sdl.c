@@ -35,6 +35,9 @@ void platform_init(const char *name, u32 width, u32 height)
     platform_ctx.width  = width;
     platform_ctx.height = height;
 
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+
     platform_ctx.window = SDL_CreateWindow(name,
                                            SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                            width, height,
@@ -44,6 +47,8 @@ void platform_init(const char *name, u32 width, u32 height)
     platform_ctx.texture  = SDL_CreateTexture(platform_ctx.renderer,
                                               SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING,
                                               GAME_WIDTH, GAME_HEIGHT);
+
+    platform_ctx.gl_ctx = SDL_GL_CreateContext(platform_ctx.window);
 
     nk_ui_font.userdata = nk_handle_ptr(NULL);
     nk_ui_font.height   = 16;

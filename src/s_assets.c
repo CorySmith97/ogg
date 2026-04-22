@@ -613,6 +613,7 @@ GLTF_Model *load_gltf_model(const char *path)
         cgltf_mesh *mesh = &data->meshes[mi];
         for (cgltf_size pi = 0; pi < mesh->primitives_count; pi++) {
             Asset_Model *m = gltf_build_primitive(&mesh->primitives[pi], path, skin);
+            console_write_log_alloc("-> Mesh: %zu", arrlen(m->vertices));
             if (m) { arrput(gltf->primitives, m); gltf->prim_count++; }
         }
     }

@@ -12,6 +12,11 @@
 #define RENDER_H
 
 typedef enum {
+    BACKEND_SOFTWARE,
+    BACKEND_OPENGL,
+} RendererBackend;
+
+typedef enum {
     TRIANGLE_TWO_D        = 1 << 0,
     TRIANGLE_NO_CULLING   = 1 << 1,
     TRIANGLE_WRITE_OVER_Z = 1 << 2,
@@ -50,10 +55,8 @@ typedef struct {
 
 static struct {
     Vertex *vertices;
-#if !RENDERER_OPENGL
     u32 pixels[GAME_HEIGHT * GAME_WIDTH];
     f32 zbuffer[GAME_HEIGHT * GAME_WIDTH];
-#endif
     b32 quit;
     s32 width, height;
     f32 dt;
@@ -62,14 +65,13 @@ static struct {
     Camera camera;
     Camera swap_camera; // spare camera to hold a different camera in
 	Light sun;
+    RendererBackend backend;
 } renderer = {
     .quit = false,
     .width = GAME_WIDTH,
     .height = GAME_HEIGHT,
-#if !RENDERER_OPENGL
     .pixels = {0},
     .zbuffer = {0},
-#endif
     .dt = 0,
     .camera = {
         .target = {0, 0, 0},
@@ -89,12 +91,15 @@ static struct {
         .distance = 10.0f,
         .fovy = 60.0f,
     },
+    .backend = BACKEND_SOFTWARE,
 };
 
 //
 // Render Initialization.
 //
 void render_init(void);
+void render_shutdown(void);
+void console_render_swap(String8 params);
 
 //
 // Clear all the triangle buffer and push pixels to render buffer
@@ -106,7 +111,6 @@ void change_camera(Camera camera);
 
 void draw_model(Asset_Model *model, V3f position, Mat3 rotation, b32 selected);
 void draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Light light);
-void draw_model_textured(Asset_Model *model, V3f position, Mat3 rotation);
 void draw_texture(Texture *tex, Recs32 rec);
 void draw_text(Font *f, const char *str, V2i pos, f32 size, Color color);
 void draw_recs32(Recs32 rec, f32 z, Color color);
@@ -114,6 +118,8 @@ void draw_texture_w_uvs(Texture *tex, Recs32 rec, V3f uvs[4], Color colors[4], u
 void draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags);
 void draw_triangle3d(V3f v1, V3f v2, V3f v3, Color color, u32 flags);
 void draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags);
+void draw_string8(Font *f, String8 str, V2i pos, f32 size, Color color);
+void draw_model_triangle_selection(Asset_Model *model, V3f position, Mat3 rotation, b32 *selected);
 
 void immediate_flush(void);
 void immediate_push_v(V3f v1, Color c);

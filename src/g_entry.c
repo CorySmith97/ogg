@@ -124,7 +124,7 @@ void game_init(void)
         }
     }
 
-    load_and_store_gltf_model("robot", "data/robot.glb");
+    load_and_store_gltf_model("robot", "data/scene.gltf");
 
     {
         GLTF_Model *robot = get_gltf_model("robot");
@@ -254,7 +254,7 @@ void game_frame(void)
                         }
                     }
                     for (u32 pi = 0; pi < robot->prim_count; pi++)
-                        draw_model(robot->primitives[pi], v3f(0, 0, 5), mat3_identity(), false);
+                        draw_model(robot->primitives[pi], v3f(0, 0, 5), mat3_scale(0.01), false);
                 }
             }
 
