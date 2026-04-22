@@ -146,16 +146,19 @@ void platform_handle_events(bool *quit)
 
     nk_input_end(ctx);
 
+
     if (platform_ctx.text_input_enabled) {
-        b32 pressed = is_key_pressed_raw(KEY_BACKSPACE);
+        static s32 frame = 0;
+        b32 pressed = is_key_down_raw(KEY_BACKSPACE);
         if (pressed) {
-            if (platform_ctx.input_index > 0) {
+            if (platform_ctx.input_index > 0 && frame >= 30) {
                 platform_ctx.input_index -= 1;
                 platform_ctx.input[platform_ctx.input_index] = '\0';
             }
+            frame++;
         }
     }
-    *quit = is_key_pressed_raw(KEY_ESCAPE);
+    *quit |= is_key_pressed_raw(KEY_ESCAPE);
 }
 
 void platform_deinit(void)
@@ -341,3 +344,7 @@ void platform_check_keystate(void)
     platform_ctx.keystate = SDL_GetKeyboardState(NULL);
 }
 
+// TODO
+// add copy paste with clipboard.
+//
+// add input reset

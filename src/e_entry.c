@@ -157,7 +157,7 @@ void editor_draw(void)
 
     if (show_demo && entity_panel_open) {
         if (nk_begin(ctx, "Entity",
-                     nk_rect(0, 0, SCREEN_WIDTH / 6, SCREEN_HEIGHT / 2), panel_flags))
+                     nk_rect(0, 0, SCREEN_WIDTH / 4, SCREEN_HEIGHT / 2), panel_flags))
         {
             if (gs.selected_entity >= 0) {
                 Entity *e = &gs.dynamic_entities[gs.selected_entity];
@@ -214,7 +214,7 @@ void editor_draw(void)
             case NK_COMMAND_TEXT: {
                 const struct nk_command_text *t = (const struct nk_command_text *)cmd;
                 Color c = {t->foreground.r, t->foreground.g, t->foreground.b, t->foreground.a};
-                draw_text(gs.font, t->string, v2i(t->x, t->y), (s32)t->height, c);
+                draw_text(gs.font, t->string, v2i(t->x, t->y), 16, c);
             } break;
             default: break;
         }

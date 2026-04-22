@@ -413,10 +413,6 @@ void renderer_draw_triangle(u32 tile_x, u32 tile_y, Triangle tri)
     }
 }
 
-void draw_gltf_model(GltfModel *model, V3f position, Mat3 rotation)
-{
-    draw_model(model->mesh, position, rotation, false);
-}
 
 void draw_point(V3f p, Color color)
 {
@@ -501,6 +497,50 @@ void draw_model_triangle_selection(Asset_Model *model, V3f position, Mat3 rotati
                         0);
         }
     }
+}
+
+V3f *immediate_vert = NULL;
+Color *immediate_color = NULL;
+
+void immediate_push_v(V3f v1,Color c)
+{
+    arrput(immediate_vert, v1);
+    arrput(immediate_color, c);
+}
+
+void immediate_flush(void)
+{
+    assert(arrlen(immediate_vert) % 3 == 0);
+    assert(arrlen(immediate_color) % 3 == 0);
+    assert(arrlen(immediate_vert) == arrlen(immediate_color));
+
+    Mat4 view = camera_matrix(renderer.camera);
+    for (s32 i = 0; i < arrlen(immediate_vert); i += 3) {
+        V3f p1 = immediate_vert[i];
+        V3f p2 = immediate_vert[i+1];
+        V3f p3 = immediate_vert[i+2];
+        p1 = v3f_translate_by_mat4(p1, view);
+        p2 = v3f_translate_by_mat4(p2, view);
+        p3 = v3f_translate_by_mat4(p3, view);
+        Color colors[3] = {
+            immediate_color[i],
+            immediate_color[i+1],
+            immediate_color[i+2],
+        };
+
+        V3f uvs[3] = {0};
+        renderer_push_triangle(
+            p1,
+            p2,
+            p3,
+            colors,
+            uvs,
+            NULL,
+            0);
+    }
+
+    arrsetlen(immediate_vert, 0);
+    arrsetlen(immediate_color, 0);
 }
 
 void draw_model(Asset_Model *model, V3f position, Mat3 rotation, b32 selected)

@@ -178,20 +178,27 @@ typedef struct {
 // ---------------------------------------------------------------------------
 
 typedef struct {
-    Vertex    *vertices;        // flat unindexed triangle array (renderer reads this)
+    Vertex    *vertices; 
     Face      *faces;
     SimpleMtl *mtl;
     b32 loaded;
 
-    // Deduplication for animation skinning.
-    // base_positions holds each unique rest-pose position once.
-    // index_buffer[j] is which base position flat vertex j came from.
-    // skin_groups[i] is which animation group base position i belongs to.
     V3f       *base_positions;  // [base_count]
     u32        base_count;
     u32       *index_buffer;    // [arrlen(vertices)]
     u16       *skin_groups;     // [base_count], ANIM_GROUP_STATIC by default
 } Asset_Model;
+
+typedef struct {
+    u32 start_index;
+    u32 end_index;
+} Geo_Surface;
+
+typedef struct {
+    Asset_Model     **primitives;
+    u32               prim_count;
+    struct AnimData  *anim_data;
+} GLTF_Model;
 
 typedef struct {
     char *key;
@@ -200,56 +207,15 @@ typedef struct {
 
 typedef struct {
     char *key;
+    GLTF_Model *value;
+} GLTF_Model_KV;
+
+typedef struct {
+    char *key;
     Texture *value;
 } Texture_KV;
 
-// ---------------------------------------------------------------------------
-// glTF model
-// ---------------------------------------------------------------------------
-
-typedef struct {
-    s16  parent;    // index in GltfJoint array, -1 = root
-    V3f  rest_t;
-    Quat rest_r;
-    V3f  rest_s;
-    Mat4 inv_bind;  // column-major, as stored in glTF
-} GltfJoint;
-
-typedef enum { GLTF_CHAN_TRANSLATION, GLTF_CHAN_ROTATION, GLTF_CHAN_SCALE } GltfChanType;
-typedef enum { GLTF_INTERP_LINEAR, GLTF_INTERP_STEP, GLTF_INTERP_CUBICSPLINE } GltfInterp;
-
-typedef struct {
-    u32          joint_idx;
-    GltfChanType type;
-    GltfInterp   interp;
-    u32          count;
-    f32         *times;     // [count]
-    f32         *values;    // [count * 3] for T/S, [count * 4] for R
-} GltfChannel;
-
-typedef struct {
-    char         name[64];
-    GltfChannel *channels;      // stb-ds array
-    u32          channel_count;
-    f32          duration;      // seconds
-} GltfAnim;
-
-typedef struct {
-    Asset_Model  *mesh;
-    GltfJoint    *joints;           // [joint_count]
-    u32           joint_count;
-    u16          (*vert_joints)[4]; // [flat_vertex_count][4] joint indices per vertex
-    f32          (*vert_weights)[4];// [flat_vertex_count][4] blend weights per vertex
-    u32           flat_vertex_count;
-    GltfAnim     *anims;            // stb-ds array
-    u32           anim_count;
-    Vertex       *rest_vertices;    // copy of mesh vertices at load time; skinning reads from here
-} GltfModel;
-
-// ---------------------------------------------------------------------------
-
 Asset_Model *load_model_from_file(const char *file);
-GltfModel   *load_model_from_gltf(const char *file);
 void         deload_model(Asset_Model *model);
 // Loads fonts via a font atlas
 Font        *load_font(const char *file, int cwidth, int cheight);
@@ -259,5 +225,10 @@ SimpleMtl   *load_material_file(const char *file);
 // Write/read skin_groups to/from a .skin text file
 void skin_save(const char *file, Asset_Model *model);
 void skin_load(const char *file, Asset_Model *model);
+
+
+GLTF_Model *load_gltf_model(const char *path);
+void        load_and_store_gltf_model(const char *name, const char *path);
+GLTF_Model *get_gltf_model(const char *name);
 
 #endif // ASSET_H

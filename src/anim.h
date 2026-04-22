@@ -3,7 +3,7 @@
 
 // All animation frames and sequences for one character/object.
 // Owns its frame and sequence data but not the model or FrameBase.
-typedef struct {
+typedef struct AnimData {
     FrameBase    *base;         // joint topology (shared across animations)
     AnimFrame    *frames;       // stb-ds array of all keyframes
     AnimSequence *sequences;    // stb-ds array of named clips

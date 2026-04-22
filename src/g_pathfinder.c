@@ -14,4 +14,5 @@ void initiate_combat(Arena *arena, Entity *entities)
 
 s32 entity_roll_initiative(Entity e)
 {
+    return 0;
 }

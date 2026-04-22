@@ -708,7 +708,12 @@ void model_editor_load_model(String8 model_name)
 {
     char *str = str8_to_cstring(m_editor.arena, model_name);
     snprintf(m_editor.model_name, sizeof(m_editor.model_name), "%s", str);
-    m_editor.selected = get_model(str);
+    Asset_Model *model = get_model(str);
+    if (!model) {
+        console_write_log_alloc("Failed to load model %s", str);
+        return;
+    }
+    m_editor.selected = model;
     console_write_log_alloc("Loaded model %s", str);
 
     u32 vert_count = (u32)arrlen(m_editor.selected->vertices);

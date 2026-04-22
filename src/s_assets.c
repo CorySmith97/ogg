@@ -1,8 +1,9 @@
 #define ASSET_DIR "data/"
 #define BUFFER_SIZE 1024
 
-Texture_KV     *textures = NULL;
-Asset_Model_KV *assets = NULL;
+Texture_KV     *textures    = NULL;
+Asset_Model_KV *assets      = NULL;
+GLTF_Model_KV  *gltf_assets = NULL;
 
 b32 load_and_store_texture(const char *name, const char *file_name)
 {
@@ -222,294 +223,6 @@ ret:
     return model;
 }
 
-
-// glTF stores matrices column-major; convert to the engine's row-major format.
-static Mat4 mat4_from_gltf_colmajor(const f32 *c)
-{
-    Mat4 m;
-    for (int i = 0; i < 4; i++)
-        for (int j = 0; j < 4; j++)
-            m.m[i][j] = c[j * 4 + i];
-    return m;
-}
-
-static s32 gltf_find_joint(cgltf_skin *skin, cgltf_node *node)
-{
-    for (cgltf_size i = 0; i < skin->joints_count; i++)
-        if (skin->joints[i] == node) return (s32)i;
-    return -1;
-}
-
-static void gltf_dir_from_path(const char *path, char *out, size_t n)
-{
-    strncpy(out, path, n - 1);
-    out[n - 1] = '\0';
-    char *slash = strrchr(out, '/');
-    if (slash) *(slash + 1) = '\0';
-    else out[0] = '\0';
-}
-
-GltfModel *load_model_from_gltf(const char *file)
-{
-    cgltf_options opts = {0};
-    cgltf_data   *data = NULL;
-
-    if (cgltf_parse_file(&opts, file, &data) != cgltf_result_success) {
-        console_write_log_alloc("[gltf] parse failed: %s", file);
-        return NULL;
-    }
-    if (cgltf_load_buffers(&opts, data, file) != cgltf_result_success) {
-        console_write_log_alloc("[gltf] buffer load failed: %s", file);
-        cgltf_free(data);
-        return NULL;
-    }
-
-    char dir[512];
-    gltf_dir_from_path(file, dir, sizeof(dir));
-
-    GltfModel *gm   = calloc(1, sizeof(GltfModel));
-    gm->mesh        = calloc(1, sizeof(Asset_Model));
-
-    // Temp parallel skin arrays — same length as flat vertex array
-    typedef struct { u16 v[4]; } J4;
-    typedef struct { f32 v[4]; } W4;
-    J4 *flat_j = NULL;
-    W4 *flat_w = NULL;
-    b32 has_skin = (data->skins_count > 0);
-
-    // --- Geometry ---
-    for (cgltf_size mi = 0; mi < data->meshes_count; mi++) {
-        cgltf_mesh *mesh = &data->meshes[mi];
-        for (cgltf_size pi = 0; pi < mesh->primitives_count; pi++) {
-            cgltf_primitive *prim = &mesh->primitives[pi];
-            if (prim->type != cgltf_primitive_type_triangles) continue;
-
-            cgltf_accessor *pos_acc  = NULL, *norm_acc = NULL, *uv_acc = NULL;
-            cgltf_accessor *j_acc    = NULL, *w_acc    = NULL;
-            for (cgltf_size ai = 0; ai < prim->attributes_count; ai++) {
-                cgltf_attribute *attr = &prim->attributes[ai];
-                switch (attr->type) {
-                    case cgltf_attribute_type_position: pos_acc  = attr->data; break;
-                    case cgltf_attribute_type_normal:   norm_acc = attr->data; break;
-                    case cgltf_attribute_type_texcoord: if (attr->index == 0) uv_acc = attr->data; break;
-                    case cgltf_attribute_type_joints:   if (attr->index == 0) j_acc  = attr->data; break;
-                    case cgltf_attribute_type_weights:  if (attr->index == 0) w_acc  = attr->data; break;
-                    default: break;
-                }
-            }
-            if (!pos_acc) continue;
-
-            cgltf_size vc = pos_acc->count;
-            f32 (*p)[3]   = malloc(vc * sizeof(*p));
-            f32 (*n)[3]   = malloc(vc * sizeof(*n));
-            f32 (*uv)[2]  = malloc(vc * sizeof(*uv));
-            b32 have_skin = has_skin && j_acc && w_acc;
-            J4  *vj       = have_skin ? malloc(vc * sizeof(J4)) : NULL;
-            W4  *vw       = have_skin ? malloc(vc * sizeof(W4)) : NULL;
-
-            for (cgltf_size vi = 0; vi < vc; vi++) {
-                cgltf_accessor_read_float(pos_acc, vi, p[vi], 3);
-                if (norm_acc) cgltf_accessor_read_float(norm_acc, vi, n[vi], 3);
-                else          { n[vi][0] = 0; n[vi][1] = 1; n[vi][2] = 0; }
-                if (uv_acc) {
-                    cgltf_accessor_read_float(uv_acc, vi, uv[vi], 2);
-                    uv[vi][1] = 1.0f - uv[vi][1]; // glTF V=0 is top; flip to match engine convention (V=0 = bottom)
-                } else { uv[vi][0] = 0; uv[vi][1] = 0; }
-                if (vj) {
-                    cgltf_uint ji[4] = {0};
-                    cgltf_accessor_read_uint(j_acc, vi, ji, 4);
-                    for (int k = 0; k < 4; k++) vj[vi].v[k] = (u16)ji[k];
-                    cgltf_accessor_read_float(w_acc, vi, vw[vi].v, 4);
-                }
-            }
-
-            cgltf_size tri_count = prim->indices ? prim->indices->count / 3 : vc / 3;
-            for (cgltf_size ti = 0; ti < tri_count; ti++) {
-                for (int k = 0; k < 3; k++) {
-                    cgltf_size idx = prim->indices
-                        ? cgltf_accessor_read_index(prim->indices, ti * 3 + k)
-                        : ti * 3 + k;
-                    Vertex v = {
-                        .position = {p[idx][0],  p[idx][1],  p[idx][2]},
-                        .normal   = {n[idx][0],  n[idx][1],  n[idx][2]},
-                        .uv       = {uv[idx][0], uv[idx][1], 0.0f},
-                    };
-                    arrput(gm->mesh->vertices, v);
-                    J4 jd = vj ? vj[idx] : (J4){{0,0,0,0}};
-                    W4 wd = vw ? vw[idx] : (W4){{1,0,0,0}};
-                    arrput(flat_j, jd);
-                    arrput(flat_w, wd);
-                }
-            }
-
-            free(p); free(n); free(uv);
-            if (vj) free(vj);
-            if (vw) free(vw);
-
-            // First material wins
-            if (prim->material && !gm->mesh->mtl) {
-                SimpleMtl *mtl = calloc(1, sizeof(SimpleMtl));
-                cgltf_pbr_metallic_roughness *pbr = &prim->material->pbr_metallic_roughness;
-                mtl->diffuse  = (V3f){pbr->base_color_factor[0], pbr->base_color_factor[1], pbr->base_color_factor[2]};
-                f32 rough     = pbr->roughness_factor;
-                mtl->ambient  = v3f_scale(mtl->diffuse, 0.1f + rough * 0.2f);
-                mtl->specular = (V3f){1, 1, 1};
-                mtl->specular_exponent = (1.0f - rough) * 128.0f;
-                if (pbr->base_color_texture.texture) {
-                    cgltf_image *img = pbr->base_color_texture.texture->image;
-                    if (img && img->uri) {
-                        char tex_path[512];
-                        snprintf(tex_path, sizeof(tex_path), "%s%s", dir, img->uri);
-                        mtl->diffuse_texture = load_texture_from_file(tex_path, true);
-                    } else if (img && img->buffer_view) {
-                        const u8 *raw = (const u8 *)img->buffer_view->buffer->data + img->buffer_view->offset;
-                        int w, h, c;
-                        stbi_set_flip_vertically_on_load(true);
-                        u8 *pixels = stbi_load_from_memory(raw, (int)img->buffer_view->size, &w, &h, &c, 0);
-                        if (pixels) {
-                            Texture *tex  = malloc(sizeof(Texture));
-                            tex->width    = w;
-                            tex->height   = h;
-                            tex->stride   = c;
-                            tex->data     = malloc(w * h * c);
-                            memcpy(tex->data, pixels, w * h * c);
-                            stbi_image_free(pixels);
-                            mtl->diffuse_texture = tex;
-                        }
-                    }
-                }
-                gm->mesh->mtl = mtl;
-            }
-        }
-    }
-    // Copy skin data into final flat arrays
-    u32 fvc = (u32)arrlen(gm->mesh->vertices);
-
-    // Snapshot rest pose — skinning reads from here, mesh->vertices is overwritten each frame
-    if (fvc > 0) {
-        gm->rest_vertices = malloc(fvc * sizeof(Vertex));
-        memcpy(gm->rest_vertices, gm->mesh->vertices, fvc * sizeof(Vertex));
-    }
-
-    // Fallback material so shading works even when the glTF has no material
-    if (!gm->mesh->mtl) {
-        SimpleMtl *mtl        = calloc(1, sizeof(SimpleMtl));
-        mtl->diffuse          = (V3f){0.8f, 0.8f, 0.8f};
-        mtl->ambient          = (V3f){0.15f, 0.15f, 0.15f};
-        mtl->specular         = (V3f){0.5f, 0.5f, 0.5f};
-        mtl->specular_exponent = 32.0f;
-        gm->mesh->mtl         = mtl;
-    }
-
-    gm->flat_vertex_count = fvc;
-    if (has_skin && flat_j) {
-        gm->vert_joints  = malloc(fvc * sizeof(*gm->vert_joints));
-        gm->vert_weights = malloc(fvc * sizeof(*gm->vert_weights));
-        for (u32 i = 0; i < fvc; i++) {
-            memcpy(gm->vert_joints[i],  flat_j[i].v, 4 * sizeof(u16));
-            memcpy(gm->vert_weights[i], flat_w[i].v, 4 * sizeof(f32));
-        }
-    }
-    arrfree(flat_j);
-    arrfree(flat_w);
-
-    // Build base_positions / index_buffer / skin_groups (same as OBJ loader)
-    {
-        gm->mesh->index_buffer = malloc(sizeof(u32) * fvc);
-        for (u32 j = 0; j < fvc; j++) {
-            V3f pos   = gm->mesh->vertices[j].position;
-            u32 found = UINT32_MAX;
-            for (u32 k = 0; k < (u32)arrlen(gm->mesh->base_positions); k++) {
-                if (v3f_equal(gm->mesh->base_positions[k], pos)) { found = k; break; }
-            }
-            if (found == UINT32_MAX) {
-                found = (u32)arrlen(gm->mesh->base_positions);
-                arrput(gm->mesh->base_positions, pos);
-            }
-            gm->mesh->index_buffer[j] = found;
-        }
-        gm->mesh->base_count  = (u32)arrlen(gm->mesh->base_positions);
-        gm->mesh->skin_groups = malloc(sizeof(u16) * gm->mesh->base_count);
-        for (u32 i = 0; i < gm->mesh->base_count; i++)
-            gm->mesh->skin_groups[i] = ANIM_GROUP_STATIC;
-    }
-
-    // --- Joints ---
-    if (data->skins_count > 0) {
-        cgltf_skin *skin    = &data->skins[0];
-        gm->joint_count     = (u32)skin->joints_count;
-        gm->joints          = calloc(gm->joint_count, sizeof(GltfJoint));
-        for (u32 ji = 0; ji < gm->joint_count; ji++) {
-            cgltf_node *node = skin->joints[ji];
-            GltfJoint  *j    = &gm->joints[ji];
-            j->parent  = (s16)(node->parent ? gltf_find_joint(skin, node->parent) : -1);
-            j->rest_t  = node->has_translation
-                ? (V3f){node->translation[0], node->translation[1], node->translation[2]}
-                : (V3f){0, 0, 0};
-            j->rest_r  = node->has_rotation
-                ? (Quat){node->rotation[0], node->rotation[1], node->rotation[2], node->rotation[3]}
-                : quat_identity();
-            j->rest_s  = node->has_scale
-                ? (V3f){node->scale[0], node->scale[1], node->scale[2]}
-                : (V3f){1, 1, 1};
-            if (skin->inverse_bind_matrices) {
-                f32 raw[16];
-                cgltf_accessor_read_float(skin->inverse_bind_matrices, ji, raw, 16);
-                j->inv_bind = mat4_from_gltf_colmajor(raw);
-            } else {
-                j->inv_bind = mat4_identity();
-            }
-        }
-    }
-
-    // --- Animations ---
-    for (cgltf_size ai = 0; ai < data->animations_count; ai++) {
-        cgltf_animation *anim = &data->animations[ai];
-        GltfAnim ga = {0};
-        snprintf(ga.name, sizeof(ga.name), "%s", anim->name ? anim->name : "");
-
-        for (cgltf_size ci = 0; ci < anim->channels_count; ci++) {
-            cgltf_animation_channel *ch = &anim->channels[ci];
-            if (!ch->target_node || !data->skins_count) continue;
-            s32 jidx = gltf_find_joint(&data->skins[0], ch->target_node);
-            if (jidx < 0) continue;
-
-            GltfChannel gc = {.joint_idx = (u32)jidx};
-            switch (ch->target_path) {
-                case cgltf_animation_path_type_translation: gc.type = GLTF_CHAN_TRANSLATION; break;
-                case cgltf_animation_path_type_rotation:    gc.type = GLTF_CHAN_ROTATION;    break;
-                case cgltf_animation_path_type_scale:       gc.type = GLTF_CHAN_SCALE;       break;
-                default: continue;
-            }
-            switch (ch->sampler->interpolation) {
-                case cgltf_interpolation_type_step:         gc.interp = GLTF_INTERP_STEP;        break;
-                case cgltf_interpolation_type_cubic_spline: gc.interp = GLTF_INTERP_CUBICSPLINE; break;
-                default:                                    gc.interp = GLTF_INTERP_LINEAR;      break;
-            }
-
-            gc.count      = (u32)ch->sampler->input->count;
-            gc.times      = malloc(gc.count * sizeof(f32));
-            u32 comps     = (gc.type == GLTF_CHAN_ROTATION) ? 4 : 3;
-            gc.values     = malloc(gc.count * comps * sizeof(f32));
-            for (u32 ti = 0; ti < gc.count; ti++) {
-                cgltf_accessor_read_float(ch->sampler->input,  ti, &gc.times[ti],           1);
-                cgltf_accessor_read_float(ch->sampler->output, ti, &gc.values[ti * comps], comps);
-            }
-            if (gc.count > 0 && gc.times[gc.count - 1] > ga.duration)
-                ga.duration = gc.times[gc.count - 1];
-            arrput(ga.channels, gc);
-        }
-        ga.channel_count = (u32)arrlen(ga.channels);
-        arrput(gm->anims, ga);
-    }
-    gm->anim_count = (u32)arrlen(gm->anims);
-
-    console_write_log_alloc("[gltf] %s | verts: %u  joints: %u  anims: %u",
-        file, fvc, gm->joint_count, gm->anim_count);
-    cgltf_free(data);
-    return gm;
-}
-
 void skin_save(const char *file, Asset_Model *model)
 {
     FILE *f = fopen(file, "w");
@@ -555,4 +268,373 @@ Font *load_font(const char *file, s32 cwidth, s32 cheight)
     font->character_height = cheight;
     font->texture = load_texture_from_file(file, false);
     return font;
+}
+
+static Texture *load_texture_from_memory(const u8 *buf, int len)
+{
+    Texture *tex = malloc(sizeof(Texture));
+    stbi_set_flip_vertically_on_load(false);
+    u8 *data = stbi_load_from_memory(buf, len, &tex->width, &tex->height, &tex->stride, 0);
+    if (!data) { free(tex); return NULL; }
+    int size = tex->width * tex->height * tex->stride;
+    tex->data = malloc(size);
+    memcpy(tex->data, data, size);
+    stbi_image_free(data);
+    return tex;
+}
+
+static Texture *gltf_load_texture(cgltf_texture_view *view, const char *gltf_path)
+{
+    if (!view->texture || !view->texture->image) return NULL;
+    cgltf_image *img = view->texture->image;
+
+    if (img->buffer_view) {
+        const u8 *buf = (const u8 *)img->buffer_view->buffer->data + img->buffer_view->offset;
+        return load_texture_from_memory(buf, (int)img->buffer_view->size);
+    }
+
+    if (img->uri) {
+        char path[512];
+        const char *last_slash = strrchr(gltf_path, '/');
+        if (last_slash)
+            snprintf(path, sizeof(path), "%.*s%s", (int)(last_slash - gltf_path + 1), gltf_path, img->uri);
+        else
+            snprintf(path, sizeof(path), "%s", img->uri);
+        return load_texture_from_file(path, false);
+    }
+
+    return NULL;
+}
+
+static SimpleMtl *gltf_load_material(cgltf_material *mat, const char *gltf_path)
+{
+    SimpleMtl *mtl = calloc(1, sizeof(SimpleMtl));
+    mtl->diffuse = v3f(1.f, 1.f, 1.f);
+    mtl->ambient = v3f(0.2f, 0.2f, 0.2f);
+
+    if (!mat) return mtl;
+
+    if (mat->has_pbr_metallic_roughness) {
+        cgltf_pbr_metallic_roughness *pbr = &mat->pbr_metallic_roughness;
+        mtl->diffuse           = v3f(pbr->base_color_factor[0], pbr->base_color_factor[1], pbr->base_color_factor[2]);
+        mtl->specular_exponent = (1.f - pbr->roughness_factor) * 128.f;
+        mtl->diffuse_texture   = gltf_load_texture(&pbr->base_color_texture, gltf_path);
+    }
+
+    return mtl;
+}
+
+static u16 dominant_joint(float *joints, float *weights, u32 src)
+{
+    u16  best_j = ANIM_GROUP_STATIC;
+    float best_w = -1.f;
+    for (u32 wi = 0; wi < 4; wi++) {
+        float wt = weights[src*4 + wi];
+        if (wt > best_w) { best_w = wt; best_j = (u16)joints[src*4 + wi]; }
+    }
+    return best_j;
+}
+
+static Asset_Model *gltf_build_primitive(cgltf_primitive *prim, const char *gltf_path, cgltf_skin *skin)
+{
+    cgltf_accessor *pos_acc     = NULL;
+    cgltf_accessor *norm_acc    = NULL;
+    cgltf_accessor *uv_acc      = NULL;
+    cgltf_accessor *joints_acc  = NULL;
+    cgltf_accessor *weights_acc = NULL;
+
+    for (cgltf_size ai = 0; ai < prim->attributes_count; ai++) {
+        cgltf_attribute *attr = &prim->attributes[ai];
+        if (attr->type == cgltf_attribute_type_position                        ) pos_acc     = attr->data;
+        if (attr->type == cgltf_attribute_type_normal                          ) norm_acc    = attr->data;
+        if (attr->type == cgltf_attribute_type_texcoord  && attr->index == 0   ) uv_acc      = attr->data;
+        if (attr->type == cgltf_attribute_type_joints    && attr->index == 0   ) joints_acc  = attr->data;
+        if (attr->type == cgltf_attribute_type_weights   && attr->index == 0   ) weights_acc = attr->data;
+    }
+
+    if (!pos_acc) return NULL;
+
+    u32 vert_count = (u32)pos_acc->count;
+
+    float *positions = malloc(sizeof(float) * 3 * vert_count);
+    float *normals   = norm_acc    ? malloc(sizeof(float) * 3 * vert_count) : NULL;
+    float *uvs       = uv_acc      ? malloc(sizeof(float) * 2 * vert_count) : NULL;
+    float *joints    = joints_acc  ? malloc(sizeof(float) * 4 * vert_count) : NULL;
+    float *weights   = weights_acc ? malloc(sizeof(float) * 4 * vert_count) : NULL;
+
+    cgltf_accessor_unpack_floats(pos_acc, positions, 3 * vert_count);
+    if (norm_acc)    cgltf_accessor_unpack_floats(norm_acc,    normals,  3 * vert_count);
+    if (uv_acc)      cgltf_accessor_unpack_floats(uv_acc,      uvs,      2 * vert_count);
+    if (joints_acc)  cgltf_accessor_unpack_floats(joints_acc,  joints,   4 * vert_count);
+    if (weights_acc) cgltf_accessor_unpack_floats(weights_acc, weights,  4 * vert_count);
+
+    b32 has_skin = joints && weights;
+
+    Asset_Model *model       = calloc(1, sizeof(Asset_Model));
+    u16         *skin_flat   = NULL;
+
+    if (prim->indices) {
+        u32  idx_count = (u32)prim->indices->count;
+        u32 *indices   = malloc(sizeof(u32) * idx_count);
+        cgltf_accessor_unpack_indices(prim->indices, indices, sizeof(u32), idx_count);
+
+        for (u32 i = 0; i < idx_count; i++) {
+            u32 idx = indices[i];
+            Vertex v = {0};
+            v.position = v3f(positions[idx*3+0], positions[idx*3+1], positions[idx*3+2]);
+            if (normals) v.normal = v3f(normals[idx*3+0], normals[idx*3+1], normals[idx*3+2]);
+            if (uvs)     v.uv     = v3f(uvs[idx*2+0],     uvs[idx*2+1],     0.f);
+            arrput(model->vertices, v);
+            arrput(skin_flat, has_skin ? dominant_joint(joints, weights, idx) : (u16)ANIM_GROUP_STATIC);
+        }
+        free(indices);
+    } else {
+        for (u32 i = 0; i < vert_count; i++) {
+            Vertex v = {0};
+            v.position = v3f(positions[i*3+0], positions[i*3+1], positions[i*3+2]);
+            if (normals) v.normal = v3f(normals[i*3+0], normals[i*3+1], normals[i*3+2]);
+            if (uvs)     v.uv     = v3f(uvs[i*2+0],     uvs[i*2+1],     0.f);
+            arrput(model->vertices, v);
+            arrput(skin_flat, has_skin ? dominant_joint(joints, weights, i) : (u16)ANIM_GROUP_STATIC);
+        }
+    }
+
+    free(positions);
+    if (normals)  free(normals);
+    if (uvs)      free(uvs);
+    if (joints)   free(joints);
+    if (weights)  free(weights);
+
+    u32 flat_count = (u32)arrlen(model->vertices);
+    model->index_buffer = malloc(sizeof(u32) * flat_count);
+
+    for (u32 j = 0; j < flat_count; j++) {
+        V3f pos   = model->vertices[j].position;
+        u32 found = UINT32_MAX;
+        for (u32 k = 0; k < (u32)arrlen(model->base_positions); k++) {
+            if (v3f_equal(model->base_positions[k], pos)) { found = k; break; }
+        }
+        if (found == UINT32_MAX) {
+            found = (u32)arrlen(model->base_positions);
+            arrput(model->base_positions, pos);
+        }
+        model->index_buffer[j] = found;
+    }
+
+    model->base_count  = (u32)arrlen(model->base_positions);
+    model->skin_groups = malloc(sizeof(u16) * model->base_count);
+    for (u32 i = 0; i < model->base_count; i++)
+        model->skin_groups[i] = ANIM_GROUP_STATIC;
+    for (u32 j = 0; j < flat_count; j++) {
+        u32 base = model->index_buffer[j];
+        if (model->skin_groups[base] == ANIM_GROUP_STATIC)
+            model->skin_groups[base] = skin_flat[j];
+    }
+    arrfree(skin_flat);
+
+    if (skin && skin->inverse_bind_matrices) {
+        for (u32 i = 0; i < model->base_count; i++) {
+            u16 g = model->skin_groups[i];
+            if (g == ANIM_GROUP_STATIC) continue;
+            float raw[16];
+            cgltf_accessor_read_float(skin->inverse_bind_matrices, g, raw, 16);
+            // GLTF is column-major; engine v4f_mul_mat4 is row-major (v*M), so transpose.
+            Mat4 inv_bind = { .c = {
+                raw[0], raw[4], raw[8],  raw[12],
+                raw[1], raw[5], raw[9],  raw[13],
+                raw[2], raw[6], raw[10], raw[14],
+                raw[3], raw[7], raw[11], raw[15],
+            }};
+            model->base_positions[i] = v3f_translate_by_mat4(model->base_positions[i], inv_bind);
+        }
+    }
+
+    model->mtl    = gltf_load_material(prim->material, gltf_path);
+    model->loaded = true;
+
+    return model;
+}
+
+static s32 gltf_find_joint(cgltf_skin *skin, cgltf_node *node)
+{
+    for (cgltf_size i = 0; i < skin->joints_count; i++)
+        if (skin->joints[i] == node) return (s32)i;
+    return -1;
+}
+
+static FrameBase *gltf_build_frame_base(cgltf_skin *skin)
+{
+    FrameBase *base = calloc(1, sizeof(FrameBase));
+    for (cgltf_size i = 0; i < skin->joints_count; i++) {
+        cgltf_node *node = skin->joints[i];
+        s16 parent = -1;
+        if (node->parent) {
+            s32 pi = gltf_find_joint(skin, node->parent);
+            if (pi >= 0) parent = (s16)pi;
+        }
+        AnimJoint joint = { .type = ANIM_XFORM_ROTATE, .group = (u16)i, .parent = parent };
+        arrput(base->joints, joint);
+    }
+    base->count = (u32)arrlen(base->joints);
+    return base;
+}
+
+static AnimData *gltf_build_anim_data(cgltf_data *data, cgltf_skin *skin)
+{
+    if (!skin || !data->animations_count) return NULL;
+
+    AnimData *anim   = calloc(1, sizeof(AnimData));
+    anim->base       = gltf_build_frame_base(skin);
+    u32 joint_count  = anim->base->count;
+
+    Transform *rest = malloc(sizeof(Transform) * joint_count);
+    for (u32 ji = 0; ji < joint_count; ji++) {
+        cgltf_node *node = skin->joints[ji];
+        rest[ji].r = node->has_rotation    ? (Quat){node->rotation[0],    node->rotation[1],    node->rotation[2],    node->rotation[3]}    : (Quat){0,0,0,1};
+        rest[ji].t = node->has_translation ? v3f(node->translation[0], node->translation[1], node->translation[2]) : v3f(0,0,0);
+        rest[ji].s = node->has_scale       ? v3f(node->scale[0],       node->scale[1],       node->scale[2])       : v3f(1,1,1);
+    }
+
+    for (cgltf_size ai = 0; ai < data->animations_count; ai++) {
+        cgltf_animation *canim = &data->animations[ai];
+
+        float *times = NULL;
+        for (cgltf_size ci = 0; ci < canim->channels_count; ci++) {
+            u32    tc      = (u32)canim->channels[ci].sampler->input->count;
+            float *ch_times = malloc(sizeof(float) * tc);
+            cgltf_accessor_unpack_floats(canim->channels[ci].sampler->input, ch_times, tc);
+            for (u32 ti = 0; ti < tc; ti++) {
+                b32 found = false;
+                for (s32 k = 0; k < arrlen(times); k++)
+                    if (fabsf(times[k] - ch_times[ti]) < 0.0001f) { found = true; break; }
+                if (!found) arrput(times, ch_times[ti]);
+            }
+            free(ch_times);
+        }
+
+        u32 time_count = (u32)arrlen(times);
+        for (u32 i = 0; i < time_count - 1; i++)
+            for (u32 j = i + 1; j < time_count; j++)
+                if (times[j] < times[i]) { float tmp = times[i]; times[i] = times[j]; times[j] = tmp; }
+
+        u32 frame_start = (u32)arrlen(anim->frames);
+
+        for (u32 ti = 0; ti < time_count; ti++) {
+            float      t     = times[ti];
+            AnimFrame  frame = {0};
+            frame.xforms = malloc(sizeof(Transform) * joint_count);
+            memcpy(frame.xforms, rest, sizeof(Transform) * joint_count);
+
+            for (cgltf_size ci = 0; ci < canim->channels_count; ci++) {
+                cgltf_animation_channel *chan    = &canim->channels[ci];
+                cgltf_animation_sampler *sampler = chan->sampler;
+                s32 ji = gltf_find_joint(skin, chan->target_node);
+                if (ji < 0) continue;
+
+                u32 kc = (u32)sampler->input->count;
+                u32 k0 = 0;
+                for (u32 k = 0; k + 1 < kc; k++) {
+                    float kt; cgltf_accessor_read_float(sampler->input, k + 1, &kt, 1);
+                    if (kt <= t) k0 = k + 1;
+                }
+                u32 k1 = k0 < kc - 1 ? k0 + 1 : k0;
+
+                float t0, t1;
+                cgltf_accessor_read_float(sampler->input, k0, &t0, 1);
+                cgltf_accessor_read_float(sampler->input, k1, &t1, 1);
+                float alpha = (k0 != k1 && t1 > t0) ? (t - t0) / (t1 - t0) : 0.f;
+
+                if (chan->target_path == cgltf_animation_path_type_translation) {
+                    float va[3], vb[3];
+                    cgltf_accessor_read_float(sampler->output, k0, va, 3);
+                    cgltf_accessor_read_float(sampler->output, k1, vb, 3);
+                    frame.xforms[ji].t = v3f(va[0]+alpha*(vb[0]-va[0]), va[1]+alpha*(vb[1]-va[1]), va[2]+alpha*(vb[2]-va[2]));
+                } else if (chan->target_path == cgltf_animation_path_type_rotation) {
+                    float va[4], vb[4];
+                    cgltf_accessor_read_float(sampler->output, k0, va, 4);
+                    cgltf_accessor_read_float(sampler->output, k1, vb, 4);
+                    float dot  = va[0]*vb[0]+va[1]*vb[1]+va[2]*vb[2]+va[3]*vb[3];
+                    float sign = dot < 0.f ? -1.f : 1.f;
+                    frame.xforms[ji].r = quat_normalise((Quat){
+                        va[0]+sign*alpha*(vb[0]-va[0]), va[1]+sign*alpha*(vb[1]-va[1]),
+                        va[2]+sign*alpha*(vb[2]-va[2]), va[3]+sign*alpha*(vb[3]-va[3])});
+                } else if (chan->target_path == cgltf_animation_path_type_scale) {
+                    float va[3], vb[3];
+                    cgltf_accessor_read_float(sampler->output, k0, va, 3);
+                    cgltf_accessor_read_float(sampler->output, k1, vb, 3);
+                    frame.xforms[ji].s = v3f(va[0]+alpha*(vb[0]-va[0]), va[1]+alpha*(vb[1]-va[1]), va[2]+alpha*(vb[2]-va[2]));
+                }
+            }
+
+            arrput(anim->frames, frame);
+        }
+
+        AnimSequence seq = {0};
+        const char *aname = canim->name ? canim->name : "anim";
+        seq.name = (String8){ .data = (u8*)strdup(aname), .len = (u32)strlen(aname) };
+        seq.loop = ANIM_LOOP;
+
+        for (u32 fi = 0; fi < time_count; fi++) {
+            u32 next   = fi + 1 < time_count ? fi + 1 : fi;
+            u32 dur_ms = fi < time_count - 1
+                ? (u32)((times[next] - times[fi]) * 1000.f)
+                : (fi > 0 ? (u32)((times[fi] - times[fi-1]) * 1000.f) : 33u);
+            AnimFrameRef ref = { .frame_idx = frame_start + fi, .duration_ms = dur_ms };
+            arrput(seq.frames, ref);
+        }
+
+        arrput(anim->sequences, seq);
+        arrfree(times);
+    }
+
+    free(rest);
+    return anim;
+}
+
+GLTF_Model *load_gltf_model(const char *path)
+{
+    cgltf_options options = {0};
+    cgltf_data   *data    = NULL;
+
+    if (cgltf_parse_file(&options, path, &data) != cgltf_result_success) {
+        console_write_log_alloc("Failed to parse gltf: %s", path);
+        return NULL;
+    }
+    if (cgltf_load_buffers(&options, data, path) != cgltf_result_success) {
+        console_write_log_alloc("Failed to load gltf buffers: %s", path);
+        cgltf_free(data);
+        return NULL;
+    }
+
+    GLTF_Model *gltf = calloc(1, sizeof(GLTF_Model));
+    cgltf_skin *skin = data->skins_count > 0 ? &data->skins[0] : NULL;
+
+    for (cgltf_size mi = 0; mi < data->meshes_count; mi++) {
+        cgltf_mesh *mesh = &data->meshes[mi];
+        for (cgltf_size pi = 0; pi < mesh->primitives_count; pi++) {
+            Asset_Model *m = gltf_build_primitive(&mesh->primitives[pi], path, skin);
+            if (m) { arrput(gltf->primitives, m); gltf->prim_count++; }
+        }
+    }
+
+    gltf->anim_data = gltf_build_anim_data(data, skin);
+
+    cgltf_free(data);
+    log_info("Loaded gltf     %s (%u prims, %s)", path, gltf->prim_count,
+             gltf->anim_data ? "animated" : "static");
+    console_write_log_alloc("Loaded gltf %s (%u prims, %s)", path, gltf->prim_count,
+                            gltf->anim_data ? "animated" : "static");
+    return gltf;
+}
+
+void load_and_store_gltf_model(const char *name, const char *path)
+{
+    if (shget(gltf_assets, name)) return;
+    GLTF_Model *val = load_gltf_model(path);
+    if (val) shput(gltf_assets, name, val);
+}
+
+GLTF_Model *get_gltf_model(const char *name)
+{
+    return shget(gltf_assets, name);
 }

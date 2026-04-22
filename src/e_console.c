@@ -40,6 +40,15 @@ void console_update(f32 mouse_scroll)
     }
     if (console.open && console.rec.h == MIN_CONSOLE_HEIGHT) {
         platform_ctx.text_input_enabled = true;
+
+        if (is_key_down_raw(KEY_LEFT_CONTROL) && is_key_pressed_raw(KEY_V)) {
+            char *str = SDL_GetClipboardText(); {
+                if (str != NULL) {
+                    memcpy(&platform_ctx.input[platform_ctx.input_index], str, strlen(str));
+                    platform_ctx.input_index += strlen(str);
+                }
+            } SDL_free(str);
+        }
         if (is_key_pressed_raw(KEY_ENTER)) {
             String8 str;
             u32 len = strlen(platform_ctx.input);
@@ -51,11 +60,17 @@ void console_update(f32 mouse_scroll)
                 if (command_str.data != NULL) {
 
                     console_command_fn fn = shget(console.commands,str8_to_cstring(console.arena, command_str));
-                    fn((String8){.data = &str.data[command_str.len+1], .len = str.len-command_str.len-1});
+                    if (fn) {
+                        fn((String8){.data = &str.data[command_str.len+1], .len = str.len-command_str.len-1});
+                    }
+                    platform_ctx.input_index = 0;
+                    memset(platform_ctx.input, 0, 1024);
+                } else {
+                    console_write_log_alloc("Invalid Command: %s", str.data);
                     platform_ctx.input_index = 0;
                     memset(platform_ctx.input, 0, 1024);
                 }
-            }
+            } 
         }
     }
     if (!console.open && console.rec.h == 0) {
@@ -122,6 +137,15 @@ void console_draw(Font *font)
 
     char *p = get_input_text();
     draw_text(font, p, v2i(3, console.rec.h), text_size, COLOR_CONSOLE_INPUT_TEXT);
+
+    s32 input_len = strlen(p);
+
+    draw_recs32((Recs32){
+        .x = input_len * text_size,
+        .y = console.rec.h,
+        .w = 16,
+        .h = text_size,
+    }, 1.08f, color_scale(COLOR_PURPLE, (1 + sinf(renderer.time * 2))/2.0));
 }
 
 void console_write_log_alloc(const char *fmt, ...)

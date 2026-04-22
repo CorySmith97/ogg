@@ -60,8 +60,7 @@ void game_ui(void);
 f32 angle = 0;
 Texture *entity_1;
 u64 last_time;
-GltfModel *m;
-GltfAnimState anim_s;
+AnimState *robot_anim_states = NULL;
 
 void game_init(void)
 {
@@ -73,8 +72,6 @@ void game_init(void)
     entity_init();
     tiles_init();
 
-    m = load_model_from_gltf("data/robot.glb");
-    gltf_anim_init(&anim_s, m, "idle");
     load_and_store_model("shopkeeper", "data/shopkeeper.obj");
     load_and_store_texture("target", "data/target.png");
     load_and_store_model("fence", "data/lowpoly/OBJ/SM_Bld_Fence_01_Snow.obj");
@@ -115,7 +112,7 @@ void game_init(void)
     arrput(gs.dynamic_entities, e);
     arrput(gs.dynamic_entities, e2);
     arrput(gs.dynamic_entities, e3);
-    gs.font = load_font("data/atlas.png", 128, 128);
+    gs.font = load_font("data/atlas.png", 16, 32);
     m_editor.hud_font = gs.font;
     ui_init(gs.font);
 
@@ -124,6 +121,21 @@ void game_init(void)
             f32 x = i + 0.5;
             f32 z = j + 0.5;
             arrput(gs.tiles, (Tile){.position = v3f(x, 0, z)});
+        }
+    }
+
+    load_and_store_gltf_model("robot", "data/robot.glb");
+
+    {
+        GLTF_Model *robot = get_gltf_model("robot");
+        if (robot && robot->anim_data) {
+            for (u32 pi = 0; pi < robot->prim_count; pi++) {
+                AnimState state = {0};
+                anim_state_init(&state, robot->anim_data, robot->primitives[pi]);
+                if (arrlen(robot->anim_data->sequences) > 0)
+                    anim_state_play(&state, (char *)robot->anim_data->sequences[0].name.data);
+                arrput(robot_anim_states, state);
+            }
         }
     }
 
@@ -228,9 +240,28 @@ void game_frame(void)
                 Entity e = gs.dynamic_entities[i];
                 entity_draw(&e);
             }
-            gltf_anim_update(&anim_s, renderer.dt);
-            gltf_anim_apply(&anim_s);
-            draw_gltf_model(m, v3f(0,0,0), mat3_scale(0.3));
+
+            {
+                GLTF_Model *robot = get_gltf_model("robot");
+                if (robot) {
+                    if (robot_anim_states) {
+                        anim_update(&robot_anim_states[0], renderer.dt * 1000.f);
+                        for (u32 pi = 0; pi < robot->prim_count; pi++) {
+                            robot_anim_states[pi].time_acc_ms = robot_anim_states[0].time_acc_ms;
+                            robot_anim_states[pi].seq_idx     = robot_anim_states[0].seq_idx;
+                            robot_anim_states[pi].frame_idx   = robot_anim_states[0].frame_idx;
+                            anim_apply(&robot_anim_states[pi], robot->primitives[pi]);
+                        }
+                    }
+                    for (u32 pi = 0; pi < robot->prim_count; pi++)
+                        draw_model(robot->primitives[pi], v3f(0, 0, 5), mat3_identity(), false);
+                }
+            }
+
+            immediate_push_v(v3f(-1, 0, 5), COLOR_RED);
+            immediate_push_v(v3f(1,  0, 5), COLOR_PURPLE);
+            immediate_push_v(v3f(0,  1, 5), COLOR_GREEN);
+            immediate_flush();
             break;
         case GAME_STATE_MENU:
             //menu_update();
