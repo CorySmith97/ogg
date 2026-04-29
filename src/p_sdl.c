@@ -37,18 +37,90 @@ void platform_init(const char *name, u32 width, u32 height)
 
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
 
     platform_ctx.window = SDL_CreateWindow(name,
                                            SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                            width, height,
-                                           SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
-
-    platform_ctx.renderer = SDL_CreateRenderer(platform_ctx.window, 0, SDL_RENDERER_ACCELERATED);
-    platform_ctx.texture  = SDL_CreateTexture(platform_ctx.renderer,
-                                              SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING,
-                                              GAME_WIDTH, GAME_HEIGHT);
+                                           SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
 
     platform_ctx.gl_ctx = SDL_GL_CreateContext(platform_ctx.window);
+
+    SDL_GL_MakeCurrent(platform_ctx.window, platform_ctx.gl_ctx);
+
+    glViewport(0, 0, width, height);
+    glDisable(GL_DEPTH_TEST);
+
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+    glGenTextures(1, &platform_ctx.screen_tex);
+    glBindTexture(GL_TEXTURE_2D, platform_ctx.screen_tex);
+
+    glTexImage2D(GL_TEXTURE_2D,
+                 0,
+                 GL_RGBA8,
+                 renderer.width,
+                 renderer.height,
+                 0,
+                 GL_RGBA,
+                 GL_UNSIGNED_BYTE,
+                 NULL);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    const char *vs_src =
+        "#version 330 core\n"
+        "out vec2 uv;\n"
+        "void main() {\n"
+        "    vec2 pos = vec2(\n"
+        "        (gl_VertexID == 1) ? 3.0 : -1.0,\n"
+        "        (gl_VertexID == 2) ? 3.0 : -1.0\n"
+        "    );\n"
+        "    uv = (pos + 1.0) * 0.5;\n"
+        "    gl_Position = vec4(pos, 0.0, 1.0);\n"
+        "    gl_Position.y *= -1;\n"
+        "}\n";
+
+    const char *fs_src =
+        "#version 330 core\n"
+        "in vec2 uv;\n"
+        "out vec4 color;\n"
+        "uniform sampler2D u_tex;\n"
+        "void main() {\n"
+        "    color = texture(u_tex, uv);\n"
+        "}\n";
+
+    GLuint vs = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vs, 1, &vs_src, NULL);
+    glCompileShader(vs);
+
+    GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fs, 1, &fs_src, NULL);
+    glCompileShader(fs);
+
+    char log[512];
+    glGetShaderInfoLog(vs, 512, NULL, log);
+    if (log[0]) log_error("VS: %s\n", log);
+
+    glGetShaderInfoLog(fs, 512, NULL, log);
+    if (log[0]) log_error("FS: %s\n", log);
+
+    platform_ctx.screen_prog = glCreateProgram();
+    glAttachShader(platform_ctx.screen_prog, vs);
+    glAttachShader(platform_ctx.screen_prog, fs);
+    glLinkProgram(platform_ctx.screen_prog);
+
+    glDeleteShader(vs);
+    glDeleteShader(fs);
+
+    glGenVertexArrays(1, &platform_ctx.screen_vao);
+
+    glUseProgram(platform_ctx.screen_prog);
+    glUniform1i(glGetUniformLocation(platform_ctx.screen_prog, "u_tex"), 0);
 
     nk_ui_font.userdata = nk_handle_ptr(NULL);
     nk_ui_font.height   = 16;
@@ -156,9 +228,10 @@ void platform_handle_events(bool *quit)
         static s32 frame = 0;
         b32 pressed = is_key_down_raw(KEY_BACKSPACE);
         if (pressed) {
-            if (platform_ctx.input_index > 0 && frame >= 30) {
+            if (platform_ctx.input_index > 0 && frame >= 10) {
                 platform_ctx.input_index -= 1;
                 platform_ctx.input[platform_ctx.input_index] = '\0';
+                frame = 0;
             }
             frame++;
         }
@@ -172,17 +245,29 @@ void platform_deinit(void)
     SDL_Quit();
 }
 
+
 void platform_present()
 {
-    void *texpixels;
-    s32 pitch;
-    SDL_LockTexture(platform_ctx.texture, NULL, &texpixels, &pitch);
-    memcpy(texpixels, renderer.pixels, renderer.width * renderer.height * sizeof(u32));
-    SDL_UnlockTexture(platform_ctx.texture);
+    if (renderer.backend == BACKEND_OPENGL) {
+        SDL_GL_SwapWindow(platform_ctx.window);
+        return;
+    }
 
-    SDL_RenderClear(platform_ctx.renderer);
-    SDL_RenderCopy(platform_ctx.renderer, platform_ctx.texture, NULL, NULL);
-    SDL_RenderPresent(platform_ctx.renderer);
+    glViewport(0, 0, platform_ctx.width, platform_ctx.height);
+    glDisable(GL_DEPTH_TEST);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glBindTexture(GL_TEXTURE_2D, platform_ctx.screen_tex);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0,
+                    renderer.width, renderer.height,
+                    GL_RGBA, GL_UNSIGNED_BYTE,
+                    renderer.pixels);
+
+    glUseProgram(platform_ctx.screen_prog);
+    glBindVertexArray(platform_ctx.screen_vao);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    SDL_GL_SwapWindow(platform_ctx.window);
 }
 
 void on_text_input(char *text)

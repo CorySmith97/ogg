@@ -494,7 +494,7 @@ void rs_draw_model_triangle_selection(Asset_Model *model, V3f position, Mat3 rot
     }
 }
 
-V3f *immediate_vert = NULL;
+V3f   *immediate_vert = NULL;
 Color *immediate_color = NULL;
 
 void rs_immediate_push_v(V3f v1,Color c)

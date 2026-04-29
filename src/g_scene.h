@@ -2,6 +2,7 @@
 #define SCENE_H
 
 typedef struct {
+    String8 name;
     // Gameplay
     Entity *dynamic_entities;
     Entity *static_entities;

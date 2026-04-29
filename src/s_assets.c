@@ -81,6 +81,7 @@ SimpleMtl *load_material_file(const char *file)
             char file_name[256];
             snprintf(file_name, sizeof(file_name), "data/%s",  &line[7]);
             mtl->diffuse_texture = load_texture_from_file(file_name, true);
+            //memcpy(mtl->texture_name, file_name, strlen(file_name));
         }
     }
 
@@ -92,6 +93,24 @@ ret:
     return mtl;
 }
 
+static void texture_upload_gl(Texture *tex)
+{
+    GLenum fmt = (tex->stride == 4) ? GL_RGBA
+               : (tex->stride == 1) ? GL_RED
+               : GL_RGB;
+
+    glGenTextures(1, &tex->id);
+    glBindTexture(GL_TEXTURE_2D, tex->id);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, fmt,
+                 tex->width, tex->height, 0,
+                 fmt, GL_UNSIGNED_BYTE, tex->data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+}
+
 Texture *load_texture_from_file(const char *file, bool flip)
 {
     Texture *tex = malloc(sizeof(Texture));
@@ -101,10 +120,12 @@ Texture *load_texture_from_file(const char *file, bool flip)
     s32 size = tex->width * tex->height * tex->stride;
     tex->data = malloc(size);
     memcpy(tex->data, data, size);
+    stbi_image_free(data);
+
+    texture_upload_gl(tex);
 
     log_info("Loaded texture  %s", file);
     console_write_log_alloc("[Loaded texture] %s", file);
-    stbi_image_free(data);
     return tex;
 }
 
@@ -280,6 +301,7 @@ static Texture *load_texture_from_memory(const u8 *buf, int len)
     tex->data = malloc(size);
     memcpy(tex->data, data, size);
     stbi_image_free(data);
+    texture_upload_gl(tex);
     return tex;
 }
 

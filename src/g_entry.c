@@ -25,7 +25,7 @@ static struct {
         .position = {4, 0, 0},
         .color = {0, 0.5, 0.5},
     },
-    .camera_speed = 0.05,
+    .camera_speed = 5,
     .profiling_enabled = false,
     .dynamic_entities = NULL,
     .static_entities = NULL,
@@ -203,7 +203,7 @@ void game_frame(void)
 
 
     set_mouse_toggle_key(KEY_P);
-    clear_background(COLOR_GRAY);
+    clear_background(COLOR_BLUE);
 
     // If console is open, the key capture goes to the console instead of anything else
     switch(gs.state) {
@@ -314,23 +314,23 @@ void handle_camera_gameplay(V2f mouse_delta)
     f32 mouse_scroll = get_mouse_scroll();
     V3f front_no_y = v3f(renderer.camera.front.x, 0, renderer.camera.front.z);
     if (is_key_down(KEY_W)) {
-        renderer.camera.target = v3f_add(renderer.camera.target, v3f_scale(front_no_y, gs.camera_speed));
-        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(front_no_y, gs.camera_speed));
+        renderer.camera.target = v3f_add(renderer.camera.target, v3f_scale(front_no_y, gs.camera_speed * renderer.dt));
+        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(front_no_y, gs.camera_speed * renderer.dt));
         gs.camera_moving = true;
     }
     if (is_key_down(KEY_S)) {
-        renderer.camera.target = v3f_add(renderer.camera.target, v3f_scale(front_no_y, -gs.camera_speed));
-        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(front_no_y, -gs.camera_speed));
+        renderer.camera.target = v3f_add(renderer.camera.target, v3f_scale(front_no_y, -gs.camera_speed * renderer.dt));
+        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(front_no_y, -gs.camera_speed * renderer.dt));
         gs.camera_moving = true;
     }
     if (is_key_down(KEY_A)) {
-        renderer.camera.target = v3f_add(renderer.camera.target, v3f_scale(v3f_cross(front_no_y, renderer.camera.up), gs.camera_speed));
-        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(v3f_cross(front_no_y, renderer.camera.up), gs.camera_speed));
+        renderer.camera.target = v3f_add(renderer.camera.target, v3f_scale(v3f_cross(front_no_y, renderer.camera.up), gs.camera_speed * renderer.dt));
+        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(v3f_cross(front_no_y, renderer.camera.up), gs.camera_speed * renderer.dt));
         gs.camera_moving = true;
     }
     if (is_key_down(KEY_D)) {
-        renderer.camera.target = v3f_sub(renderer.camera.target, v3f_scale(v3f_cross(front_no_y, renderer.camera.up), gs.camera_speed));
-        renderer.camera.position = v3f_sub(renderer.camera.position, v3f_scale(v3f_cross(front_no_y, renderer.camera.up), gs.camera_speed));
+        renderer.camera.target = v3f_sub(renderer.camera.target, v3f_scale(v3f_cross(front_no_y, renderer.camera.up), gs.camera_speed * renderer.dt));
+        renderer.camera.position = v3f_sub(renderer.camera.position, v3f_scale(v3f_cross(front_no_y, renderer.camera.up), gs.camera_speed * renderer.dt));
         gs.camera_moving = true;
     }
 
@@ -360,7 +360,7 @@ void handle_camera_gameplay(V2f mouse_delta)
     if (is_mouse_button_down(MOUSEBUTTON_MIDDLE)) {
         gs.camera_moving = true;
 
-        renderer.camera.position = orbit_step(mouse_delta.x * 0.01, mouse_delta.y * 0.01, renderer.camera.position, renderer.camera.target);
+        renderer.camera.position = orbit_step(mouse_delta.x * gs.camera_speed * renderer.dt, mouse_delta.y * gs.camera_speed * renderer.dt, renderer.camera.position, renderer.camera.target);
 
         renderer.camera.front = v3f_normalize(
                 v3f_sub(renderer.camera.target, renderer.camera.position)

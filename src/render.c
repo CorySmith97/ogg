@@ -1,4 +1,5 @@
 #include "rs_render.c"
+#include "rgl_render.c"
 
 void console_render_swap(String8 params)
 {
@@ -15,7 +16,7 @@ void console_render_swap(String8 params)
 void render_init(void)
 {
     rs_render_init();
-    //rgl_render_init();
+    rgl_render_init();
 }
 
 void render_shutdown(void)
@@ -33,6 +34,7 @@ void renderer_flush(void)
             rs_renderer_flush();
         break;
         case BACKEND_OPENGL:
+            rgl_renderer_flush();
         break;
     }
 }
@@ -43,6 +45,7 @@ void clear_background(Color color)
             rs_clear_background(color);
         break;
         case BACKEND_OPENGL:
+            rgl_clear_background(color);
         break;
     }
 }
@@ -60,6 +63,7 @@ void draw_model(Asset_Model *model, V3f position, Mat3 rotation, b32 selected)
             rs_draw_model(model, position, rotation, selected);
         break;
         case BACKEND_OPENGL:
+            rgl_draw_model(model, position, rotation, selected);
         break;
     }
 }
@@ -71,6 +75,7 @@ void draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Ligh
             rs_draw_model_with_light(model, position, rotation, light);
         break;
         case BACKEND_OPENGL:
+            rgl_draw_model_with_light(model, position, rotation, light);
         break;
     }
 }
@@ -104,6 +109,7 @@ void draw_text(Font *f, const char *str, V2i pos, f32 size, Color color)
             rs_draw_text(f, str, pos, size, color);
         break;
         case BACKEND_OPENGL:
+            rgl_draw_text(f, str, pos, size, color);
         break;
     }
 }
@@ -115,6 +121,7 @@ void draw_string8(Font *f, String8 str, V2i pos, f32 size, Color color)
             rs_draw_string8(f, str, pos, size, color);
         break;
         case BACKEND_OPENGL:
+            rgl_draw_string8(f, str, pos, size, color);
         break;
     }
 }
@@ -126,6 +133,7 @@ void draw_recs32(Recs32 rec, f32 z, Color color)
             rs_draw_recs32(rec, z, color);
         break;
         case BACKEND_OPENGL:
+            rgl_draw_recs32(rec, z, color);
         break;
     }
 }

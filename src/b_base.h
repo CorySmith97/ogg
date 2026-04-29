@@ -247,6 +247,7 @@ typedef struct {
 
 // TODO Implement with arenas
 String8 str8_fmt_alloc(const char *fmt, ...);
+// TODO arena. String that is split should be an allocated string8
 String8 str8_split(String8 str, char delimeter);
 
 // TODO Implement String8

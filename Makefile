@@ -5,7 +5,7 @@ C_FLAGS=-std=c99 -Wall -g -Wno-missing-braces
 C_FLAGS+= -Wextra -Wno-unused-function
 C_FLAGS+= -Wno-unused-variable -Wno-unused-parameter
 C_FLAGS+= -Wno-incompatible-pointer-types -Wno-initializer-overrides
-C_FLAGS+= -DPLATFORM_SDL
+C_FLAGS+= -DPLATFORM_SDL -DGL_SILENCE_DEPRECATION
 C_FLAGS+= -DDEBUG
 BUILD_DIR=bin
 
@@ -15,14 +15,12 @@ INCLUDE+= -I/opt/homebrew/Cellar/sdl2_image/2.8.8/include/SDL2
 
 LINK=
 LINK+= -L/opt/homebrew/Cellar/sdl2/2.32.10/lib -lsdl2
-LINK+= -L/opt/homebrew/Cellar/sdl2_image/2.8.8/lib -lsdl2_image
+LINK+= -L/opt/homebrew/Cellar/sdl2_image/2.8.8/lib -lsdl2_image -framework OpenGL
 
-LINK_GL= $(LINK) -framework OpenGL
+LINK_GL= $(LINK)
 
 .SILENT:
 
 unity:
 	$(CC) -o $(BUILD_DIR)/app $(C_FILES) $(C_FLAGS) $(LINK) $(INCLUDE)
 
-opengl:
-	$(CC) -o $(BUILD_DIR)/app $(C_FILES) $(C_FLAGS) -DRENDERER_OPENGL $(LINK_GL) $(INCLUDE)

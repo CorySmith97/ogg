@@ -85,6 +85,9 @@ static struct {
     SDL_Texture     *texture;
     uint32_t        width;
     uint32_t        height;
+    u32             screen_tex;
+    u32             screen_vao;
+    u32             screen_prog;
     const uint8_t   *keystate;
     u8              prev_keystate[SDL_NUM_SCANCODES];
     MouseState      mouse_state;

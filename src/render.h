@@ -80,7 +80,7 @@ static struct {
         .pitch = 45.0f,
         .yaw = 45.0f,
         .distance = 10.0f,
-        .fovy = 60.0f,
+        .fovy = 180.0f,
     },
     .swap_camera = {
         .target = {0, 0, 0},
@@ -89,7 +89,7 @@ static struct {
         .pitch = 45.0f,
         .yaw = 45.0f,
         .distance = 10.0f,
-        .fovy = 60.0f,
+        .fovy = 30.0f,
     },
     .backend = BACKEND_SOFTWARE,
 };
@@ -123,5 +123,7 @@ void draw_model_triangle_selection(Asset_Model *model, V3f position, Mat3 rotati
 
 void immediate_flush(void);
 void immediate_push_v(V3f v1, Color c);
+
+#include "r_ui.h"
 
 #endif /* RENDER_H */

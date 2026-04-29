@@ -56,6 +56,7 @@ typedef enum
 } IlluminationModals;
 
 typedef struct {
+    u32 id;
     int width;
     int height;
     int stride;
@@ -219,5 +220,8 @@ void skin_load(const char *file, Asset_Model *model);
 GLTF_Model *load_gltf_model(const char *path);
 void        load_and_store_gltf_model(const char *name, const char *path);
 GLTF_Model *get_gltf_model(const char *name);
+
+
+static RayCollision get_ray_collision_mesh(Ray ray, Asset_Model *box);
 
 #endif // ASSET_H
