@@ -1,0 +1,130 @@
+#ifndef FRAME_TIMES_NUMBER
+#define FRAME_TIMES_NUMBER 60
+#endif
+
+static f64
+timer_seconds_since(u64 previous_time)
+{
+    return time_duration_seconds(time_tick_since(previous_time));
+}
+
+void
+timer_init_(Timer *t, u32 refresh_rate, f64 update_interval)
+{
+    t->frame_target_time = 1.0 / (f64)refresh_rate;
+    t->sleep_window = t->frame_target_time * 0.15;
+    t->previous_time = time_tick_now();
+    t->delta_time = 0.0;
+
+    for (u32 i = 0; i < FRAME_TIMES_NUMBER; i++) {
+        t->frame_times[i] = 0.0;
+    }
+
+    t->frame_index = 0;
+    t->frame_count = 0;
+    t->frame_time_accum = 0.0;
+
+    t->update_interval = update_interval;
+    t->update_timer = 0.0;
+    t->last_fps = 0.0;
+    t->fps_updated = false;
+}
+
+void
+timer_tick(Timer *t)
+{
+    u64 current_time = time_tick_now();
+
+    t->delta_time = time_duration_seconds(time_tick_since(t->previous_time));
+
+    if (t->delta_time < t->frame_target_time) {
+        f64 remaining_time = t->frame_target_time - t->delta_time;
+
+        if (remaining_time > t->sleep_window) {
+            f64 sleep_time = remaining_time - t->sleep_window;
+
+            time_sleep((u64)(sleep_time * 1000000000.0));
+
+            current_time = time_tick_now();
+            t->delta_time = time_duration_seconds(time_tick_since(t->previous_time));
+        }
+
+        while (time_duration_seconds(time_tick_since(t->previous_time)) < t->frame_target_time) {
+            current_time = time_tick_now();
+        }
+    }
+
+    f64 actual_frame_time = time_duration_seconds(time_tick_since(t->previous_time));
+
+    if (t->frame_count > 0) {
+        t->frame_time_accum -= t->frame_times[t->frame_index];
+    }
+
+    t->frame_times[t->frame_index] = actual_frame_time;
+    t->frame_time_accum += actual_frame_time;
+
+    t->frame_index = (t->frame_index + 1) % FRAME_TIMES_NUMBER;
+
+    if (t->frame_count < FRAME_TIMES_NUMBER) {
+        t->frame_count += 1;
+    }
+
+    t->update_timer += actual_frame_time;
+
+    t->fps_updated = t->update_timer >= t->update_interval;
+
+    if (t->fps_updated) {
+        if (t->frame_time_accum > 0.0 && t->frame_count > 0) {
+            t->last_fps = 1.0 / (t->frame_time_accum / (f64)t->frame_count);
+        } else {
+            t->last_fps = 0.0;
+        }
+
+        t->update_timer -= t->update_interval;
+    }
+
+    t->previous_time = current_time;
+}
+
+f64
+timer_get_delta_time(Timer *t)
+{
+    return t->delta_time;
+}
+
+b32
+timer_check_fps_updated(Timer *t)
+{
+    return t->fps_updated;
+}
+
+f64
+timer_get_fps(Timer *t)
+{
+    return t->last_fps;
+}
+
+f64
+timer_get_frame_time(Timer *t)
+{
+    u32 index = (t->frame_index + FRAME_TIMES_NUMBER - 1) % FRAME_TIMES_NUMBER;
+    return t->frame_times[index];
+}
+
+f64
+timer_get_frame_time_target(Timer *t)
+{
+    return t->frame_target_time;
+}
+
+u32
+timer_get_frame_count(Timer *t)
+{
+    return t->frame_count;
+}
+
+f64
+timer_get_frame_time_accum(Timer *t)
+{
+    return t->frame_time_accum;
+}

@@ -79,7 +79,7 @@ typedef struct Camera {
 } Camera;
 
 void camera_update(Camera *cam);
-Mat4 camera_matrix(Camera cam);
+Mat4 camera_matrix(Camera *cam);
 
 // TODO i think the contructors should be macros?
 

@@ -23,7 +23,7 @@ void console_init(void)
 {
     console.arena = arena_alloc();
     console.file_handle = fopen(console.file, "w+");
-    console.rec = (Recs32){.x = 0, .y = 0, .w = renderer.width, .h = 0};
+    console.rec = (Recs32){.x = 0, .y = 0, .w = platform_ctx.width, .h = 0};
     console_register_command("test", test);
     console_register_command("mload", model_editor_load_model);
     console_register_command("backend", console_render_swap);
@@ -34,6 +34,8 @@ void console_deinit(void)
     arena_release(console.arena);
 }
 
+// TODO this needs to be cleaned up. There needs to be a cleaned up interface with the platform 
+// layer.
 void console_update(f32 mouse_scroll)
 {
     if (console.open && console.rec.h != MIN_CONSOLE_HEIGHT) {

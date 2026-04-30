@@ -180,20 +180,34 @@ void platform_handle_events(bool *quit)
             } break;
             case SDL_MOUSEBUTTONDOWN: {
                 on_mouse_down(event.button.button);
-                f32 sx = (f32)GAME_WIDTH  / (f32)platform_ctx.width;
-                f32 sy = (f32)GAME_HEIGHT / (f32)platform_ctx.height;
-                int bx = (int)(event.button.x * sx);
-                int by = (int)(event.button.y * sy);
+                int bx, by;
+                if (renderer.backend == BACKEND_OPENGL) {
+                    int win_w, win_h, drawable_w, drawable_h;
+                    SDL_GetWindowSize(platform_ctx.window, &win_w, &win_h);
+                    SDL_GL_GetDrawableSize(platform_ctx.window, &drawable_w, &drawable_h);
+                    bx = (int)(event.button.x * (float)drawable_w / (float)win_w);
+                    by = (int)(event.button.y * (float)drawable_h / (float)win_h);
+                } else {
+                    bx = (int)(event.button.x * (f32)GAME_WIDTH  / (f32)platform_ctx.width);
+                    by = (int)(event.button.y * (f32)GAME_HEIGHT / (f32)platform_ctx.height);
+                }
                 if (event.button.button == SDL_BUTTON_LEFT)   nk_input_button(ctx, NK_BUTTON_LEFT,   bx, by, 1);
                 if (event.button.button == SDL_BUTTON_RIGHT)  nk_input_button(ctx, NK_BUTTON_RIGHT,  bx, by, 1);
                 if (event.button.button == SDL_BUTTON_MIDDLE) nk_input_button(ctx, NK_BUTTON_MIDDLE, bx, by, 1);
             } break;
             case SDL_MOUSEBUTTONUP: {
                 on_mouse_up(event.button.button);
-                f32 sx = (f32)GAME_WIDTH  / (f32)platform_ctx.width;
-                f32 sy = (f32)GAME_HEIGHT / (f32)platform_ctx.height;
-                int bx = (int)(event.button.x * sx);
-                int by = (int)(event.button.y * sy);
+                int bx, by;
+                if (renderer.backend == BACKEND_OPENGL) {
+                    int win_w, win_h, drawable_w, drawable_h;
+                    SDL_GetWindowSize(platform_ctx.window, &win_w, &win_h);
+                    SDL_GL_GetDrawableSize(platform_ctx.window, &drawable_w, &drawable_h);
+                    bx = (int)(event.button.x * (float)drawable_w / (float)win_w);
+                    by = (int)(event.button.y * (float)drawable_h / (float)win_h);
+                } else {
+                    bx = (int)(event.button.x * (f32)GAME_WIDTH  / (f32)platform_ctx.width);
+                    by = (int)(event.button.y * (f32)GAME_HEIGHT / (f32)platform_ctx.height);
+                }
                 if (event.button.button == SDL_BUTTON_LEFT)   nk_input_button(ctx, NK_BUTTON_LEFT,   bx, by, 0);
                 if (event.button.button == SDL_BUTTON_RIGHT)  nk_input_button(ctx, NK_BUTTON_RIGHT,  bx, by, 0);
                 if (event.button.button == SDL_BUTTON_MIDDLE) nk_input_button(ctx, NK_BUTTON_MIDDLE, bx, by, 0);
@@ -209,12 +223,37 @@ void platform_handle_events(bool *quit)
                     nk_input_char(ctx, event.text.text[i]);
                 break;
             case SDL_MOUSEMOTION: {
-                f32 sx = (f32)GAME_WIDTH  / (f32)platform_ctx.width;
-                f32 sy = (f32)GAME_HEIGHT / (f32)platform_ctx.height;
-                int ui_mouse_x = (int)(event.motion.x * sx);
-                int ui_mouse_y = (int)(event.motion.y * sy);
-                nk_input_motion(ctx, ui_mouse_x, ui_mouse_y);
-                on_mouse_moved(event.motion.x, event.motion.y, event.motion.xrel, event.motion.yrel);
+                    int mouse_x = event.motion.x;
+                    int mouse_y = event.motion.y;
+                    int mouse_xrel = event.motion.xrel;
+                    int mouse_yrel = event.motion.yrel;
+                if (renderer.backend == BACKEND_OPENGL) {
+                    int win_w, win_h;
+                    int drawable_w, drawable_h;
+
+                    SDL_GetWindowSize(platform_ctx.window, &win_w, &win_h);
+                    SDL_GL_GetDrawableSize(platform_ctx.window, &drawable_w, &drawable_h);
+
+                    float sx = (float)drawable_w / (float)win_w;
+                    float sy = (float)drawable_h / (float)win_h;
+
+                    int ui_mouse_x = (int)(event.motion.x * sx);
+                    int ui_mouse_y = (int)(event.motion.y * sy);
+
+                    nk_input_motion(ctx, ui_mouse_x, ui_mouse_y);
+                } else {
+
+                    f32 sx = (f32)GAME_WIDTH  / (f32)platform_ctx.width;
+                    f32 sy = (f32)GAME_HEIGHT / (f32)platform_ctx.height;
+
+                    mouse_x = (int)(event.motion.x * sx);
+                    mouse_y = (int)(event.motion.y * sy);
+                    mouse_xrel = (int)(event.motion.xrel * sx);
+                    mouse_yrel = (int)(event.motion.yrel * sy);
+
+                    nk_input_motion(ctx, mouse_x, mouse_y);
+                }
+                on_mouse_moved(mouse_x, mouse_y, mouse_xrel, mouse_yrel);
             } break;
             default:
                 break;

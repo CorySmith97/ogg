@@ -29,14 +29,14 @@ void notifications_flush(Font *font)
 
     // Stack grows upward from center
     s32 total_h = len * item_h;
-    s32 start_y = (GAME_HEIGHT / 2) - (total_h / 2);
+    s32 start_y = (SCREEN_HEIGHT / 2) - (total_h / 2);
 
     for (s32 i = 0; i < len; i++) {
         Notification *n = &notification_queue.list[i];
 
         s32 text_w = n->msg.len * NOTIF_TEXT;
         s32 box_w  = text_w + padding * 2;
-        s32 x      = (GAME_WIDTH / 2) - (box_w / 2);
+        s32 x      = (SCREEN_WIDTH / 2) - (box_w / 2);
         s32 y      = start_y + i * item_h;
 
         draw_recs32((Recs32){.x = x, .y = y, .w = box_w, .h = NOTIF_TEXT}, 0.1, NOTIF_BACKGROUND);

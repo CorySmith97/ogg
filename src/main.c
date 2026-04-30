@@ -15,6 +15,7 @@
 #include "b_arena.c"
 #include "b_la.c"
 #include "p_entry.c"
+#include "p_timer.c"
 #include "b_geometry.c"
 #include "render.c"
 #include "s_assets.c"

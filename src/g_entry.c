@@ -20,6 +20,7 @@ static struct {
     Gizmo_Axis selected_axis;
     Gizmo     gizmo;
     s32      *initiative_order;
+    Camera    camera;
 } gs = {
     .sun = {
         .position = {4, 0, 0},
@@ -30,7 +31,7 @@ static struct {
     .dynamic_entities = NULL,
     .static_entities = NULL,
     .tiles = NULL,
-    .state = GAME_STATE_MODEL_EDITOR,
+    .state = GAME_STATE_EDITOR,
 
     // This is all editor stuff that should be moved
     .selected_entity = -1,
@@ -41,11 +42,21 @@ static struct {
         .axis = {
             GIZMO_AXIS_X,
             GIZMO_AXIS_Y,
+
             GIZMO_AXIS_Z,
             GIZMO_AXIS_XY,
             GIZMO_AXIS_YZ,
             GIZMO_AXIS_XZ
         },
+    },
+    .camera = {
+        .target = {0, 0, 0},
+        .position = {0,2,-2},
+        .up = {0, 1, 0},
+        .pitch = 45.0f,
+        .yaw = 45.0f,
+        .distance = 10.0f,
+        .fovy = 180.0f,
     },
 };
 
@@ -68,9 +79,22 @@ void game_init(void)
     console_init();
     render_init();
     gizmo_init();
+    editor_init();
     model_editor_init();
     entity_init();
     tiles_init();
+
+    switch(gs.state) {
+        case GAME_STATE_GAMEPLAY:
+            change_camera(&gs.camera);
+        break;
+        case GAME_STATE_EDITOR:
+            change_camera(&editor.camera);
+        break;
+        default:
+            change_camera(&gs.camera);
+        break;
+    }
 
     load_and_store_model("shopkeeper", "data/shopkeeper.obj");
     load_and_store_texture("target", "data/target.png");
@@ -124,27 +148,13 @@ void game_init(void)
         }
     }
 
-    load_and_store_gltf_model("robot", "data/scene.gltf");
-
-    {
-        GLTF_Model *robot = get_gltf_model("robot");
-        if (robot && robot->anim_data) {
-            for (u32 pi = 0; pi < robot->prim_count; pi++) {
-                AnimState state = {0};
-                anim_state_init(&state, robot->anim_data, robot->primitives[pi]);
-                if (arrlen(robot->anim_data->sequences) > 0)
-                    anim_state_play(&state, (char *)robot->anim_data->sequences[0].name.data);
-                arrput(robot_anim_states, state);
-            }
-        }
-    }
+    load_and_store_gltf_model("robot", "data/models/Skeleton_Mage.glb");
 
     SectionEnd("Intialization");
     profiler_report();
 
 
-    renderer.camera.front = v3f_normalize(v3f_sub(renderer.camera.target, renderer.camera.position));
-    renderer.swap_camera.front = v3f_normalize(v3f_sub(renderer.swap_camera.target, renderer.swap_camera.position));
+    gs.camera.front = v3f_normalize(v3f_sub(gs.camera.target, gs.camera.position));
 
     console_write_log_alloc("[Initialization Time] (%.3fms)", profiler.sections[0].delta_ns / 1000000.0);
     last_time = SDL_GetPerformanceCounter();
@@ -169,7 +179,7 @@ void game_frame(void)
     f32 mouse_scroll = get_mouse_scroll();
     V2f mouse_pos = get_mouse_pos();
     V2f mouse_delta = get_mouse_delta();
-    Ray mouse_ray   = get_mouse_ray(renderer.camera, mouse_pos);
+    Ray mouse_ray   = get_mouse_ray(&gs.camera, mouse_pos);
 
     if (is_key_pressed(KEY_M)) {
         gs.profiling_enabled = !gs.profiling_enabled;
@@ -180,7 +190,7 @@ void game_frame(void)
             console_write_log(str8_lit("Game state editor"));
             gs.state = GAME_STATE_EDITOR;
             notifications_push((Notification){ .msg = str8_lit("Editor State"), .lifetime = 2.0f });
-            //change_camera();
+            change_camera(&editor.camera);
         }
     }
     if (is_key_pressed(KEY_2)) {
@@ -188,7 +198,7 @@ void game_frame(void)
             notifications_push((Notification){ .msg = str8_lit("Gameplay State"), .lifetime = 2.0f });
             console_write_log(str8_lit("Game state gameplay"));
             gs.state = GAME_STATE_GAMEPLAY;
-            change_camera(renderer.swap_camera);
+            change_camera(&gs.camera);
         }
     }
 
@@ -197,7 +207,7 @@ void game_frame(void)
             notifications_push((Notification){ .msg = str8_lit("Model State"), .lifetime = 2.0f });
             console_write_log(str8_lit("Game state model editor"));
             gs.state = GAME_STATE_MODEL_EDITOR;
-            change_camera(m_editor.camera);
+            change_camera(&m_editor.camera);
         }
     }
 
@@ -213,7 +223,6 @@ void game_frame(void)
             show_demo = false;
             if (!console.open) {
                 handle_camera_gameplay(mouse_delta);
-                game_ui();
 
                 if (is_mouse_button_pressed(MOUSEBUTTON_LEFT)) {
                     log_debug("Pressing left in game");
@@ -244,17 +253,8 @@ void game_frame(void)
             {
                 GLTF_Model *robot = get_gltf_model("robot");
                 if (robot) {
-                    if (robot_anim_states) {
-                        anim_update(&robot_anim_states[0], renderer.dt * 1000.f);
-                        for (u32 pi = 0; pi < robot->prim_count; pi++) {
-                            robot_anim_states[pi].time_acc_ms = robot_anim_states[0].time_acc_ms;
-                            robot_anim_states[pi].seq_idx     = robot_anim_states[0].seq_idx;
-                            robot_anim_states[pi].frame_idx   = robot_anim_states[0].frame_idx;
-                            anim_apply(&robot_anim_states[pi], robot->primitives[pi]);
-                        }
-                    }
                     for (u32 pi = 0; pi < robot->prim_count; pi++)
-                        draw_model(robot->primitives[pi], v3f(0, 0, 5), mat3_scale(0.01), false);
+                        draw_model(robot->primitives[pi], v3f(0, 0, 5), mat3_scale(1), false);
                 }
             }
 
@@ -262,6 +262,8 @@ void game_frame(void)
             immediate_push_v(v3f(1,  0, 5), COLOR_PURPLE);
             immediate_push_v(v3f(0,  1, 5), COLOR_GREEN);
             immediate_flush();
+
+            game_ui();
             break;
         case GAME_STATE_MENU:
             //menu_update();
@@ -272,11 +274,6 @@ void game_frame(void)
             editor_draw();
             break;
         case GAME_STATE_PAUSE:
-            break;
-        case GAME_STATE_MODEL_EDITOR:
-            if (!console.open) {
-            }
-            model_editor_frame();
             break;
         default:
             break;
@@ -296,7 +293,7 @@ void game_frame(void)
         ui_flush();
     }
 
-    gs.sun.position = renderer.camera.position;
+    gs.sun.position = gs.camera.position;
     SectionEnd("Frame");
 }
 
@@ -312,25 +309,25 @@ void handle_camera_gameplay(V2f mouse_delta)
     gs.camera_moving = false;
 
     f32 mouse_scroll = get_mouse_scroll();
-    V3f front_no_y = v3f(renderer.camera.front.x, 0, renderer.camera.front.z);
+    V3f front_no_y = v3f(gs.camera.front.x, 0, gs.camera.front.z);
     if (is_key_down(KEY_W)) {
-        renderer.camera.target = v3f_add(renderer.camera.target, v3f_scale(front_no_y, gs.camera_speed * renderer.dt));
-        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(front_no_y, gs.camera_speed * renderer.dt));
+        gs.camera.target = v3f_add(gs.camera.target, v3f_scale(front_no_y, gs.camera_speed * renderer.dt));
+        gs.camera.position = v3f_add(gs.camera.position, v3f_scale(front_no_y, gs.camera_speed * renderer.dt));
         gs.camera_moving = true;
     }
     if (is_key_down(KEY_S)) {
-        renderer.camera.target = v3f_add(renderer.camera.target, v3f_scale(front_no_y, -gs.camera_speed * renderer.dt));
-        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(front_no_y, -gs.camera_speed * renderer.dt));
+        gs.camera.target = v3f_add(gs.camera.target, v3f_scale(front_no_y, -gs.camera_speed * renderer.dt));
+        gs.camera.position = v3f_add(gs.camera.position, v3f_scale(front_no_y, -gs.camera_speed * renderer.dt));
         gs.camera_moving = true;
     }
     if (is_key_down(KEY_A)) {
-        renderer.camera.target = v3f_add(renderer.camera.target, v3f_scale(v3f_cross(front_no_y, renderer.camera.up), gs.camera_speed * renderer.dt));
-        renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(v3f_cross(front_no_y, renderer.camera.up), gs.camera_speed * renderer.dt));
+        gs.camera.target = v3f_add(gs.camera.target, v3f_scale(v3f_cross(front_no_y, gs.camera.up), gs.camera_speed * renderer.dt));
+        gs.camera.position = v3f_add(gs.camera.position, v3f_scale(v3f_cross(front_no_y, gs.camera.up), gs.camera_speed * renderer.dt));
         gs.camera_moving = true;
     }
     if (is_key_down(KEY_D)) {
-        renderer.camera.target = v3f_sub(renderer.camera.target, v3f_scale(v3f_cross(front_no_y, renderer.camera.up), gs.camera_speed * renderer.dt));
-        renderer.camera.position = v3f_sub(renderer.camera.position, v3f_scale(v3f_cross(front_no_y, renderer.camera.up), gs.camera_speed * renderer.dt));
+        gs.camera.target = v3f_sub(gs.camera.target, v3f_scale(v3f_cross(front_no_y, gs.camera.up), gs.camera_speed * renderer.dt));
+        gs.camera.position = v3f_sub(gs.camera.position, v3f_scale(v3f_cross(front_no_y, gs.camera.up), gs.camera_speed * renderer.dt));
         gs.camera_moving = true;
     }
 
@@ -338,21 +335,21 @@ void handle_camera_gameplay(V2f mouse_delta)
         f32 min_dist = 5.0f;
         f32 max_dist = 30.0f;
 
-        V3f dir = v3f_normalize(v3f_sub(renderer.camera.position, renderer.camera.target));
+        V3f dir = v3f_normalize(v3f_sub(gs.camera.position, gs.camera.target));
 
-        f32 distance = v3f_len(v3f_sub(renderer.camera.position, renderer.camera.target));
+        f32 distance = v3f_len(v3f_sub(gs.camera.position, gs.camera.target));
 
         distance += mouse_scroll;
 
         if (distance < min_dist) distance = min_dist;
         if (distance > max_dist) distance = max_dist;
 
-        renderer.camera.position = v3f_add(
-                renderer.camera.target,
+        gs.camera.position = v3f_add(
+                gs.camera.target,
                 v3f_scale(dir, distance)
                 );
-        renderer.camera.front = v3f_normalize(
-                v3f_sub(renderer.camera.target, renderer.camera.position)
+        gs.camera.front = v3f_normalize(
+                v3f_sub(gs.camera.target, gs.camera.position)
                 );
 
     }
@@ -360,10 +357,10 @@ void handle_camera_gameplay(V2f mouse_delta)
     if (is_mouse_button_down(MOUSEBUTTON_MIDDLE)) {
         gs.camera_moving = true;
 
-        renderer.camera.position = orbit_step(mouse_delta.x * gs.camera_speed * renderer.dt, mouse_delta.y * gs.camera_speed * renderer.dt, renderer.camera.position, renderer.camera.target);
+        gs.camera.position = orbit_step(mouse_delta.x * gs.camera_speed * renderer.dt, mouse_delta.y * gs.camera_speed * renderer.dt, gs.camera.position, gs.camera.target);
 
-        renderer.camera.front = v3f_normalize(
-                v3f_sub(renderer.camera.target, renderer.camera.position)
+        gs.camera.front = v3f_normalize(
+                v3f_sub(gs.camera.target, gs.camera.position)
                 );
     }
 }
@@ -377,9 +374,12 @@ void game_run(void)
     struct timespec ts;
     u64 now;
     u64 last;
+    Timer t;
+    timer_init(&t, 60.0);
 
     bool quit = false;
     while (!quit) {
+      timer_tick(&t);
         clock_gettime(CLOCK_MONOTONIC, &ts);
         last = now;
         now = timespec_to_ns(ts);
@@ -444,9 +444,9 @@ V2f cartesian_to_spherical(V3f v)
 
 void game_ui(void) 
 {
-    Recs32 bottom_view_outline = {.x = 0, .y = GAME_HEIGHT - 75 - 5, .w = GAME_WIDTH, .h = 80};
+    Recs32 bottom_view_outline = {.x = 0, .y = SCREEN_HEIGHT - 75 - 5, .w = SCREEN_WIDTH, .h = 80};
     draw_recs32(bottom_view_outline, 0.11, COLOR_BLACK);
-    Recs32 bottom_view = {.x = 0, .y = GAME_HEIGHT - 75, .w = GAME_WIDTH, .h = 75};
+    Recs32 bottom_view = {.x = 0, .y = SCREEN_HEIGHT - 75, .w = SCREEN_WIDTH, .h = 75};
     draw_recs32(bottom_view, 0.1, COLOR_WHITE);
 
 }

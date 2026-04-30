@@ -61,9 +61,9 @@ static struct {
     s32 width, height;
     f32 dt;
     f64 time;
+
     // TODO remove this from here
-    Camera camera;
-    Camera swap_camera; // spare camera to hold a different camera in
+    Camera *camera;
 	Light sun;
     RendererBackend backend;
 } renderer = {
@@ -74,24 +74,8 @@ static struct {
     .zbuffer = {0},
     .dt = 0,
     .camera = {
-        .target = {0, 0, 0},
-        .position = {0,2,-2},
-        .up = {0, 1, 0},
-        .pitch = 45.0f,
-        .yaw = 45.0f,
-        .distance = 10.0f,
-        .fovy = 180.0f,
     },
-    .swap_camera = {
-        .target = {0, 0, 0},
-        .position = {0,2,-2},
-        .up = {0, 1, 0},
-        .pitch = 45.0f,
-        .yaw = 45.0f,
-        .distance = 10.0f,
-        .fovy = 30.0f,
-    },
-    .backend = BACKEND_SOFTWARE,
+    .backend = BACKEND_OPENGL,
 };
 
 //
@@ -106,9 +90,12 @@ void console_render_swap(String8 params);
 //
 void renderer_flush(void);
 void clear_background(Color color);
-void change_camera(Camera camera);
-//void change_camera(void);
+void change_camera(Camera *camera);
 
+//
+// Core rendering
+// TODO there are some things here that could and should be reduced
+//
 void draw_model(Asset_Model *model, V3f position, Mat3 rotation, b32 selected);
 void draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Light light);
 void draw_texture(Texture *tex, Recs32 rec);
@@ -121,6 +108,11 @@ void draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color color, u
 void draw_string8(Font *f, String8 str, V2i pos, f32 size, Color color);
 void draw_model_triangle_selection(Asset_Model *model, V3f position, Mat3 rotation, b32 *selected);
 
+//
+// Immediate Mode rendering
+//
+void immediate_set_shader(String8 name);
+void immediate_begin(void);
 void immediate_flush(void);
 void immediate_push_v(V3f v1, Color c);
 

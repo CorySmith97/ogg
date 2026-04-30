@@ -1,40 +1,48 @@
+void editor_master_panel(void);
+
+
+void editor_init(void)
+{
+    editor.camera.front = v3f_normalize(v3f_sub(editor.camera.target, editor.camera.position));
+}
+
+void editor_update(void)
+{
+  
+}
 
 void editor_draw(void)
 {
     char buf[256];
 
-    f32 mouse_scroll = get_mouse_scroll();
-    V2f mouse_pos = get_mouse_pos();
-    V2f mouse_delta = get_mouse_delta();
-    Ray mouse_ray   = get_mouse_ray(renderer.camera, mouse_pos);
+    editor.mouse_scroll = get_mouse_scroll();
+    editor.mouse_pos    = get_mouse_pos();
+    editor.mouse_delta  = get_mouse_delta();
+    editor.mouse_ray    = get_mouse_ray(&editor.camera, editor.mouse_pos);
 
     // Suggested defaults somewhere during init/reset:
 
-    bool mouse_pressed  = is_mouse_button_pressed(MOUSEBUTTON_LEFT);
-    bool mouse_down     = is_mouse_button_down(MOUSEBUTTON_LEFT);
-    bool mouse_released = is_mouse_button_released(MOUSEBUTTON_LEFT);
+    editor.mouse_pressed  = is_mouse_button_pressed(MOUSEBUTTON_LEFT);
+    editor.mouse_down     = is_mouse_button_down(MOUSEBUTTON_LEFT);
+    editor.mouse_released = is_mouse_button_released(MOUSEBUTTON_LEFT);
+    editor.clicked_gizmo  = false;
+    editor.clicked_entity = false;
 
 
-
+    // TODO set pose and dont update
     for (s32 i = 0; i < arrlen(gs.dynamic_entities); i++) {
         Entity *e = &gs.dynamic_entities[i];
         e->hit = (i == gs.selected_entity);
-        if (!e->update_disabled)
-            entity_update(e);
     }
 
     if (gs.gizmo.attached) {
         gizmo_update(&gs.gizmo);
     }
 
-    bool clicked_gizmo  = false;
-    bool clicked_entity = false;
-    UNUSED(clicked_entity);
-
     //
     // 1) Handle click selection
     //
-    if (mouse_pressed) {
+    if (editor.mouse_pressed) {
         gs.selected_axis = -1;
 
         // Gizmo gets priority over entity selection.
@@ -42,36 +50,37 @@ void editor_draw(void)
             f32 closest = FLT_MAX;
 
             for (s32 i = 0; i < GIZMO_AXIS_COUNT; i++) {
-                RayCollision collision = get_raycollision_box(mouse_ray, gs.gizmo.aabbs[i]);
+                RayCollision collision = get_raycollision_box(editor.mouse_ray, gs.gizmo.aabbs[i]);
                 if (collision.hit && collision.distance < closest) {
                     closest = collision.distance;
                     gs.selected_axis = i;
-                    clicked_gizmo = true;
+                    editor.clicked_gizmo = true;
                 }
             }
 
-            if (clicked_gizmo) {
+            if (editor.clicked_gizmo) {
                 log_info("Gizmo axis %d hit", gs.selected_axis);
             }
         }
 
         // Only try entity picking if we did not click the gizmo.
-        if (!clicked_gizmo) {
+        if (!editor.clicked_gizmo) {
             s32 hit_entity = -1;
             float closest = FLT_MAX;
 
             for (s32 i = 0; i < arrlen(gs.dynamic_entities); i++) {
                 Entity *e = &gs.dynamic_entities[i];
                 e->update_disabled = true;
-                RayCollision collision = entity_mouse_ray_collision(e, mouse_ray);
+                RayCollision collision = entity_mouse_ray_collision(e, editor.mouse_ray);
                 if (collision.hit && collision.distance < closest) {
                     closest = collision.distance;
                     hit_entity = i;
+                    log_info("This his %d", i);
                 }
             }
 
             if (hit_entity >= 0) {
-                clicked_entity = true;
+                editor.clicked_entity = true;
                 gs.selected_entity = hit_entity;
                 gs.gizmo.attached = true;
                 gs.gizmo.position = gs.dynamic_entities[hit_entity].position;
@@ -95,15 +104,15 @@ void editor_draw(void)
     //
     // 2) Drag currently selected gizmo axis
     //
-    if (gs.selected_axis >= 0 && mouse_down && gs.selected_entity >= 0) {
+    if (gs.selected_axis >= 0 && editor.mouse_down && gs.selected_entity >= 0) {
         Entity *e = &gs.dynamic_entities[gs.selected_entity];
 
         if (gs.gizmo.mode == GIZMO_MODE_ROTATE) {
             f32 angle = 0.0f;
             switch (gs.selected_axis) {
-                case GIZMO_AXIS_X: angle = -mouse_delta.y * 0.01f; break;
-                case GIZMO_AXIS_Y: angle =  mouse_delta.x * 0.01f; break;
-                case GIZMO_AXIS_Z: angle =  mouse_delta.x * 0.01f; break;
+                case GIZMO_AXIS_X: angle = -editor.mouse_delta.y * 0.01f; break;
+                case GIZMO_AXIS_Y: angle = editor.mouse_delta.x * 0.01f; break;
+                case GIZMO_AXIS_Z: angle = editor.mouse_delta.x * 0.01f; break;
                 default: break;
             }
             gizmo_rotation_modify(&gs.gizmo, (Gizmo_Axis)gs.selected_axis, angle);
@@ -112,9 +121,9 @@ void editor_draw(void)
             V3f delta = gizmo_translation_modify(
                 &gs.gizmo,
                 gs.selected_axis,
-                v2f_scale(mouse_delta, 0.01f)
+                v2f_scale(editor.mouse_delta, 0.01f)
             );
-            e->position = v3f_add(e->position, delta);
+            e->position =  v3f_add(e->position, delta);
             e->target = e->position;
             gs.gizmo.position = e->position;
         }
@@ -123,7 +132,7 @@ void editor_draw(void)
     //
     // 3) Releasing mouse ends gizmo drag but keeps entity selected
     //
-    if (mouse_released) {
+    if (editor.mouse_released) {
         if (gs.gizmo.mode == GIZMO_MODE_TRANSLATE && gs.selected_entity >= 0) {
             Entity *e = &gs.dynamic_entities[gs.selected_entity];
             e->position = v3f(roundf(e->position.x), roundf(e->position.y), roundf(e->position.z));
@@ -229,43 +238,48 @@ void editor_draw(void)
 
 }
 
+void editor_master_panel(void)
+{
+  
+}
+
 void editor_camera_update(void)
 {
 	V2f mouse_delta = get_mouse_delta();
 
-    if (is_mouse_button_down(MOUSEBUTTON_MIDDLE)) {
+    if (is_mouse_button_down(MOUSEBUTTON_LEFT)) {
         if (is_key_down(KEY_W)) {
-            renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(renderer.camera.front, gs.camera_speed));
+            editor.camera.position = v3f_add(editor.camera.position, v3f_scale(editor.camera.front, gs.camera_speed));
         }
         if (is_key_down(KEY_S)) {
-            renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(renderer.camera.front, -gs.camera_speed));
+            editor.camera.position = v3f_add(editor.camera.position, v3f_scale(editor.camera.front, -gs.camera_speed));
         }
         if (is_key_down(KEY_A)) {
-            renderer.camera.position = v3f_add(renderer.camera.position, v3f_scale(v3f_cross(renderer.camera.front, renderer.camera.up), gs.camera_speed));
+            editor.camera.position = v3f_add(editor.camera.position, v3f_scale(v3f_cross(editor.camera.front, editor.camera.up), gs.camera_speed));
         }
         if (is_key_down(KEY_D)) {
-            renderer.camera.position = v3f_sub(renderer.camera.position, v3f_scale(v3f_cross(renderer.camera.front, renderer.camera.up), gs.camera_speed));
+            editor.camera.position = v3f_sub(editor.camera.position, v3f_scale(v3f_cross(editor.camera.front, editor.camera.up), gs.camera_speed));
         }
-        f32 x_offset = mouse_delta.x;
-        f32 y_offset = -mouse_delta.y;
+        f32 x_offset =  editor.mouse_delta.x;
+        f32 y_offset = -editor.mouse_delta.y;
 
         f32 sensitivity = 0.3f;
         x_offset *= sensitivity;
         y_offset *= sensitivity;
 
-        renderer.camera.yaw   += x_offset;
-        renderer.camera.pitch += y_offset;
+        editor.camera.yaw   += x_offset;
+        editor.camera.pitch += y_offset;
 
-        if (renderer.camera.pitch > 89.0f)
-            renderer.camera.pitch = 89.0f;
-        if (renderer.camera.pitch < -89.0f)
-            renderer.camera.pitch = -89.0f;
+        if (editor.camera.pitch > 89.0f)
+            editor.camera.pitch = 89.0f;
+        if (editor.camera.pitch < -89.0f)
+            editor.camera.pitch = -89.0f;
 
         V3f direction;
-        direction.x = cos(deg_to_rad(renderer.camera.yaw)) * cos(deg_to_rad(renderer.camera.pitch));
-        direction.y = sin(deg_to_rad(renderer.camera.pitch));
-        direction.z = -sin(deg_to_rad(renderer.camera.yaw)) * cos(deg_to_rad(renderer.camera.pitch));
-        renderer.camera.front = v3f_normalize(direction);
+        direction.x = cos(deg_to_rad(editor.camera.yaw)) * cos(deg_to_rad(editor.camera.pitch));
+        direction.y = sin(deg_to_rad(editor.camera.pitch));
+        direction.z = -sin(deg_to_rad(editor.camera.yaw)) * cos(deg_to_rad(editor.camera.pitch));
+        editor.camera.front = v3f_normalize(direction);
 
     }
 }

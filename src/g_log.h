@@ -8,7 +8,7 @@ typedef struct {
 
 static struct {
     Arena   *arena;
-    GameLog *logs;
+    GameLog *logs; // STB_ARRAY
 } g_logger = {
     .arena = NULL,
     .logs = NULL,

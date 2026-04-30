@@ -18,6 +18,7 @@ f32 angle_diff(f32 a, f32 b) {
     while (d < -M_PI) d += 2.0f * M_PI;
     return d;
 }
+
 void entity_anim_init(Entity *e, const char *skel, const char *skin, const char *anim)
 {
     if (!e->model) return;

@@ -50,9 +50,8 @@ void clear_background(Color color)
     }
 }
 
-void change_camera(Camera camera)
+void change_camera(Camera *camera)
 {
-    renderer.swap_camera = renderer.camera;
     renderer.camera = camera;
 }
 
@@ -98,6 +97,7 @@ void draw_texture(Texture *tex, Recs32 rec)
             rs_draw_texture(tex, rec);
         break;
         case BACKEND_OPENGL:
+            rgl_draw_texture(tex, rec);
         break;
     }
 }
@@ -145,6 +145,7 @@ void draw_texture_w_uvs(Texture *tex, Recs32 rec, V3f uvs[4], Color colors[4], u
             rs_draw_texture_w_uvs(tex, rec, uvs, colors, flags);
         break;
         case BACKEND_OPENGL:
+            rgl_draw_texture_w_uvs(tex, rec, uvs, colors, flags);
         break;
     }
 }
@@ -156,6 +157,7 @@ void draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags)
             rs_draw_rectangle3d(bl, br, tl, tr, color, flags);
         break;
         case BACKEND_OPENGL:
+            rgl_draw_rectangle3d(bl, br, tl, tr, color, flags);
         break;
     }
 }
@@ -167,6 +169,7 @@ void draw_triangle3d(V3f v1, V3f v2, V3f v3, Color color, u32 flags)
             rs_draw_triangle3d(v1, v2, v3, color, flags);
         break;
         case BACKEND_OPENGL:
+            rgl_draw_triangle3d(v1, v2, v3, color, flags);
         break;
     }
 }
@@ -178,6 +181,7 @@ void draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color color, u
             rs_draw_texture3d(tex, bl, br, tl, tr, color, flags);
         break;
         case BACKEND_OPENGL:
+            rgl_draw_texture3d(tex, bl, br, tl, tr, color, flags);
         break;
     }
 }

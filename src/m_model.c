@@ -8,7 +8,7 @@ static V3f model_to_view(V3f p, Mat3 rot, V3f world_pos)
     p = v3f_mul_mat3(p, rot);
     p.z = -p.z;
     p = v3f_add(p, world_pos);
-    return v3f_translate_by_mat4(p, camera_matrix(m_editor.camera));
+    return v3f_translate_by_mat4(p, camera_matrix(&m_editor.camera));
 }
 
 // Transform to world space — used for ray-triangle picking.
@@ -29,7 +29,7 @@ static V3f model_to_world(V3f p, Mat3 rot, V3f world_pos)
 static void draw_skin_groups(Asset_Model *model, Mat3 rot)
 {
     UNUSED(rot);
-    Mat4 view = camera_matrix(m_editor.camera);
+    Mat4 view = camera_matrix(&m_editor.camera);
     Color grey = {160, 160, 160, 255};
 
     for (s32 i = 0; i < arrlen(model->vertices); i += 3) {
@@ -57,7 +57,7 @@ static void draw_hovered_tri(Asset_Model *model, Mat3 rot, s32 tri_flat_idx)
     UNUSED(rot); UNUSED(model);
     if (tri_flat_idx < 0) return;
 
-    Mat4 view = camera_matrix(m_editor.camera);
+    Mat4 view = camera_matrix(&m_editor.camera);
     V3f p1 = v3f_translate_by_mat4(m_editor.world_positions[tri_flat_idx    ], view);
     V3f p2 = v3f_translate_by_mat4(m_editor.world_positions[tri_flat_idx + 1], view);
     V3f p3 = v3f_translate_by_mat4(m_editor.world_positions[tri_flat_idx + 2], view);
@@ -148,7 +148,7 @@ static void flood_fill_paint(Asset_Model *model, s32 start_tri, u16 group)
 // Returns (-1,-1) if behind the camera.
 static V2i world_to_screen(V3f world)
 {
-    Mat4 view = camera_matrix(m_editor.camera);
+    Mat4 view = camera_matrix(&m_editor.camera);
     V3f  vs   = v3f_translate_by_mat4(world, view);
     if (vs.z < NEAR) return v2i(-1, -1);
     return to_screen(project(vs));
@@ -456,7 +456,7 @@ static void write_anim_file(const char *path)
     console_write_log_alloc("Saved anim -> %s  (%d frames)", path, fcount);
 }
 
-// Draw model triangles using live (post-pose) vertex positions and renderer.camera.
+// Draw model triangles using live (post-pose) vertex positions and renderer.camera->
 // Colour-codes by group so you can see group assignments while posing.
 // AI-GENERATED — note: uses renderer.camera (not m_editor.camera) so the view
 // matches the gizmo. If the model appears offset vs. PAINT mode, the two cameras differ.
@@ -935,11 +935,11 @@ void model_editor_rig_frame(f32 dt)
     UNUSED(dt);
     if (!m_editor.selected) return;
 
-    renderer.camera = m_editor.camera;
+    renderer.camera = &m_editor.camera;
 
     V2f mouse       = get_mouse_pos();
     V2f mouse_delta = get_mouse_delta();
-    Ray mouse_ray   = get_mouse_ray(renderer.camera, mouse);
+    Ray mouse_ray   = get_mouse_ray(&renderer.camera, mouse);
     UNUSED(mouse);
 
     bool mouse_pressed  = is_mouse_button_pressed(MOUSEBUTTON_LEFT);
@@ -1016,7 +1016,7 @@ void model_editor_rig_frame(f32 dt)
     // Drag selected joint
     if (m_editor.node_dragging && mouse_down && m_editor.selected_joint >= 0) {
         s32 j = m_editor.selected_joint;
-        Camera cam = renderer.camera;
+        Camera cam = *renderer.camera;
         V3f right  = v3f_normalize(v3f_cross(cam.up, cam.front));
         V3f up_cam = v3f_normalize(v3f_cross(right, cam.front));
         V3f to_jt  = v3f_sub(m_editor.joint_centers[j], cam.position);
@@ -1091,7 +1091,7 @@ void model_editor_frame(void)
 
     // AI-GENERATED: sync renderer.camera ← m_editor.camera so that
     // draw_rectangle3d (used by the gizmo) uses the same view as the model mesh.
-    renderer.camera = m_editor.camera;
+    renderer.camera = &m_editor.camera;
     model_editor_camera_update();
 
     // G cycles SELECT → PAINT → ANIM → SELECT.
@@ -1127,7 +1127,7 @@ void model_editor_frame(void)
 
     V2f mouse       = get_mouse_pos();
     V2f mouse_delta = get_mouse_delta();
-    Ray m_ray       = get_mouse_ray(m_editor.camera, mouse);
+    Ray m_ray       = get_mouse_ray(&m_editor.camera, mouse);
     UNUSED(mouse_delta);
 
     // [ / ] cycle the active group
@@ -1211,7 +1211,7 @@ void model_editor_anim_frame(f32 dt)
     V2f mouse         = get_mouse_pos();
     V2f mouse_delta   = get_mouse_delta();
     // renderer.camera was synced from m_editor.camera by model_editor_frame
-    Ray mouse_ray     = get_mouse_ray(renderer.camera, mouse);
+    Ray mouse_ray     = get_mouse_ray(&renderer.camera, mouse);
     UNUSED(mouse);
 
     bool mouse_pressed  = is_mouse_button_pressed(MOUSEBUTTON_LEFT);
@@ -1283,7 +1283,7 @@ void model_editor_anim_frame(f32 dt)
     // ---- node drag: free movement projected onto camera-perpendicular plane ----
     if (m_editor.node_dragging && mouse_down && m_editor.selected_joint >= 0) {
         s32 j = m_editor.selected_joint;
-        Camera cam = renderer.camera;
+        Camera cam = *renderer.camera;
         V3f right  = v3f_normalize(v3f_cross(cam.up, cam.front));
         V3f up_cam = v3f_normalize(v3f_cross(right, cam.front));
         V3f to_jt  = v3f_sub(m_editor.joint_centers[j], cam.position);

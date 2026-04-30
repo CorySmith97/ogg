@@ -400,16 +400,16 @@ void camera_update(Camera *cam)
     UNUSED(cam);
 }
 
-Mat4 camera_matrix(Camera cam)
+Mat4 camera_matrix(Camera *cam)
 {
-    V3f f = v3f_normalize(cam.front);
-    V3f r = v3f_normalize(v3f_cross(cam.up, f));
+    V3f f = v3f_normalize(cam->front);
+    V3f r = v3f_normalize(v3f_cross(cam->up, f));
     V3f u = v3f_cross(f, r);
 
     return (Mat4){
-        r.x, r.y, r.z, -v3f_dot(r, cam.position),
-        u.x, u.y, u.z, -v3f_dot(u, cam.position),
-        f.x, f.y, f.z, -v3f_dot(f, cam.position),
+        r.x, r.y, r.z, -v3f_dot(r, cam->position),
+        u.x, u.y, u.z, -v3f_dot(u, cam->position),
+        f.x, f.y, f.z, -v3f_dot(f, cam->position),
         0, 0, 0, 1,
     };
 }

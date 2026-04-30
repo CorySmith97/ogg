@@ -72,6 +72,27 @@ const char *shape_fs =
     "   frag_color = v_color;"
     "}\n";
 
+const char *shape3d_vs =
+    "#version 330 core\n"
+    "layout(location = 0) in vec3 a_pos;\n"
+    "layout(location = 1) in vec4 a_color;\n"
+    "out vec4 v_color;\n"
+    "uniform mat4 u_mvp;\n"
+    "void main() {\n"
+    "    v_color = a_color;\n"
+    "    gl_Position = u_mvp * vec4(a_pos, 1.0);\n"
+    "}\n";
+
+const char *tex2d_fs =
+    "#version 330 core\n"
+    "in vec2 v_uv;\n"
+    "uniform sampler2D sampler;\n"
+    "uniform vec4 u_tint;\n"
+    "out vec4 frag_color;\n"
+    "void main() {\n"
+    "    frag_color = texture(sampler, v_uv) * u_tint;\n"
+    "}\n";
+
 typedef struct {
     u32 shader_id;
     u32 vao;
@@ -94,9 +115,13 @@ static struct {
     u32 shape_program;
     u32 shape_vao;
     u32 shape_vbo;
+    u32 shape3d_program;
+    u32 shape3d_vao;
+    u32 shape3d_vbo;
     u32 text_program;
     u32 text_vao;
     u32 text_vbo;
+    u32 tex2d_program;
     u32 model_program;
     u32 vao;
     u32 vbo;
@@ -188,6 +213,29 @@ void rgl_render_init(void)
 
     glBindVertexArray(0);
 
+    u32 shape3d_vs_s = rgl_compile_shader(GL_VERTEX_SHADER,   shape3d_vs);
+    u32 shape3d_fs_s = rgl_compile_shader(GL_FRAGMENT_SHADER, shape_fs);
+    rgl.shape3d_program = rgl_link_program(shape3d_vs_s, shape3d_fs_s);
+
+    glGenVertexArrays(1, &rgl.shape3d_vao);
+    glGenBuffers(1, &rgl.shape3d_vbo);
+
+    glBindVertexArray(rgl.shape3d_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, rgl.shape3d_vbo);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(ShapeVertex), (void *)0);
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(ShapeVertex), (void *)(sizeof(V3f)));
+    glEnableVertexAttribArray(1);
+
+    glBindVertexArray(0);
+
+    u32 tex2d_vs_s = rgl_compile_shader(GL_VERTEX_SHADER,   text_vs);
+    u32 tex2d_fs_s = rgl_compile_shader(GL_FRAGMENT_SHADER, tex2d_fs);
+    rgl.tex2d_program = rgl_link_program(tex2d_vs_s, tex2d_fs_s);
+    /* reuses text_vao / text_vbo — same TextVertex layout (V2f pos + V2f uv) */
+
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -242,7 +290,7 @@ void rgl_draw_model(Asset_Model *model, V3f position, Mat3 rotation, b32 selecte
          0,              0,              0,             1,
     };
 
-    Mat4 view = look_at(renderer.camera.position, renderer.camera.target, renderer.camera.up);
+    Mat4 view = camera_matrix(renderer.camera);
 
     f32 n = 0.1f, fr = 1000.0f;
     f32 ar = (f32)SCREEN_WIDTH / (f32)SCREEN_HEIGHT;
@@ -289,9 +337,38 @@ void rgl_draw_model_textured(Asset_Model *model, V3f position, Mat3 rotation)
     rgl_draw_model(model, position, rotation, 0);
 }
 
-void rgl_draw_texture(Texture *tex, Recs32 rec)       
-{ 
-    (void)tex; (void)rec; 
+void rgl_draw_texture(Texture *tex, Recs32 rec)
+{
+    glUseProgram(rgl.tex2d_program);
+
+    s32 screen_loc = glGetUniformLocation(rgl.tex2d_program, "u_screen");
+    glUniform2f(screen_loc, (f32)SCREEN_WIDTH, (f32)SCREEN_HEIGHT);
+
+    s32 tint_loc = glGetUniformLocation(rgl.tex2d_program, "u_tint");
+    glUniform4f(tint_loc, 1.0f, 1.0f, 1.0f, 1.0f);
+
+    f32 x0 = (f32)rec.x,       y0 = (f32)rec.y;
+    f32 x1 = (f32)(rec.x + rec.w), y1 = (f32)(rec.y + rec.h);
+
+    TextVertex vertices[6] = {
+        {.pos = v2f(x1, y1), .uvs = v2f(1, 1)},
+        {.pos = v2f(x1, y0), .uvs = v2f(1, 0)},
+        {.pos = v2f(x0, y0), .uvs = v2f(0, 0)},
+        {.pos = v2f(x0, y1), .uvs = v2f(0, 1)},
+        {.pos = v2f(x1, y1), .uvs = v2f(1, 1)},
+        {.pos = v2f(x0, y0), .uvs = v2f(0, 0)},
+    };
+
+    glDisable(GL_DEPTH_TEST);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tex->id);
+    glUniform1i(glGetUniformLocation(rgl.tex2d_program, "sampler"), 0);
+    glBindVertexArray(rgl.text_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, rgl.text_vbo);
+    glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(TextVertex), vertices, GL_DYNAMIC_DRAW);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(0);
+    glEnable(GL_DEPTH_TEST);
 }
 
 void rgl_draw_text(Font *f, const char *str, V2i pos, f32 size, Color color) 
@@ -509,7 +586,174 @@ void rgl_draw_recs32(Recs32 rec, f32 z, Color color)
     glEnable(GL_DEPTH_TEST);
 }
 
-void rgl_draw_texture_w_uvs(Texture *tex, Recs32 rec, V3f uvs[4], Color colors[4], u32 flags) { (void)tex; (void)rec; (void)uvs; (void)colors; (void)flags; }
-void rgl_draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags) { (void)bl; (void)br; (void)tl; (void)tr; (void)color; (void)flags; }
-void rgl_draw_triangle3d(V3f v1, V3f v2, V3f v3, Color color, u32 flags) { (void)v1; (void)v2; (void)v3; (void)color; (void)flags; }
-void rgl_draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags) { (void)tex; (void)bl; (void)br; (void)tl; (void)tr; (void)color; (void)flags; }
+void rgl_draw_texture_w_uvs(Texture *tex, Recs32 rec, V3f uvs[4], Color colors[4], u32 flags)
+{
+    (void)flags;
+    glUseProgram(rgl.tex2d_program);
+
+    s32 screen_loc = glGetUniformLocation(rgl.tex2d_program, "u_screen");
+    glUniform2f(screen_loc, (f32)SCREEN_WIDTH, (f32)SCREEN_HEIGHT);
+
+    s32 tint_loc = glGetUniformLocation(rgl.tex2d_program, "u_tint");
+    glUniform4f(tint_loc,
+        colors[0].r / 255.0f, colors[0].g / 255.0f,
+        colors[0].b / 255.0f, colors[0].a / 255.0f);
+
+    f32 x0 = (f32)rec.x,           y0 = (f32)rec.y;
+    f32 x1 = (f32)(rec.x + rec.w), y1 = (f32)(rec.y + rec.h);
+
+    /* uvs: [0]=TL [1]=TR [2]=BR [3]=BL */
+    TextVertex vertices[6] = {
+        {.pos = v2f(x1, y1), .uvs = v2f(uvs[2].x, uvs[2].y)},
+        {.pos = v2f(x1, y0), .uvs = v2f(uvs[1].x, uvs[1].y)},
+        {.pos = v2f(x0, y0), .uvs = v2f(uvs[0].x, uvs[0].y)},
+        {.pos = v2f(x0, y1), .uvs = v2f(uvs[3].x, uvs[3].y)},
+        {.pos = v2f(x1, y1), .uvs = v2f(uvs[2].x, uvs[2].y)},
+        {.pos = v2f(x0, y0), .uvs = v2f(uvs[0].x, uvs[0].y)},
+    };
+
+    glDisable(GL_DEPTH_TEST);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tex->id);
+    glUniform1i(glGetUniformLocation(rgl.tex2d_program, "sampler"), 0);
+    glBindVertexArray(rgl.text_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, rgl.text_vbo);
+    glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(TextVertex), vertices, GL_DYNAMIC_DRAW);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(0);
+    glEnable(GL_DEPTH_TEST);
+}
+
+void rgl_draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags)
+{
+    (void)flags;
+
+    Mat4 view = camera_matrix(renderer.camera);
+
+    f32 n = 0.1f, fr = 1000.0f;
+    f32 ar = (f32)SCREEN_WIDTH / (f32)SCREEN_HEIGHT;
+    Mat4 proj = {
+        1.0f/ar, 0,    0,               0,
+        0,       1.0f, 0,               0,
+        0,       0,    (n+fr)/(fr-n),   2.0f*fr*n/(n-fr),
+        0,       0,    1,               0,
+    };
+
+    Mat4 mvp = mat4_mul(proj, view);
+
+    glUseProgram(rgl.shape3d_program);
+
+    s32 mvp_loc = glGetUniformLocation(rgl.shape3d_program, "u_mvp");
+    glUniformMatrix4fv(mvp_loc, 1, GL_TRUE, mvp.c);
+
+    V4f c = v4f(color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f);
+
+    ShapeVertex vertices[6] = {
+        {tl, c},
+        {tr, c},
+        {br, c},
+        {tl, c},
+        {br, c},
+        {bl, c},
+    };
+
+    glBindVertexArray(rgl.shape3d_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, rgl.shape3d_vbo);
+    glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(ShapeVertex), vertices, GL_DYNAMIC_DRAW);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(0);
+}
+
+void rgl_draw_triangle3d(V3f v1, V3f v2, V3f v3, Color color, u32 flags)
+{
+    (void)flags;
+
+    Mat4 view = camera_matrix(renderer.camera);
+
+    f32 n = 0.1f, fr = 1000.0f;
+    f32 ar = (f32)SCREEN_WIDTH / (f32)SCREEN_HEIGHT;
+    Mat4 proj = {
+        1.0f/ar, 0,    0,               0,
+        0,       1.0f, 0,               0,
+        0,       0,    (n+fr)/(fr-n),   2.0f*fr*n/(n-fr),
+        0,       0,    1,               0,
+    };
+
+    Mat4 mvp = mat4_mul(proj, view);
+
+    glUseProgram(rgl.shape3d_program);
+
+    s32 mvp_loc = glGetUniformLocation(rgl.shape3d_program, "u_mvp");
+    glUniformMatrix4fv(mvp_loc, 1, GL_TRUE, mvp.c);
+
+    V4f c = v4f(color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f);
+
+    ShapeVertex vertices[3] = {
+        {v1, c},
+        {v2, c},
+        {v3, c},
+    };
+
+    glBindVertexArray(rgl.shape3d_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, rgl.shape3d_vbo);
+    glBufferData(GL_ARRAY_BUFFER, 3 * sizeof(ShapeVertex), vertices, GL_DYNAMIC_DRAW);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glBindVertexArray(0);
+}
+
+void rgl_draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags) 
+{
+
+    Mat4 view = camera_matrix(renderer.camera);
+
+    f32 n = 0.1f, fr = 1000.0f;
+    f32 ar = (f32)SCREEN_WIDTH / (f32)SCREEN_HEIGHT;
+    Mat4 proj = {
+        1.0f/ar, 0,    0,               0,
+        0,       1.0f, 0,               0,
+        0,       0,    (n+fr)/(fr-n),   2.0f*fr*n/(n-fr),
+        0,       0,    1,               0,
+    };
+
+    Mat4 mvp = mat4_mul(proj, view);
+
+    glUseProgram(rgl.model_program);
+
+    s32 mvp_loc = glGetUniformLocation(rgl.model_program, "u_mvp");
+
+    glUniformMatrix4fv(mvp_loc, 1, GL_TRUE, mvp.c);
+
+    u32 tex_id = tex->id;
+
+    // Tri 1: TL, BR, BL
+    V3f uvs1[3] = {
+        {0.0f, 0.0f, 1.0f}, // TL
+        {1.0f, 0.0f, 1.0f}, // TR
+        {1.0f, 1.0f, 1.0f}, // BR
+    };
+    // Tri 2: TL, TR, BR
+    V3f uvs2[3] = {
+        {0.0f, 0.0f, 1.0f}, // TL
+        {1.0f, 1.0f, 1.0f}, // BR
+        {0.0f, 1.0f, 1.0f}, // BL
+    };
+
+    Vertex vertices[6] = {
+        {.position = tl, .uv = uvs1[0]},
+        {.position = tr, .uv = uvs1[1]},
+        {.position = br, .uv = uvs1[2]},
+        {.position = tl, .uv = uvs2[0]},
+        {.position = br, .uv = uvs2[1]},
+        {.position = bl, .uv = uvs2[2]},
+    };
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tex_id);
+    glUniform1i(glGetUniformLocation(rgl.model_program, "sampler"), 0);
+
+    glBindVertexArray(rgl.vao);
+    glBindBuffer(GL_ARRAY_BUFFER, rgl.vbo);
+    glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(Vertex), vertices, GL_DYNAMIC_DRAW);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(0);
+}

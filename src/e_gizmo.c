@@ -13,7 +13,7 @@ static void draw_ring(V3f center, V3f axis_u, V3f axis_v,
     // visible even when viewed edge-on (e.g. X ring from a camera on the YZ plane).
     V3f ring_normal = v3f_cross(axis_u, axis_v);
 
-    V3f cam_dir = v3f_normalize(v3f_sub(renderer.camera.position, center));
+    V3f cam_dir = v3f_normalize(v3f_sub(renderer.camera->position, center));
     f32 step = (2.0f * (f32)M_PI) / (f32)segments;
 
     for (s32 i = 0; i < segments; i++) {
