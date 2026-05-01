@@ -245,12 +245,13 @@ typedef struct {
 
 #define str8_lit(String) (String8){(u8*)(String), sizeof(String) - 1}
 
-// TODO Implement with arenas
+// @todo:cs Implement with arenas
 String8 str8_fmt_alloc(const char *fmt, ...);
-// TODO arena. String that is split should be an allocated string8
+// @todo:cs arena. String that is split should be an allocated string8
 String8 str8_split(String8 str, char delimeter);
+String8 open_and_read_entire_file(Arena *arena, const char *file_name);
 
-// TODO Implement String8
+// @todo:cs Implement String8
 s32 measure_text(const char *str);
 
 

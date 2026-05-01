@@ -437,7 +437,7 @@ void rgl_draw_text(Font *f, const char *str, V2i pos, f32 size, Color color)
     s32 atlas_h = f->texture->height;
     s32 sprites_per_row = atlas_w / f->character_width;
 
-    for (s32 i = 0; i < len; i++) {
+    for (u32 i = 0; i < len; i++) {
         char c = str[i];
         s32 tex_id = (u8)c;
         s32 col = tex_id % sprites_per_row;

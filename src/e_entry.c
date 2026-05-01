@@ -6,6 +6,11 @@ void editor_init(void)
     editor.camera.front = v3f_normalize(v3f_sub(editor.camera.target, editor.camera.position));
 }
 
+void editor_set_scene(Scene *scene)
+{
+    editor.scene = scene;
+}
+
 void editor_update(void)
 {
   
@@ -30,13 +35,13 @@ void editor_draw(void)
 
 
     // TODO set pose and dont update
-    for (s32 i = 0; i < arrlen(gs.dynamic_entities); i++) {
-        Entity *e = &gs.dynamic_entities[i];
+    for (s32 i = 0; i < arrlen(editor.scene->dynamic_entities); i++) {
+        Entity *e = &editor.scene->dynamic_entities[i];
         e->hit = (i == gs.selected_entity);
     }
 
-    if (gs.gizmo.attached) {
-        gizmo_update(&gs.gizmo);
+    if (editor.gizmo.attached) {
+        gizmo_update(&editor.gizmo);
     }
 
     //
@@ -68,8 +73,8 @@ void editor_draw(void)
             s32 hit_entity = -1;
             float closest = FLT_MAX;
 
-            for (s32 i = 0; i < arrlen(gs.dynamic_entities); i++) {
-                Entity *e = &gs.dynamic_entities[i];
+            for (s32 i = 0; i < arrlen(editor.scene->dynamic_entities); i++) {
+                Entity *e = &editor.scene->dynamic_entities[i];
                 e->update_disabled = true;
                 RayCollision collision = entity_mouse_ray_collision(e, editor.mouse_ray);
                 if (collision.hit && collision.distance < closest) {
@@ -83,7 +88,7 @@ void editor_draw(void)
                 editor.clicked_entity = true;
                 gs.selected_entity = hit_entity;
                 gs.gizmo.attached = true;
-                gs.gizmo.position = gs.dynamic_entities[hit_entity].position;
+                gs.gizmo.position = editor.scene->dynamic_entities[hit_entity].position;
             } 
         }
     }
@@ -105,7 +110,7 @@ void editor_draw(void)
     // 2) Drag currently selected gizmo axis
     //
     if (gs.selected_axis >= 0 && editor.mouse_down && gs.selected_entity >= 0) {
-        Entity *e = &gs.dynamic_entities[gs.selected_entity];
+        Entity *e = &editor.scene->dynamic_entities[gs.selected_entity];
 
         if (gs.gizmo.mode == GIZMO_MODE_ROTATE) {
             f32 angle = 0.0f;
@@ -134,18 +139,18 @@ void editor_draw(void)
     //
     if (editor.mouse_released) {
         if (gs.gizmo.mode == GIZMO_MODE_TRANSLATE && gs.selected_entity >= 0) {
-            Entity *e = &gs.dynamic_entities[gs.selected_entity];
+            Entity *e = &editor.scene->dynamic_entities[gs.selected_entity];
             e->position = v3f(roundf(e->position.x), roundf(e->position.y), roundf(e->position.z));
             gs.gizmo.position = e->position;
         }
         gs.selected_axis = -1;
     }
-    for (s32 i = 0; i < arrlen(gs.tiles); i++) {
-        tile_draw(&gs.tiles[i]);
+    for (s32 i = 0; i < arrlen(editor.scene->tiles); i++) {
+        tile_draw(&editor.scene->tiles[i]);
     }
 
-    for (int i = 0; i < arrlen(gs.dynamic_entities); i++) {
-        Entity e = gs.dynamic_entities[i];
+    for (int i = 0; i < arrlen(editor.scene->dynamic_entities); i++) {
+        Entity e = editor.scene->dynamic_entities[i];
         entity_draw(&e);
         if (e.hit) {
             if (!gs.camera_moving) {
@@ -169,7 +174,7 @@ void editor_draw(void)
                      nk_rect(0, 40, SCREEN_WIDTH / 4, SCREEN_HEIGHT / 2), panel_flags))
         {
             if (gs.selected_entity >= 0) {
-                Entity *e = &gs.dynamic_entities[gs.selected_entity];
+                Entity *e = &editor.scene->dynamic_entities[gs.selected_entity];
                 if (nk_tree_push(ctx, NK_TREE_TAB, "Mesh", NK_MAXIMIZED)) {
                     nk_layout_row_dynamic(ctx, 20, 1);
                     nk_label_wrap(ctx, "Change mesh");
@@ -218,7 +223,7 @@ void editor_draw(void)
                 }
 
             } else if (gs.selected_tile >= 0) {
-                Tile *t = &gs.tiles[gs.selected_tile];
+                Tile *t = &editor.scene->tiles[gs.selected_tile];
                 if (nk_tree_push(ctx, NK_TREE_TAB, "Mesh", NK_MAXIMIZED)) {
                     nk_tree_pop(ctx);
                 }

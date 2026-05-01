@@ -9,6 +9,10 @@ typedef struct {
     Tile *tiles;
 } Scene;
 
+void console_change_scene(String8 param);
+void console_new_scene(String8 param);
+
+Scene *scene_new(Arena *arena, const char *name);
 Scene *scene_load(Arena *arena, const char *name);
 void   scene_unload(Scene *s, const char *name);
 void   scene_save(Scene *s, const char *name);

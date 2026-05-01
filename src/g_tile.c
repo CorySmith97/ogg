@@ -39,3 +39,8 @@ RayCollision tile_mouse_ray_collision(Tile *t, Ray mouse_ray)
 
     return collision;
 }
+
+b32 tile_serialize(FILE *f, const Tile *t)
+{
+    
+}

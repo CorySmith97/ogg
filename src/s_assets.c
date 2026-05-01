@@ -7,7 +7,6 @@ b32 load_and_store_model(const char *name, const char *file_name);
 Texture_KV     *textures    = NULL;
 Asset_Model_KV *assets      = NULL;
 GLTF_Model_KV  *gltf_assets = NULL;
-const char    **gltf_keys = NULL;
 
 // @todo:cs there will be a need for this to be moved to a String8 hashtable in the
 // future.

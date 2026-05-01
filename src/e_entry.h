@@ -6,8 +6,9 @@ static struct {
     Camera camera;
     s32    selected_entity;
     s32    selected_axis;
-    Gizmo  *gizmo;
+    Gizmo  gizmo;
     f32    camera_speed;
+    Scene  *scene;
 
     f32    mouse_scroll;
     V2f    mouse_pos;
@@ -20,6 +21,17 @@ static struct {
     b32    clicked_gizmo;
     b32    clicked_entity;
 } editor = {
+    .gizmo = {
+        .attached = false,
+        .axis = {
+            GIZMO_AXIS_X,
+            GIZMO_AXIS_Y,
+            GIZMO_AXIS_Z,
+            GIZMO_AXIS_XY,
+            GIZMO_AXIS_YZ,
+            GIZMO_AXIS_XZ
+        },
+    },
     .camera = {
         .target = {0, 0, 0},
         .position = {0,2,-2},
@@ -39,5 +51,6 @@ void editor_init(void);
 void editor_update(void);
 void editor_draw(void);
 void editor_camera_update(void);
+void editor_set_scene(Scene *scene);
 
 #endif // EDITOR_H

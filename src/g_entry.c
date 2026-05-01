@@ -5,23 +5,25 @@ static struct {
     f32   frame_time;
     // Global sun (do not overly lean on this. It slows things way down to do light calculations)
     Light   sun;
-    f32     camera_speed;
-    b32     camera_moving;
     bool    profiling_enabled;
     // Global texture storage
+
+    Scene *loaded_scene;
     
     // Gameplay
-    Entity   *dynamic_entities;
-    Entity   *static_entities;
-    Tile     *tiles;
-    s32       player_index;
     GameState state;
+    s32       player_index;
     s32       selected_entity;
     s32       selected_tile;
     Gizmo_Axis selected_axis;
     Gizmo     gizmo;
     s32      *initiative_order;
+
     Camera    camera;
+    f32       camera_speed;
+    b32       camera_moving;
+
+    Arena    *arena;
 } gs = {
     .sun = {
         .position = {4, 0, 0},
@@ -29,9 +31,6 @@ static struct {
     },
     .camera_speed = 2,
     .profiling_enabled = false,
-    .dynamic_entities = NULL,
-    .static_entities = NULL,
-    .tiles = NULL,
     .state = GAME_STATE_EDITOR,
 
     // This is all editor stuff that should be moved
@@ -44,7 +43,6 @@ static struct {
         .axis = {
             GIZMO_AXIS_X,
             GIZMO_AXIS_Y,
-
             GIZMO_AXIS_Z,
             GIZMO_AXIS_XY,
             GIZMO_AXIS_YZ,
@@ -78,6 +76,9 @@ AnimState *robot_anim_states = NULL;
 void game_init(void)
 {
     SectionStart("Intialization");
+
+    gs.arena = arena_alloc();
+
     console_init();
     render_init();
     gizmo_init();
@@ -131,9 +132,14 @@ void game_init(void)
                      "data/shopkeeper.anim");
     anim_state_play(&e.anim, "idle");
 
-    arrput(gs.dynamic_entities, e);
-    arrput(gs.dynamic_entities, e2);
-    arrput(gs.dynamic_entities, e3);
+    Scene *scene = scene_new(gs.arena, "Main");
+    assert(scene->dynamic_entities == NULL);
+    assert(scene->tiles == NULL);
+
+    arrput(scene->dynamic_entities, e);
+    arrput(scene->dynamic_entities, e2);
+    arrput(scene->dynamic_entities, e3);
+    assert(arrlen(scene->dynamic_entities) == 3);
     gs.font = load_font("data/atlas.png", 16, 32);
     m_editor.hud_font = gs.font;
     ui_init(gs.font);
@@ -142,10 +148,12 @@ void game_init(void)
         for (s32 j = 0; j < 10; j++) {
             f32 x = i + 0.5;
             f32 z = j + 0.5;
-            arrput(gs.tiles, (Tile){.position = v3f(x, 0, z)});
+            arrput(scene->tiles, (Tile){.position = v3f(x, 0, z)});
         }
     }
 
+    gs.loaded_scene = scene;
+    editor_set_scene(gs.loaded_scene);
     SectionEnd("Intialization");
     profiler_report();
 
@@ -203,6 +211,7 @@ void game_frame(void)
             notifications_push((Notification){ .msg = str8_lit("Model State"), .lifetime = 2.0f });
             console_write_log(str8_lit("Game state model editor"));
             gs.state = GAME_STATE_MODEL_EDITOR;
+            editor_set_scene(gs.loaded_scene);
             change_camera(&m_editor.camera);
         }
     }
@@ -216,44 +225,10 @@ void game_frame(void)
         case GAME_STATE_GAMEPLAY:
             gs.selected_axis = -1;
             gs.selected_entity = -1;
-            show_demo = false;
-            if (!console.open) {
-                handle_camera_gameplay(mouse_delta);
-
-                if (is_mouse_button_pressed(MOUSEBUTTON_LEFT)) {
-                    log_debug("Pressing left in game");
-                    for (s32 i = 0; i < arrlen(gs.tiles); i++) {
-                        RayCollision collision = tile_mouse_ray_collision(&gs.tiles[i], mouse_ray);
-                        if (collision.hit) {
-                    log_debug("Hit tile %d", i);
-                            Entity *e = &gs.dynamic_entities[gs.player_index];
-                            e->target = gs.tiles[i].position;
-                        }
-                    }
-                }
+            if (gs.loaded_scene) {
+                scene_update(gs.loaded_scene);
+                scene_draw(gs.loaded_scene);
             }
-            for (s32 i = 0; i < arrlen(gs.dynamic_entities); i++) {
-                Entity *e = &gs.dynamic_entities[i];
-                e->update_disabled = false;
-                entity_update(e);
-            }
-            for (s32 i = 0; i < arrlen(gs.tiles); i++) {
-                tile_draw(&gs.tiles[i]);
-            }
-
-            for (int i = 0; i < arrlen(gs.dynamic_entities); i++) {
-                Entity e = gs.dynamic_entities[i];
-                entity_draw(&e);
-            }
-
-            {
-                GLTF_Model *robot = get_gltf_model("grasstile");
-                if (robot) {
-                    for (u32 pi = 0; pi < robot->prim_count; pi++)
-                        draw_model(robot->primitives[pi], v3f(0, 0, 5), mat3_scale(1), false);
-                }
-            }
-
             game_ui();
             break;
         case GAME_STATE_MENU:

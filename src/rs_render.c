@@ -599,7 +599,7 @@ void rs_draw_model(Asset_Model *model, V3f position, Mat3 rotation, b32 selected
     }
 }
 
-void __attribute__((deprecated)) rs_draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Light light)
+void rs_draw_model_with_light(Asset_Model *model, V3f position, Mat3 rotation, Light light)
 {
     // Mat4 pers = perspective(NEAR, FAR, ASPECT_RATIO, FOV);
     Mat4 view = camera_matrix(renderer.camera);
