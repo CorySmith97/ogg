@@ -1,9 +1,29 @@
+b32 load_and_store_texture(const char *name, const char *file_name);
+b32 load_and_store_model(const char *name, const char *file_name);
+
 #define ASSET_DIR "data/"
 #define BUFFER_SIZE 1024
 
 Texture_KV     *textures    = NULL;
 Asset_Model_KV *assets      = NULL;
 GLTF_Model_KV  *gltf_assets = NULL;
+const char    **gltf_keys = NULL;
+
+// @todo:cs there will be a need for this to be moved to a String8 hashtable in the
+// future.
+void load_asset_catelog(void)
+{
+    // GLTF MODELS
+    load_and_store_gltf_model("tree", "data/gltf/tree.gltf");
+    load_and_store_gltf_model("grasstile", "data/gltf/grass.gltf");
+
+    // OBJ MODELS
+    load_and_store_model("shopkeeper", "data/shopkeeper.obj");
+    load_and_store_model("fence", "data/lowpoly/OBJ/SM_Bld_Fence_01_Snow.obj");
+
+    // TEXTURES
+    load_and_store_texture("target", "data/target.png");
+}
 
 b32 load_and_store_texture(const char *name, const char *file_name)
 {
@@ -104,7 +124,7 @@ static void texture_upload_gl(Texture *tex)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexImage2D(GL_TEXTURE_2D, 0, fmt,
                  tex->width, tex->height, 0,
                  fmt, GL_UNSIGNED_BYTE, tex->data);

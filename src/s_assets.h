@@ -205,6 +205,9 @@ typedef struct {
     Texture *value;
 } Texture_KV;
 
+Catelog(Asset_Model) assets_catelog;
+
+void         load_asset_catelog(void);
 Asset_Model *load_model_from_file(const char *file);
 void         deload_model(Asset_Model *model);
 // Loads fonts via a font atlas

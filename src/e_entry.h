@@ -7,6 +7,7 @@ static struct {
     s32    selected_entity;
     s32    selected_axis;
     Gizmo  *gizmo;
+    f32    camera_speed;
 
     f32    mouse_scroll;
     V2f    mouse_pos;
@@ -28,6 +29,7 @@ static struct {
         .distance = 10.0f,
         .fovy = 180.0f,
     },
+    .camera_speed = 0.2,
     .selected_entity = -1,
     .selected_axis   = -1,
 };

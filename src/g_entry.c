@@ -17,6 +17,7 @@ static struct {
     s32       player_index;
     GameState state;
     s32       selected_entity;
+    s32       selected_tile;
     Gizmo_Axis selected_axis;
     Gizmo     gizmo;
     s32      *initiative_order;
@@ -26,7 +27,7 @@ static struct {
         .position = {4, 0, 0},
         .color = {0, 0.5, 0.5},
     },
-    .camera_speed = 5,
+    .camera_speed = 2,
     .profiling_enabled = false,
     .dynamic_entities = NULL,
     .static_entities = NULL,
@@ -35,6 +36,7 @@ static struct {
 
     // This is all editor stuff that should be moved
     .selected_entity = -1,
+    .selected_tile = -1,
     .selected_axis   = -1,
     .player_index = 0,
     .gizmo = {
@@ -84,6 +86,8 @@ void game_init(void)
     entity_init();
     tiles_init();
 
+    load_asset_catelog();
+
     switch(gs.state) {
         case GAME_STATE_GAMEPLAY:
             change_camera(&gs.camera);
@@ -95,10 +99,6 @@ void game_init(void)
             change_camera(&gs.camera);
         break;
     }
-
-    load_and_store_model("shopkeeper", "data/shopkeeper.obj");
-    load_and_store_texture("target", "data/target.png");
-    load_and_store_model("fence", "data/lowpoly/OBJ/SM_Bld_Fence_01_Snow.obj");
 
     Entity e = (Entity){
             .model = get_model("shopkeeper"),
@@ -130,8 +130,6 @@ void game_init(void)
                      "data/shopkeeper.skin",
                      "data/shopkeeper.anim");
     anim_state_play(&e.anim, "idle");
-    e.aabb.min = v3f(e.position.x - 0.25, e.position.y - 0.5, e.position.z - 0.25);
-    e.aabb.max = v3f(e.position.x + 0.25, e.position.y + 0.5, e.position.z + 0.25);
 
     arrput(gs.dynamic_entities, e);
     arrput(gs.dynamic_entities, e2);
@@ -147,8 +145,6 @@ void game_init(void)
             arrput(gs.tiles, (Tile){.position = v3f(x, 0, z)});
         }
     }
-
-    load_and_store_gltf_model("robot", "data/models/Skeleton_Mage.glb");
 
     SectionEnd("Intialization");
     profiler_report();
@@ -251,17 +247,12 @@ void game_frame(void)
             }
 
             {
-                GLTF_Model *robot = get_gltf_model("robot");
+                GLTF_Model *robot = get_gltf_model("grasstile");
                 if (robot) {
                     for (u32 pi = 0; pi < robot->prim_count; pi++)
                         draw_model(robot->primitives[pi], v3f(0, 0, 5), mat3_scale(1), false);
                 }
             }
-
-            immediate_push_v(v3f(-1, 0, 5), COLOR_RED);
-            immediate_push_v(v3f(1,  0, 5), COLOR_PURPLE);
-            immediate_push_v(v3f(0,  1, 5), COLOR_GREEN);
-            immediate_flush();
 
             game_ui();
             break;
@@ -272,6 +263,12 @@ void game_frame(void)
         case GAME_STATE_EDITOR:
             editor_camera_update();
             editor_draw();
+
+            immediate_push_v(v3f(-1, 0, 5), COLOR_RED);
+            immediate_push_v(v3f(1,  0, 5), COLOR_PURPLE);
+            immediate_push_v(v3f(0,  1, 5), COLOR_GREEN);
+            immediate_flush();
+
             break;
         case GAME_STATE_PAUSE:
             break;

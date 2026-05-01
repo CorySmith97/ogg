@@ -166,13 +166,23 @@ void editor_draw(void)
 
     if (show_demo && entity_panel_open) {
         if (nk_begin(ctx, "Entity",
-                     nk_rect(0, 0, SCREEN_WIDTH / 4, SCREEN_HEIGHT / 2), panel_flags))
+                     nk_rect(0, 40, SCREEN_WIDTH / 4, SCREEN_HEIGHT / 2), panel_flags))
         {
             if (gs.selected_entity >= 0) {
                 Entity *e = &gs.dynamic_entities[gs.selected_entity];
-                if (nk_tree_push(ctx, NK_TREE_TAB, "Entity Info", NK_MAXIMIZED)) {
+                if (nk_tree_push(ctx, NK_TREE_TAB, "Mesh", NK_MAXIMIZED)) {
                     nk_layout_row_dynamic(ctx, 20, 1);
-                    nk_label_wrap(ctx, "model: ");
+                    nk_label_wrap(ctx, "Change mesh");
+                    static int selected = 0;
+
+
+                    int count = shlen(gltf_assets);
+                    const char **keys = (const char **)alloca(count * sizeof(char *));
+                    for (int i = 0; i < count; i++) {
+                        keys[i] = gltf_assets[i].key;
+                    }
+                    nk_layout_row_dynamic(ctx, 25, 1);
+                    selected = nk_combo(ctx, keys, count, selected, 25, nk_vec2(200, 150));
                     nk_label_wrap(ctx, e->model_tag);
                     snprintf(buf, 256, "Entity ID: %d", gs.selected_entity);
                     static f32 rotation = 0;
@@ -181,9 +191,14 @@ void editor_draw(void)
                     e->rotation = rotation_y(rotation);
                     nk_layout_row_dynamic(ctx, 20, 1);
                     nk_label_wrap(ctx, buf);
-                    snprintf(buf, 256, "pos: %.1f, %.1f, %.1f",
+                    snprintf(buf, 256, "%.1f, %.1f, %.1f",
                              e->position.x, e->position.y, e->position.z);
+
                     nk_label_wrap(ctx, buf);
+                    snprintf(buf, 256, "%.1f, %.1f, %.1f",
+                             e->target.x, e->target.y, e->target.z);
+                    nk_label_wrap(ctx, buf);
+
                     nk_tree_pop(ctx);
                 }
                 if (nk_tree_push(ctx, NK_TREE_TAB, "Game Info", NK_MAXIMIZED)) {
@@ -194,13 +209,22 @@ void editor_draw(void)
                         nk_layout_row_dynamic(ctx, 20, 1);
                         nk_label_wrap(ctx, "Strength: ");
                         nk_property_float(ctx, "#strength", 0,
-                                          &e->attributes.strength, 10000, 1, 1);
+                                          &e->attributes.strength, 40, 1, 1);
                         nk_label_wrap(ctx, "Base Class: ");
                         nk_tree_pop(ctx);
                     }
                     nk_tree_pop(ctx);
+
                 }
+
+            } else if (gs.selected_tile >= 0) {
+                Tile *t = &gs.tiles[gs.selected_tile];
+                if (nk_tree_push(ctx, NK_TREE_TAB, "Mesh", NK_MAXIMIZED)) {
+                    nk_tree_pop(ctx);
+                }
+
             } else {
+
                 snprintf(buf, 256, "No selected Entity");
                 nk_layout_row_dynamic(ctx, 20, 1);
                 nk_label_wrap(ctx, buf);
@@ -208,6 +232,8 @@ void editor_draw(void)
         }
         nk_end(ctx);
     }
+
+    editor_master_panel();
 
     const struct nk_command *cmd;
     float ui_z = 0.2f;
@@ -240,25 +266,89 @@ void editor_draw(void)
 
 void editor_master_panel(void)
 {
-  
+    struct nk_context *ctx = platform_ctx.ui;
+    static const nk_flags panel_flags = NK_WINDOW_MOVABLE | NK_WINDOW_SCALABLE;
+    struct nk_style *s = &ctx->style;
+
+    /* Window */
+    s->window.background        = nk_rgb(30, 130, 120);
+    s->window.fixed_background  = nk_style_item_color(nk_rgb(30, 130, 120));
+    s->window.border_color      = nk_rgb(60, 60, 60);
+
+    /* Button */
+    s->button.normal     = nk_style_item_color(nk_rgb(50, 50, 50));
+    s->button.hover      = nk_style_item_color(nk_rgb(70, 70, 70));
+    s->button.active     = nk_style_item_color(nk_rgb( 0,160,255));
+    s->button.text_normal = nk_rgb(210, 210, 210);
+    s->button.text_hover  = nk_rgb(55, 255, 255);
+    s->button.text_active = nk_rgb(255, 255, 255);
+    s->button.border_color = nk_rgb(60, 60, 60);
+    s->button.border       = 1.0f;
+    s->button.rounding     = 3.0f;
+
+    /* Slider */
+    s->slider.bar_normal   = nk_rgb(40,  40,  40);
+    s->slider.bar_hover    = nk_rgb(40,  40,  40);
+    s->slider.bar_active   = nk_rgb(40,  40,  40);
+    s->slider.bar_filled   = nk_rgb( 0, 160, 255);
+    s->slider.cursor_normal = nk_style_item_color(nk_rgb( 0, 160, 255));
+    s->slider.cursor_hover  = nk_style_item_color(nk_rgb(30, 180, 255));
+    s->slider.cursor_active = nk_style_item_color(nk_rgb( 0, 140, 220));
+
+
+    if (nk_begin(ctx, "Window", nk_rect(0, 0, SCREEN_WIDTH, 30), 0))
+        {
+            /* ── Menu Bar ── */
+            nk_menubar_begin(ctx);
+
+            nk_layout_row_begin(ctx, NK_STATIC, 25, 2); /* 2 menus, 25px tall */
+
+            /* "File" menu */
+            nk_layout_row_push(ctx, 70);
+            if (nk_menu_begin_label(ctx, "File", NK_TEXT_LEFT, nk_vec2(120, 200)))
+                {
+                    nk_layout_row_dynamic(ctx, 25, 1);
+                    if (nk_menu_item_label(ctx, "New",  NK_TEXT_LEFT)) { /* handle New  */ }
+                    if (nk_menu_item_label(ctx, "Open", NK_TEXT_LEFT)) { /* handle Open */ }
+                    if (nk_menu_item_label(ctx, "Save", NK_TEXT_LEFT)) { /* handle Save */ }
+                    nk_menu_end(ctx);
+                }
+
+            /* "Edit" menu */
+            nk_layout_row_push(ctx, 60);
+            if (nk_menu_begin_label(ctx, "Edit", NK_TEXT_LEFT, nk_vec2(120, 200)))
+                {
+                    nk_layout_row_dynamic(ctx, 25, 1);
+                    if (nk_menu_item_label(ctx, "Cut",   NK_TEXT_LEFT)) { /* handle Cut   */ }
+                    if (nk_menu_item_label(ctx, "Copy",  NK_TEXT_LEFT)) { /* handle Copy  */ }
+                    if (nk_menu_item_label(ctx, "Paste", NK_TEXT_LEFT)) { /* handle Paste */ }
+                    nk_menu_end(ctx);
+                }
+
+            nk_layout_row_end(ctx);
+            nk_menubar_end(ctx);
+
+            /* ... rest of window content ... */
+        }
+    nk_end(ctx);
 }
 
 void editor_camera_update(void)
 {
 	V2f mouse_delta = get_mouse_delta();
 
-    if (is_mouse_button_down(MOUSEBUTTON_LEFT)) {
+    if (is_key_down(KEY_LEFT_CONTROL)) {
         if (is_key_down(KEY_W)) {
-            editor.camera.position = v3f_add(editor.camera.position, v3f_scale(editor.camera.front, gs.camera_speed));
+            editor.camera.position = v3f_add(editor.camera.position, v3f_scale(editor.camera.front, editor.camera_speed));
         }
         if (is_key_down(KEY_S)) {
-            editor.camera.position = v3f_add(editor.camera.position, v3f_scale(editor.camera.front, -gs.camera_speed));
+            editor.camera.position = v3f_add(editor.camera.position, v3f_scale(editor.camera.front, -editor.camera_speed));
         }
         if (is_key_down(KEY_A)) {
-            editor.camera.position = v3f_add(editor.camera.position, v3f_scale(v3f_cross(editor.camera.front, editor.camera.up), gs.camera_speed));
+            editor.camera.position = v3f_add(editor.camera.position, v3f_scale(v3f_cross(editor.camera.front, editor.camera.up), editor.camera_speed));
         }
         if (is_key_down(KEY_D)) {
-            editor.camera.position = v3f_sub(editor.camera.position, v3f_scale(v3f_cross(editor.camera.front, editor.camera.up), gs.camera_speed));
+            editor.camera.position = v3f_sub(editor.camera.position, v3f_scale(v3f_cross(editor.camera.front, editor.camera.up), editor.camera_speed));
         }
         f32 x_offset =  editor.mouse_delta.x;
         f32 y_offset = -editor.mouse_delta.y;

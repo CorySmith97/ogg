@@ -254,6 +254,9 @@ String8 str8_split(String8 str, char delimeter);
 s32 measure_text(const char *str);
 
 
+#define Catelog(T) struct{String8 key; T* value;}
+
+
 typedef union Color {
     struct {
         u8 r, g, b, a;

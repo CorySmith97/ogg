@@ -93,6 +93,33 @@ const char *tex2d_fs =
     "    frag_color = texture(sampler, v_uv) * u_tint;\n"
     "}\n";
 
+const char *immediate_vs =
+    "#version 330 core\n"
+    "layout(location = 0) in vec3 a_pos;\n"
+    "layout(location = 1) in vec3 a_normal;\n"
+    "layout(location = 2) in vec2 a_uv;\n"
+    "layout(location = 3) in vec4 a_color;\n"
+    "uniform mat4 u_mvp;\n"
+    "out vec3 v_normal;\n"
+    "out vec2 v_uv;\n"
+    "out vec4 v_color;\n"
+    "void main() {\n"
+    "    v_normal = a_normal;\n"
+    "    v_uv = a_uv.xy;\n"
+    "    v_color = a_color.xy;\n"
+    "    gl_Position = u_mvp * vec4(a_pos, 1.0);\n"
+    "}\n";
+
+const char *immediate_fs =
+    "#version 330 core\n"
+    "in vec3 v_normal;\n"
+    "in vec2 v_uv;\n"
+    "uniform sampler2D sampler;\n"
+    "out vec4 frag_color;\n"
+    "void main() {\n"
+    "    frag_color = texture(sampler, v_uv);\n"
+    "}\n";
+
 typedef struct {
     u32 shader_id;
     u32 vao;
@@ -108,6 +135,18 @@ typedef struct {
     V3f position;
     V4f color;
 } ShapeVertex;
+
+typedef struct {
+    const char *shader_name;
+    u32         shader_id;
+    u32         stride;
+} ImmediateInfo;
+
+typedef struct {
+    u32 program;
+    u32 vao;
+    u32 vbo;
+} Shader;
 
 static u32 rgl_current_program = 0;
 
@@ -125,6 +164,10 @@ static struct {
     u32 model_program;
     u32 vao;
     u32 vbo;
+
+    u32 immediate_program;
+    u32 immediate_vao;
+    u32 immediate_vbo;
     u32 fallback_texture;
 } rgl;
 
@@ -751,9 +794,64 @@ void rgl_draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color colo
     glBindTexture(GL_TEXTURE_2D, tex_id);
     glUniform1i(glGetUniformLocation(rgl.model_program, "sampler"), 0);
 
+    glDisable(GL_BLEND);
     glBindVertexArray(rgl.vao);
     glBindBuffer(GL_ARRAY_BUFFER, rgl.vbo);
     glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(Vertex), vertices, GL_DYNAMIC_DRAW);
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glBindVertexArray(0);
+}
+
+f32 *immediate_vertex = NULL;
+
+// This function sets the way the renderer should interpret the render buffer data
+// in addition to which actual shader should be used.
+void rgl_immediate_set_shader(String8 name)
+{
+}
+
+void rgl_immediate_push_v(V3f v, Color c)
+{
+    f32 cr = (f32)c.r / 255.0;
+    f32 cg = (f32)c.g / 255.0;
+    f32 cb = (f32)c.b / 255.0;
+    f32 ca = (f32)c.a / 255.0;
+
+    arrput(immediate_vertex, v.x);
+    arrput(immediate_vertex, v.y);
+    arrput(immediate_vertex, v.z);
+    arrput(immediate_vertex, cr);
+    arrput(immediate_vertex, cg);
+    arrput(immediate_vertex, cb);
+    arrput(immediate_vertex, ca);
+}
+
+void rgl_immediate_flush(void)
+{
+    Mat4 view = camera_matrix(renderer.camera);
+
+    f32 n = 0.1f, fr = 1000.0f;
+    f32 ar = (f32)SCREEN_WIDTH / (f32)SCREEN_HEIGHT;
+    Mat4 proj = {
+        1.0f/ar, 0,    0,               0,
+        0,       1.0f, 0,               0,
+        0,       0,    (n+fr)/(fr-n),   2.0f*fr*n/(n-fr),
+        0,       0,    1,               0,
+    };
+
+    Mat4 mvp = mat4_mul(proj, view);
+
+    glUseProgram(rgl.shape3d_program);
+
+    s32 mvp_loc = glGetUniformLocation(rgl.shape3d_program, "u_mvp");
+
+    glUniformMatrix4fv(mvp_loc, 1, GL_TRUE, mvp.c);
+
+    glBindVertexArray(rgl.shape3d_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, rgl.shape3d_vbo);
+    glBufferData(GL_ARRAY_BUFFER, arrlen(immediate_vertex) * sizeof(f32), immediate_vertex, GL_DYNAMIC_DRAW);
+    glDrawArrays(GL_TRIANGLES, 0, arrlen(immediate_vertex) / 7);
+    glBindVertexArray(0);
+
+    arrsetlen(immediate_vertex, 0);
 }

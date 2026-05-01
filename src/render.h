@@ -111,6 +111,12 @@ void draw_model_triangle_selection(Asset_Model *model, V3f position, Mat3 rotati
 //
 // Immediate Mode rendering
 //
+
+
+// TODO move to render global data
+V3f   *immediate_vert = NULL;
+Color *immediate_color = NULL;
+
 void immediate_set_shader(String8 name);
 void immediate_begin(void);
 void immediate_flush(void);

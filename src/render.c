@@ -1,6 +1,7 @@
 #include "rs_render.c"
 #include "rgl_render.c"
 
+
 void console_render_swap(String8 params)
 {
     if (str8_compare(params, str8_lit("opengl"))) {
@@ -193,6 +194,18 @@ void immediate_flush(void)
             rs_immediate_flush();
         break;
         case BACKEND_OPENGL:
+            rgl_immediate_flush();
+        break;
+    }
+}
+
+void immediate_set_shader(String8 name)
+{
+    switch (renderer.backend) {
+        case BACKEND_SOFTWARE:
+        break;
+        case BACKEND_OPENGL:
+            rgl_immediate_set_shader(name);
         break;
     }
 }
@@ -204,6 +217,7 @@ void immediate_push_v(V3f v1, Color c)
             rs_immediate_push_v(v1, c);
         break;
         case BACKEND_OPENGL:
+            rgl_immediate_push_v(v1, c);
         break;
     }
 }

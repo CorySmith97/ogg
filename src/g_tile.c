@@ -10,10 +10,10 @@ void tiles_init(void)
 
 void tile_draw(Tile *t)
 {
-    V3f v1 = v3f(t->position.x - 0.5, t->position.y, t->position.z - 0.5);
-    V3f v2 = v3f(t->position.x - 0.5, t->position.y, t->position.z + 0.5);
-    V3f v3 = v3f(t->position.x + 0.5, t->position.y, t->position.z - 0.5);
-    V3f v4 = v3f(t->position.x + 0.5, t->position.y, t->position.z + 0.5);
+    V3f v1 = v3f(t->position.x - 0.5, t->position.y - 0.01, t->position.z - 0.5);
+    V3f v2 = v3f(t->position.x - 0.5, t->position.y - 0.01, t->position.z + 0.5);
+    V3f v3 = v3f(t->position.x + 0.5, t->position.y - 0.01, t->position.z - 0.5);
+    V3f v4 = v3f(t->position.x + 0.5, t->position.y - 0.01, t->position.z + 0.5);
 
     draw_rectangle3d(v1, v2, v3, v4, COLOR_BROWN, 0);
 }
