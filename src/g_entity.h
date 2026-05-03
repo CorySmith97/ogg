@@ -21,6 +21,7 @@ typedef struct Entity{
     V3f          position;
     V3f          target;
     Mat3         rotation;
+    f32          scale;
     AABB         aabb;
     b32          hit;
     f32          yaw;

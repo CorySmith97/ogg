@@ -152,6 +152,15 @@ void platform_handle_events(bool *quit)
             case SDL_QUIT:
                 *quit = true;
                 break;
+            case SDL_WINDOWEVENT:
+                if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
+                    int w = event.window.data1;
+                    int h = event.window.data2;
+                    platform_ctx.width = w;
+                    platform_ctx.height = h;
+                    glViewport(0, 0, w, h);
+                }
+                break;
             case SDL_KEYDOWN: {
                 SDL_Keycode sym = event.key.keysym.sym;
                 if (sym == SDLK_LSHIFT || sym == SDLK_RSHIFT) nk_input_key(ctx, NK_KEY_SHIFT, 1);
@@ -185,8 +194,8 @@ void platform_handle_events(bool *quit)
                     int win_w, win_h, drawable_w, drawable_h;
                     SDL_GetWindowSize(platform_ctx.window, &win_w, &win_h);
                     SDL_GL_GetDrawableSize(platform_ctx.window, &drawable_w, &drawable_h);
-                    bx = (int)(event.button.x * (float)drawable_w / (float)win_w);
-                    by = (int)(event.button.y * (float)drawable_h / (float)win_h);
+                    bx = (int)(event.button.x * (f32)drawable_w / (float)win_w);
+                    by = (int)(event.button.y * (f32)drawable_h / (float)win_h);
                 } else {
                     bx = (int)(event.button.x * (f32)GAME_WIDTH  / (f32)platform_ctx.width);
                     by = (int)(event.button.y * (f32)GAME_HEIGHT / (f32)platform_ctx.height);
@@ -240,7 +249,6 @@ void platform_handle_events(bool *quit)
                     int ui_mouse_x = (int)(event.motion.x * sx);
                     int ui_mouse_y = (int)(event.motion.y * sy);
 
-                    nk_input_motion(ctx, ui_mouse_x, ui_mouse_y);
                 } else {
 
                     f32 sx = (f32)GAME_WIDTH  / (f32)platform_ctx.width;
@@ -253,6 +261,7 @@ void platform_handle_events(bool *quit)
 
                     nk_input_motion(ctx, mouse_x, mouse_y);
                 }
+                nk_input_motion(ctx, mouse_x, mouse_y);
                 on_mouse_moved(mouse_x, mouse_y, mouse_xrel, mouse_yrel);
             } break;
             default:
@@ -267,15 +276,24 @@ void platform_handle_events(bool *quit)
         static s32 frame = 0;
         b32 pressed = is_key_down_raw(KEY_BACKSPACE);
         if (pressed) {
-            if (platform_ctx.input_index > 0 && frame >= 10) {
+            if (platform_ctx.input_index - 1 >= 0)  {
                 platform_ctx.input_index -= 1;
                 platform_ctx.input[platform_ctx.input_index] = '\0';
                 frame = 0;
             }
-            frame++;
         }
     }
     *quit |= is_key_pressed_raw(KEY_ESCAPE);
+}
+
+s32 platform_width(void)
+{
+    return platform_ctx.width;
+}
+
+s32 platform_height(void)
+{
+    return platform_ctx.height;
 }
 
 void platform_deinit(void)
@@ -321,47 +339,59 @@ void on_text_input(char *text)
     platform_ctx.input_index += text_len;
     platform_ctx.input[platform_ctx.input_index] = '\0'; // keep it null-terminated
 }
+
 char *get_input_text(void)
 {
     return platform_ctx.input;
 }
 
-
-bool is_mouse_button_down(s32 key) {
-    bool pressed = false;
-    if ((key > 0) && (key < MOUSEBUTTON_COUNT)) {
-        if (mouse_state.mouse_button_state[key]) {
-            pressed = true;
-        }
-    }
-    return pressed;
+void set_escape_quit(bool *quit)
+{
+    *quit = is_key_pressed_raw(KEY_ESCAPE);
 }
 
-b32 is_mouse_button_pressed(s32 key) {
-    bool pressed = false;
-    if ((key > 0) && (key < MOUSEBUTTON_COUNT)) {
-        if (mouse_state.mouse_button_state[key] 
-                && !mouse_state.prev_mouse_button_state[key]) {
-            pressed = true;
-        }
-    }
-    return pressed;
+void begin_input_frame(void)
+{
+    platform_ctx.mouse_state.scroll_delta = 0;
 }
 
-b32 is_mouse_button_released(s32 key) {
-    bool pressed = false;
-    if ((key > 0) && (key < MOUSEBUTTON_COUNT)) {
-        if (!mouse_state.mouse_button_state[key] 
-                && mouse_state.prev_mouse_button_state[key]) {
-            pressed = true;
-        }
-    }
-    return pressed;
+void platform_clear_input_buffer(void)
+{
+    platform_ctx.input_index = 0;
+    memset(platform_ctx.input, 0, 1024);
+}
+
+void platform_enable_text_capture(void)
+{
+    platform_ctx.text_input_enabled = true;
+}
+
+void platform_disable_text_capture(void)
+{
+    platform_ctx.text_input_enabled = false;
 }
 
 u64 get_time()
 {
     return SDL_GetPerformanceCounter();
+}
+
+// KEYBOARD STATE
+
+void platform_check_keystate(void)
+{
+
+    memcpy(mouse_state.prev_mouse_button_state,
+            mouse_state.mouse_button_state,
+            sizeof(mouse_state.mouse_button_state));
+
+    if (platform_ctx.keystate != NULL)
+        memcpy(platform_ctx.prev_keystate,
+                platform_ctx.keystate,
+                SDL_NUM_SCANCODES);
+    SDL_PumpEvents();
+
+    platform_ctx.keystate = SDL_GetKeyboardState(NULL);
 }
 
 bool is_key_down_raw(s32 key)
@@ -399,6 +429,41 @@ void on_key_up(s32 key)
     keyboard_state.key_curr_state[key] = false;
 }
 
+// MOUSE STATE ITEMS
+
+bool is_mouse_button_down(s32 key) {
+    bool pressed = false;
+    if ((key > 0) && (key < MOUSEBUTTON_COUNT)) {
+        if (mouse_state.mouse_button_state[key]) {
+            pressed = true;
+        }
+    }
+    return pressed;
+}
+
+b32 is_mouse_button_pressed(s32 key) {
+    bool pressed = false;
+    if ((key > 0) && (key < MOUSEBUTTON_COUNT)) {
+        if (mouse_state.mouse_button_state[key] 
+                && !mouse_state.prev_mouse_button_state[key]) {
+            pressed = true;
+        }
+    }
+    return pressed;
+}
+
+b32 is_mouse_button_released(s32 key) {
+    bool pressed = false;
+    if ((key > 0) && (key < MOUSEBUTTON_COUNT)) {
+        if (!mouse_state.mouse_button_state[key] 
+                && mouse_state.prev_mouse_button_state[key]) {
+            pressed = true;
+        }
+    }
+    return pressed;
+}
+
+
 void on_mouse_down(s32 button) 
 {
     mouse_state.mouse_button_state[button] = true;
@@ -431,20 +496,11 @@ void on_mouse_moved(f32 x, f32 y, f32 dx, f32 dy)
     platform_ctx.mouse_state.mouse_pos_dy = dy;
 }
 
-void set_escape_quit(bool *quit)
-{
-    *quit = is_key_pressed_raw(KEY_ESCAPE);
-}
-
 void set_mouse_toggle_key(s32 key)
 {
     if (is_key_down(key)) {
         platform_ctx.mouse_enabled = !platform_ctx.mouse_enabled;
     }
-}
-void begin_input_frame(void)
-{
-    platform_ctx.mouse_state.scroll_delta = 0;
 }
 
 void on_mouse_scroll(f32 y)
@@ -457,22 +513,6 @@ f32 get_mouse_scroll(void)
     return platform_ctx.mouse_state.scroll_delta;
 }
         
-void platform_check_keystate(void)
-{
-
-    memcpy(mouse_state.prev_mouse_button_state,
-            mouse_state.mouse_button_state,
-            sizeof(mouse_state.mouse_button_state));
-
-    if (platform_ctx.keystate != NULL)
-        memcpy(platform_ctx.prev_keystate,
-                platform_ctx.keystate,
-                SDL_NUM_SCANCODES);
-    SDL_PumpEvents();
-
-    platform_ctx.keystate = SDL_GetKeyboardState(NULL);
-}
-
 // TODO
 // add copy paste with clipboard.
 //

@@ -282,7 +282,7 @@ void rgl_render_init(void)
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    glViewport(0, 0, platform_ctx.width, platform_ctx.height);
 
     u8 white[4] = {255, 255, 255, 255};
     glGenTextures(1, &rgl.fallback_texture);
@@ -336,7 +336,7 @@ void rgl_draw_model(Asset_Model *model, V3f position, Mat3 rotation, b32 selecte
     Mat4 view = camera_matrix(renderer.camera);
 
     f32 n = 0.1f, fr = 1000.0f;
-    f32 ar = (f32)SCREEN_WIDTH / (f32)SCREEN_HEIGHT;
+    f32 ar = (f32)platform_ctx.width / (f32)platform_ctx.height;
     Mat4 proj = {
         1.0f/ar, 0,    0,               0,
         0,       1.0f, 0,               0,
@@ -385,7 +385,7 @@ void rgl_draw_texture(Texture *tex, Recs32 rec)
     glUseProgram(rgl.tex2d_program);
 
     s32 screen_loc = glGetUniformLocation(rgl.tex2d_program, "u_screen");
-    glUniform2f(screen_loc, (f32)SCREEN_WIDTH, (f32)SCREEN_HEIGHT);
+    glUniform2f(screen_loc, (f32)platform_ctx.width, (f32)platform_ctx.height);
 
     s32 tint_loc = glGetUniformLocation(rgl.tex2d_program, "u_tint");
     glUniform4f(tint_loc, 1.0f, 1.0f, 1.0f, 1.0f);
@@ -414,93 +414,69 @@ void rgl_draw_texture(Texture *tex, Recs32 rec)
     glEnable(GL_DEPTH_TEST);
 }
 
-void rgl_draw_text(Font *f, const char *str, V2i pos, f32 size, Color color) 
-{ 
+void rgl_draw_text(Font *f, const char *str, V2i pos, f32 size, Color color)
+{
     glUseProgram(rgl.text_program);
 
-    u32 len = strlen(str);
-
+    u32 len   = strlen(str);
     u32 count = len * 6;
 
-    glUseProgram(rgl.text_program);
+    f32 scale = size / f->size;  // ratio between desired size and baked size
 
     s32 screen_loc = glGetUniformLocation(rgl.text_program, "u_screen");
-    glUniform2f(screen_loc, (f32)SCREEN_WIDTH, (f32)SCREEN_HEIGHT);
+    glUniform2f(screen_loc, (f32)platform_ctx.width, (f32)platform_ctx.height);
 
     s32 color_loc = glGetUniformLocation(rgl.text_program, "u_color");
-    glUniform4f(color_loc, color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f);
-
+    glUniform4f(color_loc,
+        color.r / 255.0f, color.g / 255.0f,
+        color.b / 255.0f, color.a / 255.0f);
 
     TextVertex *vertices = NULL;
+    f32 cursor_x = (f32)pos.x;
+    f32 cursor_y = (f32)pos.y + f->ascent * scale;
+    f32 cell     = f->glyphs['M'].advance * scale;  // fixed advance
 
-    s32 atlas_w = f->texture->width;
-    s32 atlas_h = f->texture->height;
-    s32 sprites_per_row = atlas_w / f->character_width;
 
     for (u32 i = 0; i < len; i++) {
-        char c = str[i];
-        s32 tex_id = (u8)c;
-        s32 col = tex_id % sprites_per_row;
-        s32 row = tex_id / sprites_per_row;
+        u8 c = (u8)str[i];
+        GlyphInfo *g = &f->glyphs[c];
 
-        f32 du = 0.5f / (f32)atlas_w;
-        f32 dv = 0.5f / (f32)atlas_h;
+        // Skip glyphs with no visual (space, control chars)
+        if (g->u0 == g->u1 || g->v0 == g->v1) {
+            cursor_x += cell;
+            continue;
+        }
 
-        f32 u_min = ((f32)(col * f->character_width) + 0.5f) / (f32)atlas_w;
-        f32 v_min = ((f32)(row * f->character_height) + 0.5f) / (f32)atlas_h;
-        f32 u_max = ((f32)(col * f->character_width + f->character_width) - 0.5f) / (f32)atlas_w;
-        f32 v_max = ((f32)(row * f->character_height + f->character_height) - 0.5f) / (f32)atlas_h;
+        // Screen-space quad — apply xoff/yoff so glyphs sit on the baseline
+        f32 x0 = cursor_x + g->x_off * scale;
+        f32 y0 = cursor_y + g->y_off * scale;
+        f32 x1 = x0 + g->width  * scale;
+        f32 y1 = y0 + g->height * scale;
 
-        V2f uvs[4] = {
-            v2f(u_min, v_min), /* top-left     */
-            v2f(u_max, v_min), /* top-right    */
-            v2f(u_max, v_max), /* bottom-right */
-            v2f(u_min, v_max), /* bottom-left  */
-        };
-        Recs32 rec = (Recs32){.x = pos.x + (i * (s32)size), .y = pos.y, .w = (s32)size, .h = (s32)size};
-        TextVertex v1 = {
-            .pos = {rec.x + rec.w, rec.y + rec.h},
-            .uvs = uvs[2],
-        };
-        arrput(vertices, v1);
+        // UVs straight from the metrics — no bias needed for SDF
+        f32 u0 = g->u0, v0 = g->v0;
+        f32 u1 = g->u1, v1 = g->v1;
 
-        TextVertex v2 = {
-            .pos = {rec.x + rec.w, rec.y},
-            .uvs = uvs[1],
-        };
-        arrput(vertices, v2);
+        // Triangle 1
+        arrput(vertices, ((TextVertex){ .pos = {x1, y1}, .uvs = {u1, v1} }));
+        arrput(vertices, ((TextVertex){ .pos = {x1, y0}, .uvs = {u1, v0} }));
+        arrput(vertices, ((TextVertex){ .pos = {x0, y0}, .uvs = {u0, v0} }));
+        // Triangle 2
+        arrput(vertices, ((TextVertex){ .pos = {x0, y0}, .uvs = {u0, v0} }));
+        arrput(vertices, ((TextVertex){ .pos = {x0, y1}, .uvs = {u0, v1} }));
+        arrput(vertices, ((TextVertex){ .pos = {x1, y1}, .uvs = {u1, v1} }));
 
-        TextVertex v3 = {
-            .pos = {rec.x, rec.y},
-            .uvs = uvs[0],
-        };
-        arrput(vertices, v3);
-
-        TextVertex v4 = {
-            .pos = {rec.x, rec.y + rec.h},
-            .uvs = uvs[3],
-        };
-        arrput(vertices, v4);
-        TextVertex v5 = {
-            .pos = {rec.x + rec.w, rec.y + rec.h},
-            .uvs = uvs[2],
-        };
-        arrput(vertices, v5);
-        TextVertex v6 = {
-            .pos = {rec.x, rec.y},
-            .uvs = uvs[0],
-        };
-        arrput(vertices, v6);
-
+            cursor_x += cell;
     }
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, f->texture->id);
     glUniform1i(glGetUniformLocation(rgl.text_program, "sampler"), 0);
+
     glBindVertexArray(rgl.text_vao);
     glBindBuffer(GL_ARRAY_BUFFER, rgl.text_vbo);
-    glBufferData(GL_ARRAY_BUFFER, count * sizeof(TextVertex), vertices, GL_DYNAMIC_DRAW);
-    glDrawArrays(GL_TRIANGLES, 0, count);
+    glBufferData(GL_ARRAY_BUFFER, arrlen(vertices) * sizeof(TextVertex), vertices, GL_DYNAMIC_DRAW);
+    glDrawArrays(GL_TRIANGLES, 0, arrlen(vertices));
     glBindVertexArray(0);
     arrfree(vertices);
 }
@@ -510,85 +486,64 @@ void rgl_draw_string8(Font *f, String8 str, V2i pos, f32 size, Color color)
 {
     glUseProgram(rgl.text_program);
 
-    u32 count = str.len * 6;
+    u32 len   = str.len;
+    u32 count = len * 6;
+
+    f32 scale = size / f->size;  // ratio between desired size and baked size
 
     s32 screen_loc = glGetUniformLocation(rgl.text_program, "u_screen");
-    glUniform2f(screen_loc, (f32)SCREEN_WIDTH, (f32)SCREEN_HEIGHT);
+    glUniform2f(screen_loc, (f32)platform_ctx.width, (f32)platform_ctx.height);
 
     s32 color_loc = glGetUniformLocation(rgl.text_program, "u_color");
-    glUniform4f(color_loc, color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f);
-
+    glUniform4f(color_loc,
+        color.r / 255.0f, color.g / 255.0f,
+        color.b / 255.0f, color.a / 255.0f);
 
     TextVertex *vertices = NULL;
+    f32 cursor_x = (f32)pos.x;
+    f32 cursor_y = (f32)pos.y + f->ascent * scale;
+    f32 cell     = f->glyphs['M'].advance * scale;  // fixed advance
 
-    s32 atlas_w = f->texture->width;
-    s32 atlas_h = f->texture->height;
-    s32 sprites_per_row = atlas_w / f->character_width;
+    for (u32 i = 0; i < len; i++) {
+        u8 c = (u8)str.data[i];
+        GlyphInfo *g = &f->glyphs[c];
 
-    for (u32 i = 0; i < str.len; i++) {
-        char c = str.data[i];
-        s32 tex_id = (u8)c;
-        s32 col = tex_id % sprites_per_row;
-        s32 row = tex_id / sprites_per_row;
+        // Skip glyphs with no visual (space, control chars)
+        if (g->u0 == g->u1 || g->v0 == g->v1) {
+            cursor_x += cell;
+            continue;
+        }
 
-        f32 du = 0.5f / (f32)atlas_w;
-        f32 dv = 0.5f / (f32)atlas_h;
+        // Screen-space quad — apply xoff/yoff so glyphs sit on the baseline
+        f32 x0 = cursor_x + g->x_off * scale;
+        f32 y0 = cursor_y + g->y_off * scale;
+        f32 x1 = x0 + g->width  * scale;
+        f32 y1 = y0 + g->height * scale;
 
-        f32 u_min = ((f32)(col * f->character_width) + 0.5f) / (f32)atlas_w;
-        f32 v_min = ((f32)(row * f->character_height) + 0.5f) / (f32)atlas_h;
-        f32 u_max = ((f32)(col * f->character_width + f->character_width) - 0.5f) / (f32)atlas_w;
-        f32 v_max = ((f32)(row * f->character_height + f->character_height) - 0.5f) / (f32)atlas_h;
+        // UVs straight from the metrics — no bias needed for SDF
+        f32 u0 = g->u0, v0 = g->v0;
+        f32 u1 = g->u1, v1 = g->v1;
 
-        V2f uvs[4] = {
-            v2f(u_min, v_min), /* top-left     */
-            v2f(u_max, v_min), /* top-right    */
-            v2f(u_max, v_max), /* bottom-right */
-            v2f(u_min, v_max), /* bottom-left  */
-        };
-        Recs32 rec = (Recs32){.x = pos.x + (i * (s32)size), .y = pos.y, .w = (s32)size, .h = (s32)size};
-        TextVertex v1 = {
-            .pos = {rec.x + rec.w, rec.y + rec.h},
-            .uvs = uvs[2],
-        };
-        arrput(vertices, v1);
+        // Triangle 1
+        arrput(vertices, ((TextVertex){ .pos = {x1, y1}, .uvs = {u1, v1} }));
+        arrput(vertices, ((TextVertex){ .pos = {x1, y0}, .uvs = {u1, v0} }));
+        arrput(vertices, ((TextVertex){ .pos = {x0, y0}, .uvs = {u0, v0} }));
+        // Triangle 2
+        arrput(vertices, ((TextVertex){ .pos = {x0, y0}, .uvs = {u0, v0} }));
+        arrput(vertices, ((TextVertex){ .pos = {x0, y1}, .uvs = {u0, v1} }));
+        arrput(vertices, ((TextVertex){ .pos = {x1, y1}, .uvs = {u1, v1} }));
 
-        TextVertex v2 = {
-            .pos = {rec.x + rec.w, rec.y},
-            .uvs = uvs[1],
-        };
-        arrput(vertices, v2);
-
-        TextVertex v3 = {
-            .pos = {rec.x, rec.y},
-            .uvs = uvs[0],
-        };
-        arrput(vertices, v3);
-
-        TextVertex v4 = {
-            .pos = {rec.x, rec.y + rec.h},
-            .uvs = uvs[3],
-        };
-        arrput(vertices, v4);
-        TextVertex v5 = {
-            .pos = {rec.x + rec.w, rec.y + rec.h},
-            .uvs = uvs[2],
-        };
-        arrput(vertices, v5);
-        TextVertex v6 = {
-            .pos = {rec.x, rec.y},
-            .uvs = uvs[0],
-        };
-        arrput(vertices, v6);
-
+        cursor_x += cell;
     }
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, f->texture->id);
     glUniform1i(glGetUniformLocation(rgl.text_program, "sampler"), 0);
+
     glBindVertexArray(rgl.text_vao);
     glBindBuffer(GL_ARRAY_BUFFER, rgl.text_vbo);
-    glBufferData(GL_ARRAY_BUFFER, count * sizeof(TextVertex), vertices, GL_DYNAMIC_DRAW);
-    glDrawArrays(GL_TRIANGLES, 0, count);
+    glBufferData(GL_ARRAY_BUFFER, arrlen(vertices) * sizeof(TextVertex), vertices, GL_DYNAMIC_DRAW);
+    glDrawArrays(GL_TRIANGLES, 0, arrlen(vertices));
     glBindVertexArray(0);
     arrfree(vertices);
 }
@@ -601,7 +556,7 @@ void rgl_draw_recs32(Recs32 rec, f32 z, Color color)
     u32 count = 6;
 
     s32 screen_loc = glGetUniformLocation(rgl.shape_program, "u_screen");
-    glUniform2f(screen_loc, (f32)SCREEN_WIDTH, (f32)SCREEN_HEIGHT);
+    glUniform2f(screen_loc, (f32)platform_ctx.width, (f32)platform_ctx.height);
 
     V4f c = v4f(color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f);
 
@@ -635,7 +590,7 @@ void rgl_draw_texture_w_uvs(Texture *tex, Recs32 rec, V3f uvs[4], Color colors[4
     glUseProgram(rgl.tex2d_program);
 
     s32 screen_loc = glGetUniformLocation(rgl.tex2d_program, "u_screen");
-    glUniform2f(screen_loc, (f32)SCREEN_WIDTH, (f32)SCREEN_HEIGHT);
+    glUniform2f(screen_loc, (f32)platform_ctx.width, (f32)platform_ctx.height);
 
     s32 tint_loc = glGetUniformLocation(rgl.tex2d_program, "u_tint");
     glUniform4f(tint_loc,
@@ -674,7 +629,7 @@ void rgl_draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags
     Mat4 view = camera_matrix(renderer.camera);
 
     f32 n = 0.1f, fr = 1000.0f;
-    f32 ar = (f32)SCREEN_WIDTH / (f32)SCREEN_HEIGHT;
+    f32 ar = (f32)platform_ctx.width / (f32)platform_ctx.height;
     Mat4 proj = {
         1.0f/ar, 0,    0,               0,
         0,       1.0f, 0,               0,
@@ -707,6 +662,72 @@ void rgl_draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags
     glBindVertexArray(0);
 }
 
+void rgl_draw_multitriangle(V3f v1, V3f v2, V3f v3, Color c1, Color c2, Color c3, u32 flags)
+{
+    
+    glUseProgram(rgl.shape_program);
+
+    s32 screen_loc = glGetUniformLocation(rgl.tex2d_program, "u_screen");
+    glUniform2f(screen_loc, (f32)platform_ctx.width, (f32)platform_ctx.height);
+
+    V4f color1 = v4f(c1.r / 255.0f, c1.g / 255.0f, c1.b / 255.0f, c1.a / 255.0f);
+    V4f color2 = v4f(c2.r / 255.0f, c2.g / 255.0f, c2.b / 255.0f, c2.a / 255.0f);
+    V4f color3 = v4f(c3.r / 255.0f, c3.g / 255.0f, c3.b / 255.0f, c3.a / 255.0f);
+
+    ShapeVertex vertices[3] = {
+        {v1, color1},
+        {v2, color2},
+        {v3, color3},
+    };
+
+    glDisable(GL_DEPTH_TEST);
+    glBindVertexArray(rgl.shape_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, rgl.shape_vbo);
+    glBufferData(GL_ARRAY_BUFFER, 3 * sizeof(ShapeVertex), vertices, GL_DYNAMIC_DRAW);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glBindVertexArray(0);
+    glEnable(GL_DEPTH_TEST);
+}
+
+void rgl_draw_multitriangle3d(V3f v1, V3f v2, V3f v3, Color c1, Color c2, Color c3, u32 flags)
+{
+    (void)flags;
+
+    Mat4 view = camera_matrix(renderer.camera);
+
+    f32 n = 0.1f, fr = 1000.0f;
+    f32 ar = (f32)platform_ctx.width / (f32)platform_ctx.height;
+    Mat4 proj = {
+        1.0f/ar, 0,    0,               0,
+        0,       1.0f, 0,               0,
+        0,       0,    (n+fr)/(fr-n),   2.0f*fr*n/(n-fr),
+        0,       0,    1,               0,
+    };
+
+    Mat4 mvp = mat4_mul(proj, view);
+
+    glUseProgram(rgl.shape3d_program);
+
+    s32 mvp_loc = glGetUniformLocation(rgl.shape3d_program, "u_mvp");
+    glUniformMatrix4fv(mvp_loc, 1, GL_TRUE, mvp.c);
+
+    V4f color1 = v4f(c1.r / 255.0f, c1.g / 255.0f, c1.b / 255.0f, c1.a / 255.0f);
+    V4f color2 = v4f(c2.r / 255.0f, c2.g / 255.0f, c2.b / 255.0f, c2.a / 255.0f);
+    V4f color3 = v4f(c3.r / 255.0f, c3.g / 255.0f, c3.b / 255.0f, c3.a / 255.0f);
+
+    ShapeVertex vertices[3] = {
+        {v1, color1},
+        {v2, color2},
+        {v3, color3},
+    };
+
+    glBindVertexArray(rgl.shape3d_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, rgl.shape3d_vbo);
+    glBufferData(GL_ARRAY_BUFFER, 3 * sizeof(ShapeVertex), vertices, GL_DYNAMIC_DRAW);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glBindVertexArray(0);
+}
+
 void rgl_draw_triangle3d(V3f v1, V3f v2, V3f v3, Color color, u32 flags)
 {
     (void)flags;
@@ -714,7 +735,7 @@ void rgl_draw_triangle3d(V3f v1, V3f v2, V3f v3, Color color, u32 flags)
     Mat4 view = camera_matrix(renderer.camera);
 
     f32 n = 0.1f, fr = 1000.0f;
-    f32 ar = (f32)SCREEN_WIDTH / (f32)SCREEN_HEIGHT;
+    f32 ar = (f32)platform_ctx.width / (f32)platform_ctx.height;
     Mat4 proj = {
         1.0f/ar, 0,    0,               0,
         0,       1.0f, 0,               0,
@@ -750,7 +771,7 @@ void rgl_draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color colo
     Mat4 view = camera_matrix(renderer.camera);
 
     f32 n = 0.1f, fr = 1000.0f;
-    f32 ar = (f32)SCREEN_WIDTH / (f32)SCREEN_HEIGHT;
+    f32 ar = (f32)platform_ctx.width / (f32)platform_ctx.height;
     Mat4 proj = {
         1.0f/ar, 0,    0,               0,
         0,       1.0f, 0,               0,
@@ -831,7 +852,7 @@ void rgl_immediate_flush(void)
     Mat4 view = camera_matrix(renderer.camera);
 
     f32 n = 0.1f, fr = 1000.0f;
-    f32 ar = (f32)SCREEN_WIDTH / (f32)SCREEN_HEIGHT;
+    f32 ar = (f32)platform_ctx.width / (f32)platform_ctx.height;
     Mat4 proj = {
         1.0f/ar, 0,    0,               0,
         0,       1.0f, 0,               0,

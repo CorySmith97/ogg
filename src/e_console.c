@@ -3,6 +3,7 @@
 #define COLOR_CONSOLE_TEXT  (Color){ 185, 185, 185, 255 }
 #define COLOR_CONSOLE_INPUT  (Color){ 15, 185, 185, 240 }
 #define COLOR_CONSOLE_INPUT_TEXT  (Color){ 0, 0, 0, 255 }
+#define COLOR_CONSOLE_TEXT_HIGHLIGHT (Color){ 185, 245, 245, 255 }
 
 #define MAX_CONSOLE_HEIGHT 500
 #define MIN_CONSOLE_HEIGHT 200
@@ -27,6 +28,7 @@ void console_init(void)
     console_register_command("test", test);
     console_register_command("mload", model_editor_load_model);
     console_register_command("backend", console_render_swap);
+    console_register_command("scene", console_change_scene);
 }
 
 void console_deinit(void)
@@ -34,10 +36,18 @@ void console_deinit(void)
     arena_release(console.arena);
 }
 
+f32 measure_text_mono(Font *f, const char *str, f32 size)
+{
+    f32 scale    = size / f->size;
+    f32 cell     = f->glyphs['M'].advance * scale;  // fixed cell width
+    return strlen(str) * cell;
+}
+
 // TODO this needs to be cleaned up. There needs to be a cleaned up interface with the platform 
 // layer.
 void console_update(f32 mouse_scroll)
 {
+    console.rec.w = platform_ctx.width;
     if (console.open && console.rec.h != MIN_CONSOLE_HEIGHT) {
         console.rec.h += CONSOLE_OPEN_SPEED;
     }
@@ -66,18 +76,16 @@ void console_update(f32 mouse_scroll)
                     if (fn) {
                         fn((String8){.data = &str.data[command_str.len+1], .len = str.len-command_str.len-1});
                     }
-                    platform_ctx.input_index = 0;
-                    memset(platform_ctx.input, 0, 1024);
+                    platform_clear_input_buffer();
                 } else {
                     console_write_log_alloc("Invalid Command: %s", str.data);
-                    platform_ctx.input_index = 0;
-                    memset(platform_ctx.input, 0, 1024);
+                    platform_clear_input_buffer();
                 }
             } 
         }
     }
     if (!console.open && console.rec.h == 0) {
-        platform_ctx.text_input_enabled = false;
+        platform_disabel_text_capture();
     }
     if (!console.open && console.rec.h != 0) {
         console.rec.h -= CONSOLE_OPEN_SPEED;
@@ -102,7 +110,7 @@ void console_draw(Font *font)
         return;
     }
 
-    f32 text_size = 16.0f;
+    f32 text_size = 20.0f;
     s32 total_lines = (s32)arrlen(console.lines);
 
     // reserve one row for input
@@ -128,7 +136,9 @@ void console_draw(Font *font)
     for (s32 i = start; i < end; i++) {
         s32 row = i - start; // 0..drawn_lines-1
         s32 y = (s32)(console.rec.h - text_size * (drawn_lines - row));
+        V2i offset = v2i(4, y + 1);
         draw_string8(font, console.lines[i], v2i(3, y), text_size, COLOR_CONSOLE_TEXT);
+        draw_string8(font, console.lines[i], offset, text_size, COLOR_BLUE);
     }
 
     draw_recs32((Recs32){
@@ -139,14 +149,17 @@ void console_draw(Font *font)
     }, 1.09f, COLOR_CONSOLE_INPUT);
 
     char *p = get_input_text();
+    V2i offset2 = v2i(4, console.rec.h + 1);
     draw_text(font, p, v2i(3, console.rec.h), text_size, COLOR_CONSOLE_INPUT_TEXT);
+    draw_text(font, p, offset2,               text_size, COLOR_CONSOLE_TEXT_HIGHLIGHT);
 
     s32 input_len = strlen(p);
+    f32 cursor_x = measure_text_mono(font, p, text_size);
 
     draw_recs32((Recs32){
-        .x = input_len * text_size,
+        .x = cursor_x,
         .y = console.rec.h,
-        .w = 16,
+        .w = 8,
         .h = text_size,
     }, 1.08f, color_scale(COLOR_PURPLE, (1 + sinf(renderer.time * 2))/2.0));
 }

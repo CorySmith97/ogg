@@ -3,7 +3,7 @@ Texture *plane_texture;
 
 void gizmo_init(void)
 {
-    plane_texture = load_texture_from_file("data/gizmo_plane.png", false);
+    plane_texture = load_texture_from_file("data/textures/gizmo_plane.png", false);
 }
 
 static void draw_ring(V3f center, V3f axis_u, V3f axis_v,
@@ -75,8 +75,8 @@ void gizmo_draw(Gizmo *gizmo)
 
     float len = 1.0f;
     float o   = 0.05f; // small offset along axis
-    float po   = 0.3f; // small offset along axis
-    float ps   = 0.10f; // small offset along axis
+    float po  = 0.3f; // small offset along axis
+    float ps  = 0.10f; // small offset along axis
     float t   = 0.06f; // half-thickness
     float ah  = 0.12f; // arrowhead length
     float aw  = 0.06f; // arrowhead half-width
@@ -87,6 +87,8 @@ void gizmo_draw(Gizmo *gizmo)
         switch (i) {
             case GIZMO_AXIS_X:
                 color = COLOR_RED;
+
+                //draw_gltf_model(get_gltf_model("arrow"), v3f(x+o, y, z), rotation_z(M_PI_2), false);
 
                 // Shaft
                 draw_rectangle3d(

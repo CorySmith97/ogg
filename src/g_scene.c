@@ -7,7 +7,12 @@ Scene_KV *scenes = NULL;
 
 void console_change_scene(String8 param)
 {
-    //gs.loaded_scene = scene_load(gs.arena, str8_to_cstring(param));
+    editor.scene = NULL;
+    char *name = str8_to_cstring(console.arena, param);
+    Scene *s = scene_load(editor.arena, name);
+    editor_set_scene(s);
+
+    console_write_log_alloc("Opened scene: %s", name);
 }
 
 /* Scene *scene_load(Arena *arena, String8 name)
@@ -18,6 +23,7 @@ void console_change_scene(String8 param)
 Scene *scene_new(Arena *arena, const char *name)
 {
     Scene *s = arena_push_struct(arena, Scene);
+    s->name = str8_fmt_alloc("%s", name);
     shput(scenes, name, s);
     return s;
 }
@@ -25,25 +31,37 @@ Scene *scene_new(Arena *arena, const char *name)
 Scene *scene_load(Arena *arena, const char *name)
 {
     Scene *s = arena_push_struct(arena, Scene);
+    char *buf = NULL;
+    asprintf(&buf, "data/level/%s.lvl", name);
+    console_write_log_alloc("Loading scene: %s", buf);
     //String8 open_and_read_entire_file(arena, name);
     FILE *f;
-    Defer(f = fopen(name, "w"), fclose(f)) {
+    Defer(f = fopen(buf, "r"), fclose(f)) {
+        if (!f) continue;
         s32 tile_len;
         read_bytes(f, &tile_len, sizeof(s32));
+        arrsetlen(s->tiles, tile_len);
         for (int i = 0; i < tile_len; i++) {
-            //tile_deserialize(f, &s->tiles[i]);
+            Tile *t = &s->tiles[i];
+            b32 ok = tile_deserialize(f, t);
+            if (!ok)
+                console_write_log_alloc("Failed to deserialize tile %d", i);
         }
 
         s32 static_len;
         read_bytes(f, &static_len, sizeof(s32));
         for (int i = 0; i < static_len; i++) {
-            //entity_deserialize(f, &s->static_entities[i]);
+            //entity_deserialize(editor.arena, f, &s->static_entities[i]);
         }
 
         s32 dynamic_len;
         read_bytes(f, &dynamic_len, sizeof(s32));
+        arrsetlen(s->dynamic_entities, dynamic_len);
         for (int i = 0; i < dynamic_len; i++) {
-            //entity_deserialize(f, &s->dynamic_entities[i]);
+            Entity *e = &s->dynamic_entities[i];
+            b32 ok = entity_deserialize(editor.arena, f, e);
+            if (!ok)
+                console_write_log_alloc("Failed to deserialize entity %d", i);
         }
     }
 
@@ -56,24 +74,33 @@ void scene_unload(Scene *s, const char *name)
 
 void scene_save(Scene *s, const char *name)
 {
+    char *buf = NULL;
+    asprintf(&buf, "data/level/%s.lvl", s->name.data);
     FILE *f;
-    Defer(f = fopen(name, "r"), fclose(f)) {
+    Defer(f = fopen(buf, "w"), fclose(f)) {
         s32 tile_len = arrlen(s->tiles);
         write_bytes(f, &tile_len, sizeof(s32));
         for (int i = 0; i < arrlen(s->tiles); i++) {
-            tile_serialize(f, &s->tiles[i]);
+            b32 ok = tile_serialize(f, &s->tiles[i]);
+            if (!ok)
+                console_write_log_alloc("Failed to serialize tile %d", i);
         }
         s32 static_len = arrlen(s->static_entities);
         write_bytes(f, &static_len, sizeof(s32));
         for (int i = 0; i < arrlen(s->static_entities); i++) {
-            entity_serialize(f, &s->static_entities[i]);
+            b32 ok = entity_serialize(f, &s->static_entities[i]);
+            if (!ok)
+                console_write_log_alloc("Failed to serialize tile %d", i);
         }
         s32 dynamic_len = arrlen(s->dynamic_entities);
         write_bytes(f, &dynamic_len, sizeof(s32));
         for (int i = 0; i < arrlen(s->dynamic_entities); i++) {
-            entity_serialize(f, &s->dynamic_entities[i]);
+            b32 ok = entity_serialize(f, &s->dynamic_entities[i]);
+            if (!ok)
+                console_write_log_alloc("Failed to serialize tile %d", i);
         }
     }
+    free(buf);
 
 }
 

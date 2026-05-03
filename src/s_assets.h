@@ -77,6 +77,22 @@ typedef struct {
     Texture *diffuse_texture;   // map_Kd
 } SimpleMtl;
 
+typedef struct {
+    unsigned int codepoint;
+ 
+    // UV coords in the atlas (0..1)
+    float u0, v0, u1, v1;
+ 
+    // Normalised offsets to apply when placing the quad (in pixels at FONT_SIZE)
+    float x_off;   // from cursor to left edge of quad
+    float y_off;   // from baseline to top edge of quad
+    float width;   // quad width  in pixels
+    float height;  // quad height in pixels
+ 
+    // How far to advance the cursor after this glyph (pixels at FONT_SIZE)
+    float advance;
+} GlyphInfo;
+
 /* Fonts are monospaces texture maps. Each character is the same size "sprite"
  */
 typedef struct {
@@ -86,6 +102,9 @@ typedef struct {
     int         character_height;
     Orientation orientation;
     Texture    *texture;
+    GlyphInfo glyphs[256];   // loaded from sdf_atlas.bin
+    f32       size;          // the FONT_SIZE the atlas was baked at
+    s32       ascent;        // pixels from top of cell to baseline
 } Font;
 
 typedef struct {

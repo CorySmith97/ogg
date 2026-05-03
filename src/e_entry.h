@@ -5,6 +5,7 @@ static struct {
     Arena  *arena;
     Camera camera;
     s32    selected_entity;
+    s32    selected_tile;
     s32    selected_axis;
     Gizmo  gizmo;
     f32    camera_speed;
@@ -20,6 +21,7 @@ static struct {
     b32    tiles_only;
     b32    clicked_gizmo;
     b32    clicked_entity;
+    b32    clicked_tile;
 } editor = {
     .gizmo = {
         .attached = false,

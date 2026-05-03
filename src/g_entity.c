@@ -38,14 +38,14 @@ void entity_update(Entity *e)
     if (e->anim_data)
         anim_update(&e->anim, renderer.dt * 1000.0f);
 
-    e->update_fn(e);
+    if (e->update_fn) e->update_fn(e);
 }
 
 void entity_draw(Entity *e)
 {
     if (e->anim_data)
         anim_apply(&e->anim, e->model);
-    draw_model(e->model, e->position, e->rotation, e->hit);
+    draw_model(e->model, e->position, mat3_mul(e->rotation, mat3_scale(e->scale)), e->hit);
 }
 
 RayCollision entity_mouse_ray_collision(Entity *e, Ray mouse_ray)
@@ -72,21 +72,16 @@ RayCollision entity_mouse_ray_collision(Entity *e, Ray mouse_ray)
     return collision;
 }
 
-
-// ----------------------------------------------------------------
-// Serializer
-// ----------------------------------------------------------------
-
 bool entity_serialize(FILE *f, const Entity *e) {
     bool ok = true;
 
-    // POD fields
     ok &= write_bytes(f, &e->tag,              sizeof(e->tag));
-    // model            -- SKIPPED
-    ok &= write_string(f,  e->model_tag);           // const char *
+
+    ok &= write_string(f,  e->model_tag);   
     ok &= write_bytes(f, &e->position,         sizeof(e->position));
     ok &= write_bytes(f, &e->target,           sizeof(e->target));
     ok &= write_bytes(f, &e->rotation,         sizeof(e->rotation));
+    ok &= write_bytes(f, &e->scale,            sizeof(e->scale));
     ok &= write_bytes(f, &e->aabb,             sizeof(e->aabb));
     ok &= write_bytes(f, &e->hit,              sizeof(e->hit));
     ok &= write_bytes(f, &e->yaw,              sizeof(e->yaw));
@@ -98,32 +93,26 @@ bool entity_serialize(FILE *f, const Entity *e) {
     ok &= write_bytes(f, &e->level,            sizeof(e->level));
     ok &= write_bytes(f, &e->movement_speed,   sizeof(e->movement_speed));
     ok &= write_bytes(f, &e->spellcaster_lvl,  sizeof(e->spellcaster_lvl));
-    // update_fn        -- SKIPPED
 
-    fclose(f);
     return ok;
 }
 
-// ----------------------------------------------------------------
-// Deserializer
-// ----------------------------------------------------------------
-
-// model_tag_buf / buf_size: caller-owned buffer for the model_tag string.
-// After loading, e->model and e->update_fn are set to NULL.
-bool entity_deserialize(Arena *arena, Entity *e, const char *path,
-                        char *model_tag_buf, size_t model_tag_buf_size) {
-    FILE *f = fopen(path, "rb");
-    if (!f) return false;
-
+bool entity_deserialize(Arena *arena, FILE *f, Entity *e) {
     bool ok = true;
+    char buf[1024];
 
     ok &= read_bytes(f, &e->tag,             sizeof(e->tag));
-    e->model = NULL;                                         // not serialized
-    ok &= read_string(f, model_tag_buf, model_tag_buf_size);
-    e->model_tag = ok ? model_tag_buf : NULL;
+    e->model = NULL;                                     
+    ok &= read_string(f, buf, 1024);
+    size_t len = strlen(buf) + 1;
+    e->model_tag = malloc(len);
+    memcpy(e->model_tag, buf, len);
+    e->model = get_model(e->model_tag);
+
     ok &= read_bytes(f, &e->position,        sizeof(e->position));
     ok &= read_bytes(f, &e->target,          sizeof(e->target));
     ok &= read_bytes(f, &e->rotation,        sizeof(e->rotation));
+    ok &= read_bytes(f, &e->scale,           sizeof(e->scale));
     ok &= read_bytes(f, &e->aabb,            sizeof(e->aabb));
     ok &= read_bytes(f, &e->hit,             sizeof(e->hit));
     ok &= read_bytes(f, &e->yaw,             sizeof(e->yaw));
@@ -135,8 +124,7 @@ bool entity_deserialize(Arena *arena, Entity *e, const char *path,
     ok &= read_bytes(f, &e->level,           sizeof(e->level));
     ok &= read_bytes(f, &e->movement_speed,  sizeof(e->movement_speed));
     ok &= read_bytes(f, &e->spellcaster_lvl, sizeof(e->spellcaster_lvl));
-    e->update_fn = NULL;                                     // not serialized
+    e->update_fn = NULL;                                
 
-    fclose(f);
     return ok;
 }

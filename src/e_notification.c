@@ -29,7 +29,7 @@ void notifications_flush(Font *font)
 
     // Stack grows upward from center
     s32 total_h = len * item_h;
-    s32 start_y = (SCREEN_HEIGHT / 2) - (total_h / 2);
+    s32 start_y = (platform_ctx.height / 2) - (total_h / 2);
 
     for (s32 i = 0; i < len; i++) {
         Notification *n = &notification_queue.list[i];

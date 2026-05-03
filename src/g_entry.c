@@ -108,6 +108,7 @@ void game_init(void)
             .target = v3f(0,0,0),
             .rotation = mat3_identity(),
             .update_fn = update_shopkeeper,
+            .scale = 1.0,
             };
     Entity e2 = (Entity){
             .model = get_model("shopkeeper"),
@@ -116,6 +117,7 @@ void game_init(void)
             .target = v3f(2,0,4),
             .rotation = mat3_identity(),
             .update_fn = update_shopkeeper,
+            .scale = 1.0,
             };
     Entity e3 = (Entity){
             .model = get_model("shopkeeper"),
@@ -124,6 +126,7 @@ void game_init(void)
             .target = v3f(8,0,4),
             .rotation = mat3_identity(),
             .update_fn = update_shopkeeper,
+            .scale = 1.0,
             };
 
     entity_anim_init(&e, 
@@ -140,7 +143,7 @@ void game_init(void)
     arrput(scene->dynamic_entities, e2);
     arrput(scene->dynamic_entities, e3);
     assert(arrlen(scene->dynamic_entities) == 3);
-    gs.font = load_font("data/atlas.png", 16, 32);
+    gs.font = load_sdf_font("data/fonts/sdf_atlas.png", "data/fonts/sdf_atlas.bin");
     m_editor.hud_font = gs.font;
     ui_init(gs.font);
 
@@ -148,7 +151,7 @@ void game_init(void)
         for (s32 j = 0; j < 10; j++) {
             f32 x = i + 0.5;
             f32 z = j + 0.5;
-            arrput(scene->tiles, (Tile){.position = v3f(x, 0, z)});
+            arrput(scene->tiles, ((Tile){.position = v3f(x, 0, z), .color = COLOR_BROWN}));
         }
     }
 
@@ -237,13 +240,14 @@ void game_frame(void)
             break;
         case GAME_STATE_EDITOR:
             editor_camera_update();
-            editor_draw();
+            draw_gltf_model(get_gltf_model("ci"), v3f(0,0,0), mat3_identity(), false);
 
             immediate_push_v(v3f(-1, 0, 5), COLOR_RED);
             immediate_push_v(v3f(1,  0, 5), COLOR_PURPLE);
             immediate_push_v(v3f(0,  1, 5), COLOR_GREEN);
             immediate_flush();
 
+            editor_draw();
             break;
         case GAME_STATE_PAUSE:
             break;
@@ -252,18 +256,19 @@ void game_frame(void)
     }
 
     console_update(mouse_scroll);
-    console_draw(gs.font);
-
-    notifications_update(renderer.dt);
-    notifications_flush(gs.font);
-
-    SectionStart("Flush");
-    renderer_flush();
-    SectionEnd("Flush");
 
     if (!console.open) {
         ui_flush();
     }
+
+    notifications_update(renderer.dt);
+    notifications_flush(gs.font);
+
+    console_draw(gs.font);
+
+    SectionStart("Flush");
+    renderer_flush();
+    SectionEnd("Flush");
 
     gs.sun.position = gs.camera.position;
     SectionEnd("Frame");
@@ -416,7 +421,7 @@ V2f cartesian_to_spherical(V3f v)
 
 void game_ui(void) 
 {
-    Recs32 bottom_view_outline = {.x = 0, .y = SCREEN_HEIGHT - 75 - 5, .w = SCREEN_WIDTH, .h = 80};
+    Recs32 bottom_view_outline = {.x = 0, .y = platform_ctx.height - 75 - 5, .w = platform_ctx.width, .h = 80};
     draw_recs32(bottom_view_outline, 0.11, COLOR_BLACK);
     Recs32 bottom_view = {.x = 0, .y = SCREEN_HEIGHT - 75, .w = SCREEN_WIDTH, .h = 75};
     draw_recs32(bottom_view, 0.1, COLOR_WHITE);

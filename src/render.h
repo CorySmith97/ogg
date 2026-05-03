@@ -104,6 +104,8 @@ void draw_recs32(Recs32 rec, f32 z, Color color);
 void draw_texture_w_uvs(Texture *tex, Recs32 rec, V3f uvs[4], Color colors[4], u32 flags);
 void draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags);
 void draw_triangle3d(V3f v1, V3f v2, V3f v3, Color color, u32 flags);
+void draw_multitriangle(V3f v1, V3f v2, V3f v3, Color c1, Color c2, Color c3, u32 flags);
+void draw_multitriangle3d(V3f v1, V3f v2, V3f v3, Color c1, Color c2, Color c3, u32 flags);
 void draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags);
 void draw_string8(Font *f, String8 str, V2i pos, f32 size, Color color);
 void draw_model_triangle_selection(Asset_Model *model, V3f position, Mat3 rotation, b32 *selected);

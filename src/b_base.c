@@ -67,11 +67,6 @@ String8 str8_fmt_alloc(const char *fmt, ...)
 }
 
 
-s32 measure_text(const char *str)
-{
-    return strnlen(str, MAX_STR_LEN);
-}
-
 Color color_scale(Color c, double value)
 {
     return (Color){

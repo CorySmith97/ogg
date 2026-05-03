@@ -15,7 +15,7 @@ void tile_draw(Tile *t)
     V3f v3 = v3f(t->position.x + 0.5, t->position.y - 0.01, t->position.z - 0.5);
     V3f v4 = v3f(t->position.x + 0.5, t->position.y - 0.01, t->position.z + 0.5);
 
-    draw_rectangle3d(v1, v2, v3, v4, COLOR_BROWN, 0);
+    draw_rectangle3d(v1, v2, v3, v4, t->color, 0);
 }
 
 
@@ -42,5 +42,22 @@ RayCollision tile_mouse_ray_collision(Tile *t, Ray mouse_ray)
 
 b32 tile_serialize(FILE *f, const Tile *t)
 {
-    
+    b32 ok = true;
+
+    ok &= write_bytes(f, &t->rec, sizeof(t->rec));
+    ok &= write_bytes(f, &t->position, sizeof(t->position));
+    ok &= write_bytes(f, &t->color, sizeof(t->color));
+
+    return ok;
+}
+
+b32 tile_deserialize(FILE *f, Tile *t)
+{
+    b32 ok = true;
+
+    ok &= read_bytes(f, &t->rec, sizeof(t->rec));
+    ok &= read_bytes(f, &t->position, sizeof(t->position));
+    ok &= read_bytes(f, &t->color, sizeof(t->color));
+
+    return ok;
 }

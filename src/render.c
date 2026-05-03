@@ -56,6 +56,8 @@ void change_camera(Camera *camera)
     renderer.camera = camera;
 }
 
+// todo:cs this goes for both of the model functions. There needs to be a fallback if no texture is found.
+// I want to be able to force a draw of a certain color.
 void draw_model(Asset_Model *model, V3f position, Mat3 rotation, b32 selected)
 {
     switch (renderer.backend) {
@@ -64,6 +66,22 @@ void draw_model(Asset_Model *model, V3f position, Mat3 rotation, b32 selected)
         break;
         case BACKEND_OPENGL:
             rgl_draw_model(model, position, rotation, selected);
+        break;
+    }
+}
+
+void draw_gltf_model(GLTF_Model *model, V3f position, Mat3 rotation, b32 selected)
+{
+    switch (renderer.backend) {
+        case BACKEND_SOFTWARE:
+            for (s32 i = 0; i < arrlen(model->primitives); i++) {
+                rs_draw_model(model->primitives[i], position, rotation, selected);
+            }
+        break;
+        case BACKEND_OPENGL:
+            for (s32 i = 0; i < arrlen(model->primitives); i++) {
+                rgl_draw_model(model->primitives[i], position, rotation, selected);
+            }
         break;
     }
 }
@@ -149,6 +167,30 @@ void draw_texture_w_uvs(Texture *tex, Recs32 rec, V3f uvs[4], Color colors[4], u
             rgl_draw_texture_w_uvs(tex, rec, uvs, colors, flags);
         break;
     }
+}
+
+void draw_multitriangle(V3f v1, V3f v2, V3f v3, Color c1, Color c2, Color c3, u32 flags)
+{
+    switch (renderer.backend) {
+        case BACKEND_SOFTWARE:
+        break;
+        case BACKEND_OPENGL:
+            rgl_draw_multitriangle(v1, v2, v3, c1, c2, c3, flags);
+        break;
+    }
+    
+}
+
+void draw_multitriangle3d(V3f v1, V3f v2, V3f v3, Color c1, Color c2, Color c3, u32 flags)
+{
+    switch (renderer.backend) {
+        case BACKEND_SOFTWARE:
+        break;
+        case BACKEND_OPENGL:
+            rgl_draw_multitriangle3d(v1, v2, v3, c1, c2, c3, flags);
+        break;
+    }
+    
 }
 
 void draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags)

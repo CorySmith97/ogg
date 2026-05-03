@@ -15,6 +15,8 @@ void load_asset_catelog(void)
     // GLTF MODELS
     load_and_store_gltf_model("tree", "data/gltf/tree.gltf");
     load_and_store_gltf_model("grasstile", "data/gltf/grass.gltf");
+    load_and_store_gltf_model("arrow", "data/gltf/arrow.gltf");
+    load_and_store_gltf_model("ci", "data/gltf/unnamed_2.gltf");
 
     // OBJ MODELS
     load_and_store_model("shopkeeper", "data/shopkeeper.obj");
@@ -55,6 +57,18 @@ Texture *get_texture(const char *name)
     val = shget(textures, name);
     if (val) return val;
     else return NULL;
+}
+
+void load_and_store_gltf_model(const char *name, const char *path)
+{
+    if (shget(gltf_assets, name)) return;
+    GLTF_Model *val = load_gltf_model(path);
+    if (val) shput(gltf_assets, name, val);
+}
+
+GLTF_Model *get_gltf_model(const char *name)
+{
+    return shget(gltf_assets, name);
 }
 
 Asset_Model *get_model(const char *name)
@@ -122,8 +136,8 @@ static void texture_upload_gl(Texture *tex)
     glBindTexture(GL_TEXTURE_2D, tex->id);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexImage2D(GL_TEXTURE_2D, 0, fmt,
                  tex->width, tex->height, 0,
                  fmt, GL_UNSIGNED_BYTE, tex->data);
@@ -308,6 +322,27 @@ Font *load_font(const char *file, s32 cwidth, s32 cheight)
     font->character_height = cheight;
     font->texture = load_texture_from_file(file, false);
     return font;
+}
+
+Font *load_sdf_font(const char *png_path, const char *bin_path)
+{
+    Font *f = malloc(sizeof(Font));
+
+    f->texture = load_texture_from_file(png_path, false);  // your existing loader, needs GL_LINEAR
+
+    FILE *fp = fopen(bin_path, "rb");
+    u32 num_glyphs, atlas_w, atlas_h, font_size, baked_ascent;
+    fread(&num_glyphs, sizeof(u32), 1, fp);
+    fread(&atlas_w,    sizeof(u32), 1, fp);
+    fread(&atlas_h,    sizeof(u32), 1, fp);
+    fread(&font_size,  sizeof(u32), 1, fp);
+    fread(&baked_ascent,sizeof(u32), 1, fp);  // add this
+    fread(f->glyphs,   sizeof(GlyphInfo), num_glyphs, fp);
+    fclose(fp);
+
+    f->ascent = (f32)baked_ascent;
+    f->size = (f32)font_size;
+    return f;
 }
 
 static Texture *load_texture_from_memory(const u8 *buf, int len)
@@ -667,16 +702,4 @@ GLTF_Model *load_gltf_model(const char *path)
     console_write_log_alloc("Loaded gltf %s (%u prims, %s)", path, gltf->prim_count,
                             gltf->anim_data ? "animated" : "static");
     return gltf;
-}
-
-void load_and_store_gltf_model(const char *name, const char *path)
-{
-    if (shget(gltf_assets, name)) return;
-    GLTF_Model *val = load_gltf_model(path);
-    if (val) shput(gltf_assets, name, val);
-}
-
-GLTF_Model *get_gltf_model(const char *name)
-{
-    return shget(gltf_assets, name);
 }

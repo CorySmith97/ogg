@@ -45,7 +45,7 @@ typedef s64      b64;
 #define FlagExists(n, f) (((n) & (f)) == (f))
 #define FlagEquals(n, f) (((n) == (f)))
 
-#define Defer(n, f) for ((n);;(f))
+#define Defer(n, f) for (int _i_ = ((n), 0);!_i_; _i_ += 1, (f))
 
 #define KB(n) (((u64)(n)) << 10)
 #define MB(n) (((u64)(n)) << 20)
@@ -250,10 +250,6 @@ String8 str8_fmt_alloc(const char *fmt, ...);
 // @todo:cs arena. String that is split should be an allocated string8
 String8 str8_split(String8 str, char delimeter);
 String8 open_and_read_entire_file(Arena *arena, const char *file_name);
-
-// @todo:cs Implement String8
-s32 measure_text(const char *str);
-
 
 #define Catelog(T) struct{String8 key; T* value;}
 
