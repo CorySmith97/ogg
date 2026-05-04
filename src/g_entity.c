@@ -1,8 +1,35 @@
+
+Entity *get_selected_entity(Entity_Manager *manager)
+{
+    return &manager->entities[manager->selected_entity];
+}
+
+Entity *entity_iter_mouse_ray_collision(Entity_Manager *manager, Ray mouse_ray)
+{
+    RayCollision collision = {0};
+    s32 best_dist = 1000000000;
+    Entity *best = NULL;
+    for (s32 i = 0; i < arrlen(manager->entities); i++) {
+        Entity *e = &manager->entities[i];
+        collision = entity_mouse_ray_collision(e, mouse_ray);
+        if (collision.hit) {
+            if (collision.distance < best_dist) best = e;
+        }
+    }
+
+    return best;
+}
+
+void add_new_entity(Entity_Manager *manager, Entity e)
+{
+    arrput(manager->entities, e);
+}
+
 static void update_shopkeeper(Entity *e)
 {
-	//static f32 angle = 0;
-	//e->rotation = rotation_y(angle);
-	//angle += 0.01;
+	static f32 angle = 0;
+	e->rotation = rotation_y(angle);
+	angle += 0.01;
 }
 
 void entity_init(void)

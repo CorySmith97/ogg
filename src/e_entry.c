@@ -211,16 +211,16 @@ void editor_draw(void)
                     static int selected = 0;
 
 
-                    int count = shlen(assets);
+                    int count = shlen(gltf_assets);
                     const char **keys = (const char **)alloca(count * sizeof(char *));
                     for (int i = 0; i < count; i++) {
-                        keys[i] = assets[i].key;
+                        keys[i] = gltf_assets[i].key;
                     }
                     nk_layout_row_dynamic(ctx, 25, 1);
                     selected = nk_combo(ctx, keys, count, selected, 25, nk_vec2(200, 150));
 
                     if (selected != 0) {
-                        e->model = shget(assets, keys[selected]);
+                        e->model = shget(gltf_assets, keys[selected]);
                         selected = 0;
                     }
 

@@ -224,7 +224,11 @@ void draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color color, u
             rs_draw_texture3d(tex, bl, br, tl, tr, color, flags);
         break;
         case BACKEND_OPENGL:
+            if (FlagExists(flags, TRIANGLE_WRITE_OVER_Z)) {
+                glDisable(GL_DEPTH_TEST);
+            }
             rgl_draw_texture3d(tex, bl, br, tl, tr, color, flags);
+            glEnable(GL_DEPTH_TEST);
         break;
     }
 }

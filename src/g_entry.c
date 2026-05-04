@@ -15,10 +15,7 @@ static struct {
     s32       player_index;
     s32       selected_entity;
     s32       selected_tile;
-    Gizmo_Axis selected_axis;
-    Gizmo     gizmo;
-    s32      *initiative_order
-;
+    s32      *initiative_order;
 
     Camera    camera;
     f32       camera_speed;
@@ -37,19 +34,7 @@ static struct {
     // This is all editor stuff that should be moved
     .selected_entity = -1,
     .selected_tile = -1,
-    .selected_axis   = -1,
     .player_index = 0,
-    .gizmo = {
-        .attached = false,
-        .axis = {
-            GIZMO_AXIS_X,
-            GIZMO_AXIS_Y,
-            GIZMO_AXIS_Z,
-            GIZMO_AXIS_XY,
-            GIZMO_AXIS_YZ,
-            GIZMO_AXIS_XZ
-        },
-    },
     .camera = {
         .target = {0, 0, 0},
         .position = {0,2,-2},
@@ -208,7 +193,6 @@ void game_frame(void)
     // If console is open, the key capture goes to the console instead of anything else
     switch(gs.state) {
         case GAME_STATE_GAMEPLAY:
-            gs.selected_axis = -1;
             gs.selected_entity = -1;
             if (gs.loaded_scene) {
                 scene_update(gs.loaded_scene);
@@ -222,12 +206,10 @@ void game_frame(void)
             break;
         case GAME_STATE_EDITOR:
             editor_camera_update();
-            draw_gltf_model(get_gltf_model("ci"), v3f(0,0,0), mat3_identity(), false);
-
-            immediate_push_v(v3f(-1, 0, 5), COLOR_RED);
+/*             immediate_push_v(v3f(-1, 0, 5), COLOR_RED);
             immediate_push_v(v3f(1,  0, 5), COLOR_PURPLE);
             immediate_push_v(v3f(0,  1, 5), COLOR_GREEN);
-            immediate_flush();
+            immediate_flush(); */
 
             editor_draw();
             break;

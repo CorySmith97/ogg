@@ -12,11 +12,17 @@ typedef enum {
     ENTITY_TAG_COUNT,
 } Entity_Tag;
 
+typedef enum {
+    ENTITY_STATE_INACTIVE = 1 << 0,
+} Entity_State;
+
 typedef struct Entity{
     Entity_Tag   tag;
     // NON-SERIALIZABLE
     GLTF_Model  *model;
 
+    // Lookup for the tag at runtime
+    // @todo:cs make this a String8
     const char   *model_tag;
     V3f          position;
     V3f          target;
@@ -26,8 +32,10 @@ typedef struct Entity{
     b32          hit;
     f32          yaw;
     b32          update_disabled;
-
     b32          selected_player;
+
+    u64          state;
+    s32          initiative_place;
 
     AncestoryHeritage race;
     BaseClass         base_class;
@@ -52,6 +60,7 @@ typedef struct {
 
 Entity *get_selected_entity(Entity_Manager *manager);
 Entity *entity_iter_mouse_ray_collision(Entity_Manager *manager, Ray mouse_ray);
+void    add_new_entity(Entity_Manager *manager, Entity e);
 
 b32 dump_entity_manager(Entity_Manager *manager);
 
