@@ -200,7 +200,7 @@ void editor_draw(void)
 
     if (show_demo && entity_panel_open && !console.open) {
         if (nk_begin(ctx, "Entity",
-                     nk_rect(0, 40, platform_ctx.width / 4, platform_ctx.height / 2), panel_flags))
+                     nk_rect(0, 40, platform_width() / 4, platform_height() / 2), panel_flags))
         {
             if (editor.selected_entity >= 0) {
                 Entity *e = &editor.scene->dynamic_entities[editor.selected_entity];

@@ -371,6 +371,27 @@ void platform_disable_text_capture(void)
     platform_ctx.text_input_enabled = false;
 }
 
+String8 platform_get_text_buffer(Arena *arena)
+{
+    return str8_from_cstring(arena, platform_ctx.input);
+}
+
+String8 platform_get_clipboard(Arena *arena)
+{
+    char *str = SDL_GetClipboardText();
+    String8 ret = str8_from_cstring(arena, str);
+    SDL_free(str);
+
+    return ret;
+}
+
+void platform_paste_text(String8 str)
+{
+    
+    memcpy(&platform_ctx.input[platform_ctx.input_index], str.data, str.len);
+    platform_ctx.input_index += str.len;
+}
+
 u64 get_time()
 {
     return SDL_GetPerformanceCounter();

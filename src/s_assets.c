@@ -17,6 +17,8 @@ void load_asset_catelog(void)
     load_and_store_gltf_model("grasstile", "data/gltf/grass.gltf");
     load_and_store_gltf_model("arrow", "data/gltf/arrow.gltf");
     load_and_store_gltf_model("ci", "data/gltf/unnamed_2.gltf");
+    load_and_store_gltf_model("scene", "data/gltf/scene.gltf");
+    load_and_store_gltf_model("simple_cube", "data/gltf/simple_cube.gltf");
 
     // OBJ MODELS
     load_and_store_model("shopkeeper", "data/shopkeeper.obj");

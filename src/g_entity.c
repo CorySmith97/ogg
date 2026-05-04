@@ -45,27 +45,32 @@ void entity_draw(Entity *e)
 {
     if (e->anim_data)
         anim_apply(&e->anim, e->model);
-    draw_model(e->model, e->position, mat3_mul(e->rotation, mat3_scale(e->scale)), e->hit);
+    for (s32 i = 0; i < arrlen(e->model->primitives); i++) {
+        draw_model(e->model->primitives[i], e->position, mat3_mul(e->rotation, mat3_scale(e->scale)), e->hit);
+    }
 }
 
 RayCollision entity_mouse_ray_collision(Entity *e, Ray mouse_ray)
 {
     RayCollision collision = {0};
-    for (s32 i = 0; i < arrlen(e->model->vertices); i += 3) {
-        Vertex v1 = e->model->vertices[i];
-        Vertex v2 = e->model->vertices[i + 1];
-        Vertex v3 = e->model->vertices[i + 2];
+    for (s32 i = 0; i < arrlen(e->model->primitives); i += 1) {
+        Asset_Model *prim = e->model->primitives[i];
+        for (s32 j = 0; j < arrlen(prim->vertices); j += 3) {
+            Vertex v1 = prim->vertices[j];
+            Vertex v2 = prim->vertices[j + 1];
+            Vertex v3 = prim->vertices[j + 2];
 
-        V3f p1 = v3f_mul_mat3(v1.position, e->rotation);
-        V3f p2 = v3f_mul_mat3(v2.position, e->rotation);
-        V3f p3 = v3f_mul_mat3(v3.position, e->rotation);
-        p1 = v3f_add(p1, e->position);
-        p2 = v3f_add(p2, e->position);
-        p3 = v3f_add(p3, e->position);
+            V3f p1 = v3f_mul_mat3(v1.position, e->rotation);
+            V3f p2 = v3f_mul_mat3(v2.position, e->rotation);
+            V3f p3 = v3f_mul_mat3(v3.position, e->rotation);
+            p1 = v3f_add(p1, e->position);
+            p2 = v3f_add(p2, e->position);
+            p3 = v3f_add(p3, e->position);
 
-        RayCollision tri_hit = get_ray_collision_triangle(mouse_ray, p1, p2, p3);
-        if (tri_hit.hit) {
-            if ((!collision.hit) || (collision.distance > tri_hit.distance)) collision = tri_hit;
+            RayCollision tri_hit = get_ray_collision_triangle(mouse_ray, p1, p2, p3);
+            if (tri_hit.hit) {
+                if ((!collision.hit) || (collision.distance > tri_hit.distance)) collision = tri_hit;
+            }
         }
     }
 

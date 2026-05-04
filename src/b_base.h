@@ -237,7 +237,6 @@ static void temp_end(Temp temp);
 #define push_array(a, T, c) push_array_aligned(a, T, c, max(8, _Alignof(T)))
 #define arena_push_struct(a, T) push_array_aligned(a, T, 1, max(8, _Alignof(T)))
 
-
 typedef struct {
     u8 *data;
     u32 len;
@@ -247,6 +246,7 @@ typedef struct {
 
 // @todo:cs Implement with arenas
 String8 str8_fmt_alloc(const char *fmt, ...);
+String8 str8_from_cstring(Arena *arena, const char *cstring);
 // @todo:cs arena. String that is split should be an allocated string8
 String8 str8_split(String8 str, char delimeter);
 String8 open_and_read_entire_file(Arena *arena, const char *file_name);

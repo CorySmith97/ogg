@@ -282,7 +282,7 @@ void rgl_render_init(void)
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glViewport(0, 0, platform_ctx.width, platform_ctx.height);
+    glViewport(0, 0, platform_width(), platform_height());
 
     u8 white[4] = {255, 255, 255, 255};
     glGenTextures(1, &rgl.fallback_texture);
@@ -336,7 +336,7 @@ void rgl_draw_model(Asset_Model *model, V3f position, Mat3 rotation, b32 selecte
     Mat4 view = camera_matrix(renderer.camera);
 
     f32 n = 0.1f, fr = 1000.0f;
-    f32 ar = (f32)platform_ctx.width / (f32)platform_ctx.height;
+    f32 ar = (f32)platform_width() / (f32)platform_height();
     Mat4 proj = {
         1.0f/ar, 0,    0,               0,
         0,       1.0f, 0,               0,
@@ -385,7 +385,7 @@ void rgl_draw_texture(Texture *tex, Recs32 rec)
     glUseProgram(rgl.tex2d_program);
 
     s32 screen_loc = glGetUniformLocation(rgl.tex2d_program, "u_screen");
-    glUniform2f(screen_loc, (f32)platform_ctx.width, (f32)platform_ctx.height);
+    glUniform2f(screen_loc, (f32)platform_width(), (f32)platform_height());
 
     s32 tint_loc = glGetUniformLocation(rgl.tex2d_program, "u_tint");
     glUniform4f(tint_loc, 1.0f, 1.0f, 1.0f, 1.0f);
@@ -424,7 +424,7 @@ void rgl_draw_text(Font *f, const char *str, V2i pos, f32 size, Color color)
     f32 scale = size / f->size;  // ratio between desired size and baked size
 
     s32 screen_loc = glGetUniformLocation(rgl.text_program, "u_screen");
-    glUniform2f(screen_loc, (f32)platform_ctx.width, (f32)platform_ctx.height);
+    glUniform2f(screen_loc, (f32)platform_width(), (f32)platform_height());
 
     s32 color_loc = glGetUniformLocation(rgl.text_program, "u_color");
     glUniform4f(color_loc,
@@ -492,7 +492,7 @@ void rgl_draw_string8(Font *f, String8 str, V2i pos, f32 size, Color color)
     f32 scale = size / f->size;  // ratio between desired size and baked size
 
     s32 screen_loc = glGetUniformLocation(rgl.text_program, "u_screen");
-    glUniform2f(screen_loc, (f32)platform_ctx.width, (f32)platform_ctx.height);
+    glUniform2f(screen_loc, (f32)platform_width(), (f32)platform_height());
 
     s32 color_loc = glGetUniformLocation(rgl.text_program, "u_color");
     glUniform4f(color_loc,
@@ -556,7 +556,7 @@ void rgl_draw_recs32(Recs32 rec, f32 z, Color color)
     u32 count = 6;
 
     s32 screen_loc = glGetUniformLocation(rgl.shape_program, "u_screen");
-    glUniform2f(screen_loc, (f32)platform_ctx.width, (f32)platform_ctx.height);
+    glUniform2f(screen_loc, (f32)platform_width(), (f32)platform_height());
 
     V4f c = v4f(color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f);
 
@@ -590,7 +590,7 @@ void rgl_draw_texture_w_uvs(Texture *tex, Recs32 rec, V3f uvs[4], Color colors[4
     glUseProgram(rgl.tex2d_program);
 
     s32 screen_loc = glGetUniformLocation(rgl.tex2d_program, "u_screen");
-    glUniform2f(screen_loc, (f32)platform_ctx.width, (f32)platform_ctx.height);
+    glUniform2f(screen_loc, (f32)platform_width(), (f32)platform_height());
 
     s32 tint_loc = glGetUniformLocation(rgl.tex2d_program, "u_tint");
     glUniform4f(tint_loc,
@@ -629,7 +629,7 @@ void rgl_draw_rectangle3d(V3f bl, V3f br, V3f tl, V3f tr, Color color, u32 flags
     Mat4 view = camera_matrix(renderer.camera);
 
     f32 n = 0.1f, fr = 1000.0f;
-    f32 ar = (f32)platform_ctx.width / (f32)platform_ctx.height;
+    f32 ar = (f32)platform_width() / (f32)platform_height();
     Mat4 proj = {
         1.0f/ar, 0,    0,               0,
         0,       1.0f, 0,               0,
@@ -668,7 +668,7 @@ void rgl_draw_multitriangle(V3f v1, V3f v2, V3f v3, Color c1, Color c2, Color c3
     glUseProgram(rgl.shape_program);
 
     s32 screen_loc = glGetUniformLocation(rgl.tex2d_program, "u_screen");
-    glUniform2f(screen_loc, (f32)platform_ctx.width, (f32)platform_ctx.height);
+    glUniform2f(screen_loc, (f32)platform_width(), (f32)platform_height());
 
     V4f color1 = v4f(c1.r / 255.0f, c1.g / 255.0f, c1.b / 255.0f, c1.a / 255.0f);
     V4f color2 = v4f(c2.r / 255.0f, c2.g / 255.0f, c2.b / 255.0f, c2.a / 255.0f);
@@ -696,7 +696,7 @@ void rgl_draw_multitriangle3d(V3f v1, V3f v2, V3f v3, Color c1, Color c2, Color 
     Mat4 view = camera_matrix(renderer.camera);
 
     f32 n = 0.1f, fr = 1000.0f;
-    f32 ar = (f32)platform_ctx.width / (f32)platform_ctx.height;
+    f32 ar = (f32)platform_width() / (f32)platform_height();
     Mat4 proj = {
         1.0f/ar, 0,    0,               0,
         0,       1.0f, 0,               0,
@@ -735,7 +735,7 @@ void rgl_draw_triangle3d(V3f v1, V3f v2, V3f v3, Color color, u32 flags)
     Mat4 view = camera_matrix(renderer.camera);
 
     f32 n = 0.1f, fr = 1000.0f;
-    f32 ar = (f32)platform_ctx.width / (f32)platform_ctx.height;
+    f32 ar = (f32)platform_width() / (f32)platform_height();
     Mat4 proj = {
         1.0f/ar, 0,    0,               0,
         0,       1.0f, 0,               0,
@@ -771,7 +771,7 @@ void rgl_draw_texture3d(Texture *tex, V3f bl, V3f br, V3f tl, V3f tr, Color colo
     Mat4 view = camera_matrix(renderer.camera);
 
     f32 n = 0.1f, fr = 1000.0f;
-    f32 ar = (f32)platform_ctx.width / (f32)platform_ctx.height;
+    f32 ar = (f32)platform_width() / (f32)platform_height();
     Mat4 proj = {
         1.0f/ar, 0,    0,               0,
         0,       1.0f, 0,               0,
@@ -852,7 +852,7 @@ void rgl_immediate_flush(void)
     Mat4 view = camera_matrix(renderer.camera);
 
     f32 n = 0.1f, fr = 1000.0f;
-    f32 ar = (f32)platform_ctx.width / (f32)platform_ctx.height;
+    f32 ar = (f32)platform_width() / (f32)platform_height();
     Mat4 proj = {
         1.0f/ar, 0,    0,               0,
         0,       1.0f, 0,               0,

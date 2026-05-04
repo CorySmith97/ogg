@@ -7,7 +7,6 @@
 #include "render.h"
 #include "game.h"
 #include "editor.h"
-#include "m_model.h"
 
 #include "tp_entry.c"
 #include "b_base.c"
@@ -31,7 +30,6 @@
 #include "g_scene.c"
 #include "e_entry.c"
 #include "e_notification.c"
-#include "m_model.c"
 
 // TODO https://www.dgtlgrove.com/p/multi-core-by-default
 // By nature of this project, it is primed for a multithread by default

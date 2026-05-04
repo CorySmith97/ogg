@@ -51,6 +51,17 @@ typedef struct UI_Node {
     struct UI_Node *parent;
 } UI_Node;
 
+typedef struct {
+    UI_Node *node;
+    V2i mouse;
+    V2i drag_delta;
+    b8 clicked;
+    b8 double_clicked;
+    b8 pressed;
+} UI_Comm;
+
+UI_Node *ui_nodemake(UI_WidgetFlags flags, String8 string);
+UI_Node *ui_nodemakef(UI_WidgetFlags flags, const char *fmt, ...);
 void ui_init(Font *ui_font);
 void ui_push_parent(UI_Node *parent);
 void ui_pop_parent(UI_Node *parent);

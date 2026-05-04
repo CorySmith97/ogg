@@ -9,7 +9,7 @@ static V2f project(V3f v)
     float z = (v.z < NEAR) ? NEAR : v.z;
     assert(v.z != 0);
     float fov_rad = 1.0f; //1.0f / tanf((renderer.camera->fovy * 0.5f) * (M_PI / 180.0f));
-    float aspect = (float)platform_ctx.width / (float)platform_ctx.height;
+    float aspect = (float)platform_width() / (float)platform_height();
 
     float x = (v.x * fov_rad) / (aspect * z);
     float y = (v.y * fov_rad) / z;
@@ -77,8 +77,8 @@ static Ray get_mouse_ray(Camera *camera, V2f mouse_position)
 
     // Calculate normalized device coordinates
     // NOTE: y value is negative
-    f32 x = (2.0f*mouse_position.x)/(f32)platform_ctx.width - 1.0f;
-    f32 y = 1.0f - (2.0f*mouse_position.y)/(f32)platform_ctx.height;
+    f32 x = (2.0f*mouse_position.x)/(f32)platform_width() - 1.0f;
+    f32 y = 1.0f - (2.0f*mouse_position.y)/(f32)platform_height();
     f32 z = 1.0f;
 
     V3f f = camera->front;
@@ -86,7 +86,7 @@ static Ray get_mouse_ray(Camera *camera, V2f mouse_position)
     V3f u = v3f_cross(f, r);
 
     f32 fov_rad = 1.0f;
-    f32 aspect = (f32)platform_ctx.width/(f32)platform_ctx.height;
+    f32 aspect = (f32)platform_width()/(f32)platform_height();
 
     V3f direction = v3f_add(
             v3f_add(v3f_scale(r, x * aspect / fov_rad),

@@ -24,9 +24,8 @@ void console_init(void)
 {
     console.arena = arena_alloc();
     console.file_handle = fopen(console.file, "w+");
-    console.rec = (Recs32){.x = 0, .y = 0, .w = platform_ctx.width, .h = 0};
+    console.rec = (Recs32){.x = 0, .y = 0, .w = platform_width(), .h = 0};
     console_register_command("test", test);
-    console_register_command("mload", model_editor_load_model);
     console_register_command("backend", console_render_swap);
     console_register_command("scene", console_change_scene);
 }
@@ -47,27 +46,19 @@ f32 measure_text_mono(Font *f, const char *str, f32 size)
 // layer.
 void console_update(f32 mouse_scroll)
 {
-    console.rec.w = platform_ctx.width;
+    console.rec.w = platform_width();
     if (console.open && console.rec.h != MIN_CONSOLE_HEIGHT) {
         console.rec.h += CONSOLE_OPEN_SPEED;
     }
     if (console.open && console.rec.h == MIN_CONSOLE_HEIGHT) {
-        platform_ctx.text_input_enabled = true;
+        platform_enable_text_capture();
 
         if (is_key_down_raw(KEY_LEFT_CONTROL) && is_key_pressed_raw(KEY_V)) {
-            char *str = SDL_GetClipboardText(); {
-                if (str != NULL) {
-                    memcpy(&platform_ctx.input[platform_ctx.input_index], str, strlen(str));
-                    platform_ctx.input_index += strlen(str);
-                }
-            } SDL_free(str);
+            String8 str = platform_get_clipboard(console.arena);
+            platform_paste_text(str);
         }
         if (is_key_pressed_raw(KEY_ENTER)) {
-            String8 str;
-            u32 len = strlen(platform_ctx.input);
-            str.data = arena_push(console.arena, len, 1, 0);
-            str.data = memcpy(str.data, platform_ctx.input, len);
-            str.len = len;
+            String8 str = platform_get_text_buffer(console.arena);
             if (str.len > 0) {
                 String8 command_str = str8_split(str, ' ');
                 if (command_str.data != NULL) {
@@ -85,7 +76,7 @@ void console_update(f32 mouse_scroll)
         }
     }
     if (!console.open && console.rec.h == 0) {
-        platform_disabel_text_capture();
+        platform_disable_text_capture();
     }
     if (!console.open && console.rec.h != 0) {
         console.rec.h -= CONSOLE_OPEN_SPEED;

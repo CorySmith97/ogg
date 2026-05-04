@@ -17,7 +17,8 @@ static struct {
     s32       selected_tile;
     Gizmo_Axis selected_axis;
     Gizmo     gizmo;
-    s32      *initiative_order;
+    s32      *initiative_order
+;
 
     Camera    camera;
     f32       camera_speed;
@@ -83,7 +84,6 @@ void game_init(void)
     render_init();
     gizmo_init();
     editor_init();
-    model_editor_init();
     entity_init();
     tiles_init();
 
@@ -102,38 +102,32 @@ void game_init(void)
     }
 
     Entity e = (Entity){
-            .model = get_model("shopkeeper"),
-            .model_tag = "shopkeeper",
-            .position = v3f(0,0,0),
+            .model = get_gltf_model("simple_cube"),
+            .model_tag = "simple_cube",
+            .position = v3f(0,1,0),
             .target = v3f(0,0,0),
             .rotation = mat3_identity(),
             .update_fn = update_shopkeeper,
-            .scale = 1.0,
+            .scale = 1,
             };
     Entity e2 = (Entity){
-            .model = get_model("shopkeeper"),
-            .model_tag = "shopkeeper",
-            .position = v3f(2,0,4),
+            .model = get_gltf_model("simple_cube"),
+            .model_tag = "simple_cube",
+            .position = v3f(2,1,4),
             .target = v3f(2,0,4),
             .rotation = mat3_identity(),
             .update_fn = update_shopkeeper,
-            .scale = 1.0,
+            .scale = 1,
             };
     Entity e3 = (Entity){
-            .model = get_model("shopkeeper"),
-            .model_tag = "shopkeeper",
-            .position = v3f(8,0,4),
+            .model = get_gltf_model("simple_cube"),
+            .model_tag = "simple_cube",
+            .position = v3f(8,1,4),
             .target = v3f(8,0,4),
             .rotation = mat3_identity(),
             .update_fn = update_shopkeeper,
-            .scale = 1.0,
+            .scale = 1,
             };
-
-    entity_anim_init(&e, 
-                     "data/shopkeeper.skel",
-                     "data/shopkeeper.skin",
-                     "data/shopkeeper.anim");
-    anim_state_play(&e.anim, "idle");
 
     Scene *scene = scene_new(gs.arena, "Main");
     assert(scene->dynamic_entities == NULL);
@@ -144,7 +138,6 @@ void game_init(void)
     arrput(scene->dynamic_entities, e3);
     assert(arrlen(scene->dynamic_entities) == 3);
     gs.font = load_sdf_font("data/fonts/sdf_atlas.png", "data/fonts/sdf_atlas.bin");
-    m_editor.hud_font = gs.font;
     ui_init(gs.font);
 
     for (s32 i = 0; i < 10; i++) {
@@ -208,17 +201,6 @@ void game_frame(void)
             change_camera(&gs.camera);
         }
     }
-
-    if (is_key_pressed(KEY_3)) {
-        if (gs.state != GAME_STATE_MODEL_EDITOR) {
-            notifications_push((Notification){ .msg = str8_lit("Model State"), .lifetime = 2.0f });
-            console_write_log(str8_lit("Game state model editor"));
-            gs.state = GAME_STATE_MODEL_EDITOR;
-            editor_set_scene(gs.loaded_scene);
-            change_camera(&m_editor.camera);
-        }
-    }
-
 
     set_mouse_toggle_key(KEY_P);
     clear_background(COLOR_BLUE);
@@ -421,9 +403,9 @@ V2f cartesian_to_spherical(V3f v)
 
 void game_ui(void) 
 {
-    Recs32 bottom_view_outline = {.x = 0, .y = platform_ctx.height - 75 - 5, .w = platform_ctx.width, .h = 80};
+    Recs32 bottom_view_outline = {.x = 0, .y = platform_height() - 75 - 5, .w = platform_width(), .h = 80};
     draw_recs32(bottom_view_outline, 0.11, COLOR_BLACK);
-    Recs32 bottom_view = {.x = 0, .y = SCREEN_HEIGHT - 75, .w = SCREEN_WIDTH, .h = 75};
+    Recs32 bottom_view = {.x = 0, .y = platform_height() - 75, .w = platform_width(), .h = 75};
     draw_recs32(bottom_view, 0.1, COLOR_WHITE);
 
 }

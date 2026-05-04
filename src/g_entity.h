@@ -15,7 +15,7 @@ typedef enum {
 typedef struct Entity{
     Entity_Tag   tag;
     // NON-SERIALIZABLE
-    Asset_Model  *model;
+    GLTF_Model  *model;
 
     const char   *model_tag;
     V3f          position;
@@ -30,11 +30,11 @@ typedef struct Entity{
     b32          selected_player;
 
     AncestoryHeritage race;
-    BaseClass base_class;
-    Attributes attributes;
-    u32 level;
-    u32 movement_speed;
-    s32 spellcaster_lvl;
+    BaseClass         base_class;
+    Attributes        attributes;
+    u32               level;
+    u32               movement_speed;
+    s32               spellcaster_lvl;
 
 
     AnimData  *anim_data;
@@ -45,18 +45,31 @@ typedef struct Entity{
 
 Entity global_entities[ENTITY_TAG_COUNT];
 
+typedef struct {
+    Entity *entities;
+    s32     selected_entity;
+} Entity_Manager;
+
+Entity *get_selected_entity(Entity_Manager *manager);
+Entity *entity_iter_mouse_ray_collision(Entity_Manager *manager, Ray mouse_ray);
+
+b32 dump_entity_manager(Entity_Manager *manager);
+
 // CORE
 void entity_init(void);
 void entity_update(Entity *e);
 void entity_draw(Entity *e);
 void entity_anim_init(Entity *e, const char *skel, const char *skin, const char *anim);
 
+// Pathfind to target tile. If not able to pathfind, return false
+Entity *entity_collision(Entity_Manager *manager);
+b32 entity_set_target_tile(Entity *e, s32 tile_index);
+RayCollision entity_mouse_ray_collision(Entity *e, Ray mouse_ray);
+
+
 // SERDE
 void entity_serde_write(Entity *e);
 Entity *entity_serde_read(const char *bytes, size_t size);
-// Pathfind to target tile. If not able to pathfind, return false
-b32 entity_set_target_tile(Entity *e, s32 tile_index);
-RayCollision entity_mouse_ray_collision(Entity *e, Ray mouse_ray);
 
 
 #endif // ENTITY_H

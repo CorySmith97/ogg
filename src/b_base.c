@@ -180,3 +180,13 @@ char *str8_to_cstring(Arena *arena, String8 str)
     ret[str.len + 1] = '\0';
     return ret;
 }
+
+String8 str8_from_cstring(Arena *arena, const char *cstring)
+{
+    s32 len = strlen(cstring);
+    String8 str;
+    str.data = push_array(arena, u8, len);
+    str.len = len;
+    memcpy(str.data, cstring, len);
+    return str;
+}

@@ -105,6 +105,7 @@ typedef struct {
     GlyphInfo glyphs[256];   // loaded from sdf_atlas.bin
     f32       size;          // the FONT_SIZE the atlas was baked at
     s32       ascent;        // pixels from top of cell to baseline
+    b32       is_sdf;
 } Font;
 
 typedef struct {
@@ -197,11 +198,6 @@ typedef struct {
     u32       *index_buffer;    // [arrlen(vertices)]
     u16       *skin_groups;     // [base_count], ANIM_GROUP_STATIC by default
 } Asset_Model;
-
-typedef struct {
-    u32 start_index;
-    u32 end_index;
-} Geo_Surface;
 
 typedef struct {
     Asset_Model     **primitives;
