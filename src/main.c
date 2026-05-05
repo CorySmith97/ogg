@@ -19,7 +19,6 @@
 #include "b_geometry.c"
 #include "render.c"
 #include "s_assets.c"
-#include "r_ui.c"
 #include "g_pathfinder.c"
 #include "g_entity.c"
 #include "g_tile.c"
@@ -29,6 +28,7 @@
 #include "e_console.c"
 #include "g_entry.c"
 #include "g_scene.c"
+#include "r_ui.c"
 #include "e_entry.c"
 #include "e_notification.c"
 

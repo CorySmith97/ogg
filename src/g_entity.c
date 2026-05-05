@@ -166,7 +166,7 @@ bool entity_deserialize(Arena *arena, FILE *f, Entity *e) {
     e->model = NULL;                                     
     ok &= read_string(f, buf, 1024);
     size_t len = strlen(buf) + 1;
-    e->model_tag = malloc(len);
+    e->model_tag = push_array(arena, char, len);
     memcpy(e->model_tag, buf, len);
     e->model = get_model(e->model_tag);
 

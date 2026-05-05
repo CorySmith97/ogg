@@ -190,3 +190,18 @@ String8 str8_from_cstring(Arena *arena, const char *cstring)
     memcpy(str.data, cstring, len);
     return str;
 }
+
+// ALDER32 Hash function
+// I just picked a function to get going with.
+// https://en.wikipedia.org/wiki/Adler-32
+u64 string8_gen_hash_from_seed(Hash_Seed seed, String8 string)
+{
+    s32 s1 = 1;
+    s32 s2 = 0;
+
+    for (s32 i = 0; i < string.len; i++) {
+        s1 = (s1 + string.data[i]) % 65521;
+        s2 = (s2 + s1) % 65521;
+    }
+    return (s2 << 16) | s1;
+}

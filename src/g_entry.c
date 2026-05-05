@@ -70,6 +70,7 @@ void game_init(void)
     entity_manager_init(&gs.manager);
     init_variables();
 
+    ui_init(gs.arena);
     console_init();
     render_init();
     gizmo_init();
@@ -105,7 +106,6 @@ void game_init(void)
     };
 
     gs.font = load_sdf_font("data/fonts/sdf_atlas.png", "data/fonts/sdf_atlas.bin");
-    ui_init(gs.font);
 
     for (s32 i = 0; i < 10; i++) {
         for (s32 j = 0; j < 10; j++) {
@@ -181,6 +181,8 @@ void game_frame(void)
                 scene_draw(gs.loaded_scene);
             }
             draw_gltf_model(get_gltf_model("sample_scene"), v3f(10, 0, 10), mat3_identity(), false);
+            UI_Comm window = ui_window(str8_lit("Test window"), (Recs32){.x = 5, .y = 5, .w = 100, .h = 250});
+            ui_label(str8_lit("Test label"));
             game_ui();
             break;
         case GAME_STATE_MENU:
@@ -206,9 +208,7 @@ void game_frame(void)
 
     console_update(mouse_scroll);
 
-    if (!console.open) {
-        ui_flush();
-    }
+    ui_render();
 
     notifications_update(renderer.dt);
     notifications_flush(gs.font);

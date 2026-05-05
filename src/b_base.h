@@ -237,6 +237,8 @@ static void temp_end(Temp temp);
 #define push_array(a, T, c) push_array_aligned(a, T, c, max(8, _Alignof(T)))
 #define arena_push_struct(a, T) push_array_aligned(a, T, 1, max(8, _Alignof(T)))
 
+typedef u64 Hash_Seed;
+
 typedef struct {
     u8 *data;
     u32 len;
@@ -250,6 +252,7 @@ String8 str8_from_cstring(Arena *arena, const char *cstring);
 // @todo:cs arena. String that is split should be an allocated string8
 String8 str8_split(String8 str, char delimeter);
 String8 open_and_read_entire_file(Arena *arena, const char *file_name);
+u64 string8_gen_hash_from_seed(Hash_Seed seed, String8 string);
 
 #define Catelog(T) struct{String8 key; T* value;}
 

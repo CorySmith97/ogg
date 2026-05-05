@@ -5,6 +5,11 @@
 #ifndef UI_H
 #define UI_H
 
+typedef struct {
+    Color background;
+    Color hovered;
+} UI_Theme;
+
 typedef enum {
     AXIS2_X,
     AXIS2_Y,
@@ -20,9 +25,11 @@ typedef enum {
 } UI_SizeKind;
 
 typedef enum {
-    UI_WIDGETFLAG_CLICKABLE = 1 >> 1,
-    UI_WIDGETFLAG_COUNT,
-} UI_WidgetFlags;
+    UI_BOXFLAG_NONE      = 0 >> 1,
+    UI_BOXFLAG_CLICKABLE = 1 >> 1,
+    UI_BOXFLAG_DRAW_TEXT = 2 >> 1,
+    UI_BOXFLAG_COUNT,
+} UI_BoxFlags;
 
 typedef struct {
     UI_SizeKind kind;
@@ -31,45 +38,87 @@ typedef struct {
 } UI_Size;
 
 typedef enum {
-    UI_NODE_WINDOW,
-    UI_NODE_COUNT,
-} UI_Node_Tag;
+    UI_BOX_WINDOW,
+    UI_BOX_COUNT,
+} UI_Box_Tag;
 
-typedef struct UI_Node {
-    const char *label;
+typedef s64 UI_Key;
+
+typedef struct UI_Box {
+    // Tree links
+    struct UI_Box *first;
+    struct UI_Box *last;
+    struct UI_Box *next;
+    struct UI_Box *prev;
+    struct UI_Box *parent;
+
+    UI_Key key;
+    u64 last_frame_touched_index;
+
+    // preframe
+    UI_BoxFlags flags;
     UI_Size     semantic_size[AXIS2_COUNT];
+    String8 string;
+
+    // every frame
     f32         computed_rel_pos[AXIS2_COUNT];
     f32         computed_size[AXIS2_COUNT];
     Recs32      rec;
-    UI_Node_Tag tag;
-    b32         visible;
 
-    struct UI_Node *first;
-    struct UI_Node *last;
-    struct UI_Node *next;
-    struct UI_Node *prev;
-    struct UI_Node *parent;
-} UI_Node;
+    f32 hot_t;
+    f32 active_t;
+} UI_Box;
+
+// Interaction results or UI "Communication"
 
 typedef struct {
-    UI_Node *node;
-    V2i mouse;
-    V2i drag_delta;
-    b8 clicked;
-    b8 double_clicked;
-    b8 pressed;
+    UI_Box *box;
+    V2f     mouse;
+    V2f     drag_delta;
+    b8      clicked;
+    b8      double_clicked;
+    b8      right_clicked;
+    b8      pressed;
+    b8      released;
+    b8      dragging;
+    b8      hovered;
 } UI_Comm;
 
-UI_Node *ui_nodemake(UI_WidgetFlags flags, String8 string);
-UI_Node *ui_nodemakef(UI_WidgetFlags flags, const char *fmt, ...);
-void ui_init(Font *ui_font);
-void ui_push_parent(UI_Node *parent);
-void ui_pop_parent(UI_Node *parent);
-bool ui_window(const char *name, Recs32 rec);
-void ui_window_end(void);
-void ui_label(const char *name);
-bool ui_button(const char *name);
-void ui_pop_tooltip(String8 msg, s32 text_size);
+typedef struct {
+    Arena    *arena;
+    UI_Box   *root;
+    Arena    *frame;
+    Hash_Seed seed;
+    V2f       mouse_pos;
+    V2f       mouse_delta;
+    Color     set_color;
+    UI_Theme *theme;
+    f32       padding;
+} UI_State;
+
+// UI Framework
+
+void    ui_init(Arena *arena);
+void    ui_render(void);
+
+// Internal Function Prototypes
+UI_Comm ui_comm_from_box(UI_Box *box);
+UI_Key  ui_key_null(void);
+UI_Key  ui_key_from_string(String8 string);
+b32     ui_key_match(UI_Key a, UI_Key b);
+Recs32  ui_compute_box(UI_Box *box);
+
+UI_Box *ui_box_make(UI_BoxFlags flags, String8 string);
+UI_Box *ui_box_makef(UI_BoxFlags flags, const char *fmt, ...);
+
+void    ui_box_equip_display_string(UI_Box *box, String8 string);
+void    ui_box_equip_child_layout_axis(UI_Box *box, Axis2 axis);
+
+// Widget Creation
+
+UI_Comm ui_window(String8 string, Recs32 rec);
+UI_Comm ui_button(String8 string);
+UI_Comm ui_label(String8 string);
 
 #endif // UI_H
 
