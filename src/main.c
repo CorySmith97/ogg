@@ -8,6 +8,7 @@
 #include "game.h"
 #include "editor.h"
 
+#include "variables.c"
 #include "tp_entry.c"
 #include "b_base.c"
 #include "b_os.c"

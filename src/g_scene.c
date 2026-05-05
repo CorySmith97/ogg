@@ -20,10 +20,11 @@ void console_change_scene(String8 param)
     
 } */
 
-Scene *scene_new(Arena *arena, const char *name)
+Scene *scene_new(Arena *arena, const char *name, Entity_Manager *manager)
 {
     Scene *s = arena_push_struct(arena, Scene);
     s->name = str8_fmt_alloc("%s", name);
+    s->manager = manager;
     shput(scenes, name, s);
     return s;
 }
@@ -48,17 +49,11 @@ Scene *scene_load(Arena *arena, const char *name)
                 console_write_log_alloc("Failed to deserialize tile %d", i);
         }
 
-        s32 static_len;
-        read_bytes(f, &static_len, sizeof(s32));
-        for (int i = 0; i < static_len; i++) {
-            //entity_deserialize(editor.arena, f, &s->static_entities[i]);
-        }
-
         s32 dynamic_len;
         read_bytes(f, &dynamic_len, sizeof(s32));
-        arrsetlen(s->dynamic_entities, dynamic_len);
+        s->manager->current_len = dynamic_len;
         for (int i = 0; i < dynamic_len; i++) {
-            Entity *e = &s->dynamic_entities[i];
+            Entity *e = &s->manager->entities[i];
             b32 ok = entity_deserialize(editor.arena, f, e);
             if (!ok)
                 console_write_log_alloc("Failed to deserialize entity %d", i);
@@ -85,17 +80,10 @@ void scene_save(Scene *s, const char *name)
             if (!ok)
                 console_write_log_alloc("Failed to serialize tile %d", i);
         }
-        s32 static_len = arrlen(s->static_entities);
-        write_bytes(f, &static_len, sizeof(s32));
-        for (int i = 0; i < arrlen(s->static_entities); i++) {
-            b32 ok = entity_serialize(f, &s->static_entities[i]);
-            if (!ok)
-                console_write_log_alloc("Failed to serialize tile %d", i);
-        }
-        s32 dynamic_len = arrlen(s->dynamic_entities);
+        s32 dynamic_len = s->manager->current_len;
         write_bytes(f, &dynamic_len, sizeof(s32));
-        for (int i = 0; i < arrlen(s->dynamic_entities); i++) {
-            b32 ok = entity_serialize(f, &s->dynamic_entities[i]);
+        for (int i = 0; i < dynamic_len; i++) {
+            b32 ok = entity_serialize(f, &s->manager->entities[i]);
             if (!ok)
                 console_write_log_alloc("Failed to serialize tile %d", i);
         }
@@ -119,13 +107,13 @@ void scene_update(Scene *s)
         for (s32 i = 0; i < arrlen(s->tiles); i++) {
             RayCollision collision = tile_mouse_ray_collision(&s->tiles[i], mouse_ray);
             if (collision.hit) {
-                Entity *e = &s->dynamic_entities[gs.player_index];
+                Entity *e = &s->manager->entities[s->manager->player_index];
                 e->target = s->tiles[i].position;
             }
         }
     }
-    for (int i = 0; i < arrlen(s->dynamic_entities); i++) {
-        entity_update(&s->dynamic_entities[i]);
+    for (int i = 1; i < s->manager->current_len; i++) {
+        entity_update(&s->manager->entities[i]);
     }
 }
 
@@ -135,10 +123,7 @@ void scene_draw(Scene *s)
     for (s32 i = 0; i < tile_len; i++) {
         tile_draw(&s->tiles[i]);
     }
-    for (int i = 0; i < arrlen(s->static_entities); i++) {
-        entity_draw(&s->static_entities[i]);
-    }
-    for (int i = 0; i < arrlen(s->dynamic_entities); i++) {
-        entity_draw(&s->dynamic_entities[i]);
+    for (int i = 1; i < s->manager->current_len; i++) {
+        entity_draw(&s->manager->entities[i]);
     }
 }

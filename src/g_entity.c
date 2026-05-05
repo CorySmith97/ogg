@@ -1,3 +1,9 @@
+Entity *get_new_entity(Entity_Manager *manager)
+{
+    Entity *e = &manager->entities[manager->current_len];
+    manager->current_len += 1;
+    return e;
+}
 
 Entity *get_selected_entity(Entity_Manager *manager)
 {
@@ -9,7 +15,7 @@ Entity *entity_iter_mouse_ray_collision(Entity_Manager *manager, Ray mouse_ray)
     RayCollision collision = {0};
     s32 best_dist = 1000000000;
     Entity *best = NULL;
-    for (s32 i = 0; i < arrlen(manager->entities); i++) {
+    for (s32 i = 0; i < manager->current_len; i++) {
         Entity *e = &manager->entities[i];
         collision = entity_mouse_ray_collision(e, mouse_ray);
         if (collision.hit) {
@@ -20,14 +26,37 @@ Entity *entity_iter_mouse_ray_collision(Entity_Manager *manager, Ray mouse_ray)
     return best;
 }
 
-void add_new_entity(Entity_Manager *manager, Entity e)
+s32 entity_iter_mouse_ray_collision_id(Entity_Manager *manager, Ray mouse_ray)
 {
-    arrput(manager->entities, e);
+    RayCollision collision = {0};
+    s32 best_dist = 1000000000;
+    s32 best = 0;
+    for (s32 i = 1; i < manager->current_len; i++) {
+        Entity *e = &manager->entities[i];
+        collision = entity_mouse_ray_collision(e, mouse_ray);
+        if (collision.hit) {
+            if (collision.distance < best_dist) best = i;
+        }
+    }
+
+    return best;
+}
+
+void entity_manager_init(Entity_Manager *manager)
+{
+    // set one as start to skip 0 to have a null value;
+    manager->current_len = 1;
+}
+
+void entity_manager_clear(Entity_Manager *manager)
+{
+    manager->current_len = 1;
 }
 
 static void update_shopkeeper(Entity *e)
 {
 	static f32 angle = 0;
+    e->position.y = sin(angle);
 	e->rotation = rotation_y(angle);
 	angle += 0.01;
 }

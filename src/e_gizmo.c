@@ -99,6 +99,7 @@ void gizmo_draw(Gizmo *gizmo)
                     color, TRIANGLE_WRITE_OVER_Z
                 );
 
+
                 // Arrowhead
                 draw_triangle3d(
                     v3f(x + len + o,     y,      z),

@@ -48,8 +48,8 @@ void editor_draw(void)
 
 
     // TODO set pose and dont update
-    for (s32 i = 0; i < arrlen(editor.scene->dynamic_entities); i++) {
-        Entity *e = &editor.scene->dynamic_entities[i];
+    for (s32 i = 1; i < editor.scene->manager->current_len; i++) {
+        Entity *e = &editor.scene->manager->entities[i];
         e->hit = (i == editor.selected_entity);
     }
 
@@ -87,22 +87,14 @@ void editor_draw(void)
             s32 hit_tile = -1;
             s32 hit_entity = -1;
             float closest = FLT_MAX;
+            if (editor.selected_entity < 0)
+                hit_entity = entity_iter_mouse_ray_collision_id(editor.scene->manager, editor.mouse_ray);
 
-            for (s32 i = 0; i < arrlen(editor.scene->dynamic_entities); i++) {
-                Entity *e = &editor.scene->dynamic_entities[i];
-                e->update_disabled = true;
-                RayCollision collision = entity_mouse_ray_collision(e, editor.mouse_ray);
-                if (collision.hit && collision.distance < closest) {
-                    closest = collision.distance;
-                    hit_entity = i;
-                }
-            }
-
-            if (hit_entity >= 0) {
+            if (hit_entity > 0) {
                 editor.clicked_entity = true;
                 editor.selected_entity = hit_entity;
                 editor.gizmo.attached = true;
-                editor.gizmo.position = editor.scene->dynamic_entities[hit_entity].position;
+                editor.gizmo.position = editor.scene->manager->entities[hit_entity].position;
             } else {
                 for (s32 i = 0; i < arrlen(editor.scene->tiles); i++) {
                     Tile *e = &editor.scene->tiles[i];
@@ -141,7 +133,7 @@ void editor_draw(void)
     // 2) Drag currently selected gizmo axis
     //
     if (editor.selected_axis >= 0 && editor.mouse_down && editor.selected_entity >= 0) {
-        Entity *e = &editor.scene->dynamic_entities[editor.selected_entity];
+        Entity *e = &editor.scene->manager->entities[editor.selected_entity];
 
         if (editor.gizmo.mode == GIZMO_MODE_ROTATE) {
             f32 angle = 0.0f;
@@ -170,7 +162,7 @@ void editor_draw(void)
     //
     if (editor.mouse_released) {
         if (editor.gizmo.mode == GIZMO_MODE_TRANSLATE && editor.selected_entity >= 0) {
-            Entity *e = &editor.scene->dynamic_entities[editor.selected_entity];
+            Entity *e = &editor.scene->manager->entities[editor.selected_entity];
             e->position = v3f(roundf(e->position.x), roundf(e->position.y), roundf(e->position.z));
             editor.gizmo.position = e->position;
         }
@@ -180,8 +172,8 @@ void editor_draw(void)
         tile_draw(&editor.scene->tiles[i]);
     }
 
-    for (int i = 0; i < arrlen(editor.scene->dynamic_entities); i++) {
-        Entity e = editor.scene->dynamic_entities[i];
+    for (int i = 1; i < editor.scene->manager->current_len; i++) {
+        Entity e = editor.scene->manager->entities[i];
         entity_draw(&e);
         if (e.hit) {
                 editor.gizmo.active_axis = editor.selected_axis;
@@ -202,8 +194,25 @@ void editor_draw(void)
         if (nk_begin(ctx, "Entity",
                      nk_rect(0, 40, platform_width() / 4, platform_height() / 2), panel_flags))
         {
-            if (editor.selected_entity >= 0) {
-                Entity *e = &editor.scene->dynamic_entities[editor.selected_entity];
+
+            if (nk_tree_push(ctx, NK_TREE_TAB, "Spawners", NK_MAXIMIZED)) {
+                nk_layout_row_dynamic(ctx, 20, 1);
+
+                if (nk_button_label(ctx, "Spawn new entity")) {
+                    log_info("Hello?");
+                    Entity *e = get_new_entity(editor.scene->manager);
+                    e->scale = 1.0;
+                    // Always default to cube
+                    e->model_tag = "simple_cube"; 
+                    e->model = get_gltf_model(e->model_tag);
+                    e->rotation = mat3_identity();
+                    assert(e->model != NULL);
+                }
+
+                nk_tree_pop(ctx);
+            }
+            if (editor.selected_entity > 0) {
+                Entity *e = &editor.scene->manager->entities[editor.selected_entity];
                 if (nk_tree_push(ctx, NK_TREE_TAB, "Mesh", NK_MAXIMIZED)) {
                     nk_layout_row_dynamic(ctx, 20, 1);
                     nk_label_wrap(ctx, "Change mesh");
@@ -216,7 +225,7 @@ void editor_draw(void)
                     for (int i = 0; i < count; i++) {
                         keys[i] = gltf_assets[i].key;
                     }
-                    nk_layout_row_dynamic(ctx, 25, 1);
+                    nk_layout_row_dynamic(ctx, 20, 1);
                     selected = nk_combo(ctx, keys, count, selected, 25, nk_vec2(200, 150));
 
                     if (selected != 0) {
@@ -224,9 +233,11 @@ void editor_draw(void)
                         selected = 0;
                     }
 
-                    nk_label_wrap(ctx, e->model_tag);
+                    if (e->model_tag)
+                        nk_label_wrap(ctx, e->model_tag);
                     snprintf(buf, 256, "Entity ID: %d", editor.selected_entity);
 
+                    nk_layout_row_dynamic(ctx, 20, 1);
                     nk_label_wrap(ctx, "scale");
                     static f32 scale = 1.0;
                     nk_slider_float(ctx, 0, &scale, 1, 0.01f);
@@ -244,7 +255,7 @@ void editor_draw(void)
 
                     nk_tree_pop(ctx);
                 }
-                if (nk_tree_push(ctx, NK_TREE_TAB, "Game Info", NK_MAXIMIZED)) {
+                if (nk_tree_push(ctx, NK_TREE_TAB, "Game Info", NK_MINIMIZED)) {
                     nk_layout_row_dynamic(ctx, 20, 1);
                     nk_label_wrap(ctx, "Race: ");
                     nk_label_wrap(ctx, "Base Class: ");
@@ -295,11 +306,6 @@ void editor_draw(void)
                 snprintf(buf, 256, "No selected Entity");
                 nk_layout_row_dynamic(ctx, 20, 1);
                 nk_label_wrap(ctx, buf);
-                if (nk_tree_push(ctx, NK_TREE_TAB, "Spawners", NK_MAXIMIZED)) {
-                    nk_layout_row_dynamic(ctx, 20, 1);
-
-                    nk_tree_pop(ctx);
-                }
             }
         }
         nk_end(ctx);
@@ -321,7 +327,7 @@ void editor_draw(void)
             case NK_COMMAND_TEXT: {
                 const struct nk_command_text *t = (const struct nk_command_text *)cmd;
                 Color c = {t->foreground.r, t->foreground.g, t->foreground.b, t->foreground.a};
-                draw_text(gs.font, t->string, v2i(t->x, t->y), 20, c);
+                draw_text(gs.font, t->string, v2i(t->x, t->y), 24, c);
             } break;
             case NK_COMMAND_IMAGE: {
                 const struct nk_command_image *t = (const struct nk_command_image *)cmd;

@@ -18,7 +18,7 @@ static MouseState mouse_state;
 static float nk_text_width_cb(nk_handle h, float height, const char *text, int len) {
     (void)h; (void)height;
     if (len < 0) len = (int)strlen(text);
-    return (float)(len * 8);
+    return (float)(len * 20);
 }
 
 static struct nk_user_font nk_ui_font;
@@ -273,13 +273,11 @@ void platform_handle_events(bool *quit)
 
 
     if (platform_ctx.text_input_enabled) {
-        static s32 frame = 0;
         b32 pressed = is_key_down_raw(KEY_BACKSPACE);
         if (pressed) {
             if (platform_ctx.input_index - 1 >= 0)  {
                 platform_ctx.input_index -= 1;
                 platform_ctx.input[platform_ctx.input_index] = '\0';
-                frame = 0;
             }
         }
     }

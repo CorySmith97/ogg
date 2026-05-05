@@ -1,6 +1,11 @@
 #ifndef ENTITY_H
 #define ENTITY_H
 
+#define MAX_ENTITIES 8096
+
+
+typedef s32 EntityId;
+
 typedef enum {
     ENTITY_SIM_STATIC,
     ENTITY_SIM_DYNAMIC,
@@ -54,8 +59,10 @@ typedef struct Entity{
 Entity global_entities[ENTITY_TAG_COUNT];
 
 typedef struct {
-    Entity *entities;
-    s32     selected_entity;
+    Entity entities[MAX_ENTITIES];
+    s32    current_len;
+    s32    selected_entity;
+    s32    player_index;
 } Entity_Manager;
 
 Entity *get_selected_entity(Entity_Manager *manager);

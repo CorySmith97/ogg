@@ -19,6 +19,7 @@ void load_asset_catelog(void)
     load_and_store_gltf_model("ci", "data/gltf/unnamed_2.gltf");
     load_and_store_gltf_model("scene", "data/gltf/scene.gltf");
     load_and_store_gltf_model("simple_cube", "data/gltf/simple_cube.gltf");
+    load_and_store_gltf_model("sample_scene", "data/gltf/sample_scene.gltf");
 
     // OBJ MODELS
     load_and_store_model("shopkeeper", "data/shopkeeper.obj");
@@ -138,8 +139,8 @@ static void texture_upload_gl(Texture *tex)
     glBindTexture(GL_TEXTURE_2D, tex->id);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexImage2D(GL_TEXTURE_2D, 0, fmt,
                  tex->width, tex->height, 0,
                  fmt, GL_UNSIGNED_BYTE, tex->data);

@@ -8,6 +8,7 @@ static struct {
     bool    profiling_enabled;
     // Global texture storage
 
+
     Scene *loaded_scene;
     
     // Gameplay
@@ -22,6 +23,7 @@ static struct {
     b32       camera_moving;
 
     Arena    *arena;
+    Entity_Manager manager;
 } gs = {
     .sun = {
         .position = {4, 0, 0},
@@ -65,6 +67,9 @@ void game_init(void)
 
     gs.arena = arena_alloc();
 
+    entity_manager_init(&gs.manager);
+    init_variables();
+
     console_init();
     render_init();
     gizmo_init();
@@ -86,42 +91,19 @@ void game_init(void)
         break;
     }
 
-    Entity e = (Entity){
-            .model = get_gltf_model("simple_cube"),
-            .model_tag = "simple_cube",
-            .position = v3f(0,1,0),
-            .target = v3f(0,0,0),
-            .rotation = mat3_identity(),
-            .update_fn = update_shopkeeper,
-            .scale = 1,
-            };
-    Entity e2 = (Entity){
-            .model = get_gltf_model("simple_cube"),
-            .model_tag = "simple_cube",
-            .position = v3f(2,1,4),
-            .target = v3f(2,0,4),
-            .rotation = mat3_identity(),
-            .update_fn = update_shopkeeper,
-            .scale = 1,
-            };
-    Entity e3 = (Entity){
-            .model = get_gltf_model("simple_cube"),
-            .model_tag = "simple_cube",
-            .position = v3f(8,1,4),
-            .target = v3f(8,0,4),
-            .rotation = mat3_identity(),
-            .update_fn = update_shopkeeper,
-            .scale = 1,
-            };
 
-    Scene *scene = scene_new(gs.arena, "Main");
-    assert(scene->dynamic_entities == NULL);
-    assert(scene->tiles == NULL);
+    Scene *scene = scene_new(gs.arena, "Main", &gs.manager);
+    Entity *e = get_new_entity(scene->manager);
+    *e = (Entity){
+        .model = get_gltf_model("simple_cube"),
+        .model_tag = "simple_cube",
+        .position = v3f(8,1,4),
+        .target = v3f(8,0,4),
+        .rotation = mat3_identity(),
+        .update_fn = update_shopkeeper,
+        .scale = 1,
+    };
 
-    arrput(scene->dynamic_entities, e);
-    arrput(scene->dynamic_entities, e2);
-    arrput(scene->dynamic_entities, e3);
-    assert(arrlen(scene->dynamic_entities) == 3);
     gs.font = load_sdf_font("data/fonts/sdf_atlas.png", "data/fonts/sdf_atlas.bin");
     ui_init(gs.font);
 
@@ -198,6 +180,7 @@ void game_frame(void)
                 scene_update(gs.loaded_scene);
                 scene_draw(gs.loaded_scene);
             }
+            draw_gltf_model(get_gltf_model("sample_scene"), v3f(10, 0, 10), mat3_identity(), false);
             game_ui();
             break;
         case GAME_STATE_MENU:
@@ -206,11 +189,13 @@ void game_frame(void)
             break;
         case GAME_STATE_EDITOR:
             editor_camera_update();
-/*             immediate_push_v(v3f(-1, 0, 5), COLOR_RED);
+/* 
+            immediate_push_v(v3f(-1, 0, 5), COLOR_RED);
             immediate_push_v(v3f(1,  0, 5), COLOR_PURPLE);
             immediate_push_v(v3f(0,  1, 5), COLOR_GREEN);
-            immediate_flush(); */
+            immediate_flush();
 
+ */
             editor_draw();
             break;
         case GAME_STATE_PAUSE:
