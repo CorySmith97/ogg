@@ -233,3 +233,11 @@ static inline AABB aabb_expand(AABB a, f32 e)
     a.max.x += e; a.max.y += e; a.max.z += e;
     return a;
 }
+
+b32 mouse_in_rec(Recs32 rec, V2f mouse)
+{
+    return (mouse.x >= rec.x)
+        && mouse.x <= (rec.x+rec.w)
+        && mouse.y >= (rec.y)
+        && mouse.y <= (rec.y+rec.h);
+}

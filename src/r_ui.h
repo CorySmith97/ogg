@@ -7,7 +7,9 @@
 
 typedef struct {
     Color background;
+    Color background_hovered;
     Color hovered;
+    Color text_hovered;
 } UI_Theme;
 
 typedef enum {
@@ -24,12 +26,15 @@ typedef enum {
     UI_SIZEKIND_CHILDRENSUM,
 } UI_SizeKind;
 
-typedef enum {
-    UI_BOXFLAG_NONE      = 0 >> 1,
-    UI_BOXFLAG_CLICKABLE = 1 >> 1,
-    UI_BOXFLAG_DRAW_TEXT = 2 >> 1,
+typedef u64 UI_BoxFlags;
+enum {
+    UI_BOXFLAG_NONE      = 0 << 1,
+    UI_BOXFLAG_CLICKABLE = 1 << 1,
+    UI_BOXFLAG_DRAW_TEXT = 2 << 1,
+    UI_BOXFLAG_RECTANGLE = 3 << 1,
+    UI_BOXFLAG_HOVERED   = 4 << 1,
     UI_BOXFLAG_COUNT,
-} UI_BoxFlags;
+};
 
 typedef struct {
     UI_SizeKind kind;
@@ -100,6 +105,7 @@ typedef struct {
 
 void    ui_init(Arena *arena);
 void    ui_render(void);
+void ui_update(V2f mouse_pos);
 
 // Internal Function Prototypes
 UI_Comm ui_comm_from_box(UI_Box *box);

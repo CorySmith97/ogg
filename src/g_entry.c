@@ -144,9 +144,11 @@ void game_frame(void)
 
 	renderer.sun = gs.sun;
     f32 mouse_scroll = get_mouse_scroll();
-    V2f mouse_pos = get_mouse_pos();
+    V2f mouse_pos   = get_mouse_pos();
     V2f mouse_delta = get_mouse_delta();
     Ray mouse_ray   = get_mouse_ray(&gs.camera, mouse_pos);
+
+    ui_update(mouse_pos);
 
     if (is_key_pressed(KEY_M)) {
         gs.profiling_enabled = !gs.profiling_enabled;
